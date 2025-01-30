@@ -63,7 +63,8 @@ const DEFAULT_CONFIG = {
         enableFavicon: false, // enables the favicon route /favicon.ico
         enableBanner: false, // enables the banner route /banner.png
         enableSwagger: true, // enables the swagger docs at /api/docs
-        enableDBHealthCheck: false, // enables the database health check
+        enableDBHealthCheck: false, // enables the database health check at /api/health
+        enableGitReadmeCheck: false // enables the git readme check for mods without a description
     }
 };
 
@@ -121,6 +122,7 @@ export class Config {
         enableBanner: boolean;
         enableSwagger: boolean;
         enableDBHealthCheck: boolean;
+        enableGitReadmeCheck: boolean;
     };
     // #endregion
     // #region Public Static Properties
@@ -567,6 +569,12 @@ export class Config {
                 Config._flags.enableDBHealthCheck = process.env.FLAGS_ENABLEDBHEALTHCHECK === `true`;
             } else {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
+            }
+
+            if (process.env.FLAGS_ENABLEGITREADMECHECK) {
+                Config._flags.enableBanner = process.env.FLAGS_ENABLEGITREADMECHECK === `true`;
+            } else {
+                failedToLoad.push(`flags.enableGitReadmeCheck`);
             }
             // #endregion
 
