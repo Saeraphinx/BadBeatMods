@@ -50,16 +50,17 @@ export class VersionsRoutes {
 
         this.router.post(`/versions`, async (req, res) => {
             // #swagger.tags = ['Versions']
-            /*
-            #swagger.requestBody = {
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
+            /* #swagger.requestBody = {
                 description: 'The gameName and version to create',
                 required: true,
+                type: 'object',
                 schema: {
-                    type: 'object',
-                    properties: {
-                        gameName: { type: 'string', description: 'The game name' },
-                        version: { type: 'string', description: 'The version to create' }
-                    }
+                    "gameName": "BeatSaber",
+                    "version": "1.0.0"
                 }
             }
             */
@@ -106,6 +107,10 @@ export class VersionsRoutes {
 
         this.router.post(`/versions/default`, async (req, res) => {
             // #swagger.tags = ['Versions']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             /* #swagger.requestBody = {
                 description: 'The ID of the version to set as default',
                 required: true,

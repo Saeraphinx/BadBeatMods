@@ -5,6 +5,7 @@ import { DatabaseHelper, SupportedGames, User, UserRoles } from "./Database";
 declare module 'express-session' {
     export interface Session {
         userId: number;
+        goodMorning47YourTargetIsThisSession: boolean;
     }
 }
 /*

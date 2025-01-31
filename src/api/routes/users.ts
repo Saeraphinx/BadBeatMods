@@ -14,6 +14,10 @@ export class UserRoutes {
     private async loadRoutes() {
         this.router.get(`/user`, async (req, res) => {
             // #swagger.tags = ['Users']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Get logged in user information.'
             // #swagger.description = 'Get user information.'
             // #swagger.responses[200] = { description: 'Returns user information.' }
@@ -49,6 +53,10 @@ export class UserRoutes {
 
         this.router.get(`/user/:id/mods`, async (req, res) => {
             // #swagger.tags = ['Users']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Get user information.'
             // #swagger.description = 'Get user information.'
             // #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
@@ -110,6 +118,10 @@ export class UserRoutes {
         /*
         this.app.patch(`/user/:id/`, async (req, res) => {
             // #swagger.tags = ['User']
+            #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }]
             // #swagger.summary = 'Get user information.'
             // #swagger.description = 'Get user information.'
             // #swagger.responses[200] = { description: 'Returns user information.' }

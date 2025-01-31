@@ -27,6 +27,10 @@ export class StatusRoutes {
                 schema: { $ref: '#/components/schemas/APIStatus' }
             }
             */
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             //#swagger.responses[500] = { description: 'Internal server error.', schema: { message: 'Internal server error.' } }
             
             let session = await validateSession(req, res, false, null, false);

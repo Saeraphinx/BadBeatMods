@@ -18,6 +18,10 @@ export class ApprovalRoutes {
         // #region Get Approvals
         this.router.get(`/approval/:queueType`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Get new mods & modVersions pending approval.'
             // #swagger.description = 'Get a list of mods & modVersions pending their first approval.'
             // #swagger.parameters['queueType'] = { description: 'The type of queue to get.', schema: { type: 'string', '@enum': ['mods', 'modVersions', 'edits'] }, required: true }
@@ -174,6 +178,10 @@ export class ApprovalRoutes {
         // #region Accept/Reject Approvals
         this.router.post(`/approval/mod/:modIdParam/approve`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Approve a mod.'
             // #swagger.description = 'Approve a mod for public visibility.'
             // #swagger.parameters['modIdParam'] = { description: 'The id of the mod to approve.', type: 'integer' }
@@ -233,6 +241,10 @@ export class ApprovalRoutes {
 
         this.router.post(`/approval/modversion/:modVersionIdParam/approve`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Approve a modVersion.'
             // #swagger.description = 'Approve a modVersion for public visibility.'
             // #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to approve.', type: 'integer' }
@@ -297,6 +309,10 @@ export class ApprovalRoutes {
 
         this.router.post(`/approval/edit/:editIdParam/approve`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Approve an edit.'
             // #swagger.description = 'Approve an edit for public visibility.'
             // #swagger.parameters['editIdParam'] = { description: 'The id of the edit to approve.', type: 'integer' }
@@ -535,6 +551,10 @@ export class ApprovalRoutes {
 
         this.router.patch(`/approval/edit/:editIdParam`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Edit an edit in the approval queue.'
             // #swagger.description = 'Edit an edit in the approval queue.'
             // #swagger.parameters['editIdParam'] = { description: 'The id of the edit to edit.', type: 'integer', required: true }
@@ -680,6 +700,10 @@ export class ApprovalRoutes {
         // #region Revoke Approvals
         this.router.post(`/approval/modVersion/:modVersionIdParam/revoke`, async (req, res) => {
             // #swagger.tags = ['Approval']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Revoke a modVersion's verification.'
             // #swagger.description = 'Revoke a modVersion\'s verification status.\n\nThis will also revoke the verification status of any modVersions that depend on this modVersion.'
             // #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to revoke.', type: 'integer', required: true }

@@ -9,6 +9,9 @@ import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
 import { ActivityType } from 'discord.js';
+import passport from 'passport';
+import { Strategy as BearerStrategy } from 'passport-http-bearer';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 import { DatabaseHelper, DatabaseManager } from './shared/Database';
 import { Logger } from './shared/Logger';
@@ -60,6 +63,7 @@ const sessionConfigData: SessionOptions = {
     resave: false,
     saveUninitialized: false,
     unset: `destroy`,
+    rolling: true,
     cookie: {
         maxAge: 86400000,
         secure: `auto`,
@@ -87,14 +91,13 @@ if (Config.server.storeSessions) {
     });
 }
 
-app.use(session(sessionConfigData));
-
 app.set(`trust proxy`, true);
 
 app.use((req, res, next) => {
     if (Config.devmode) {
         if (Config.authBypass) {
             req.session.userId = 1;
+            req.session.goodMorning47YourTargetIsThisSession = true;
         }
         if (!req.url.includes(`hashlookup`)) {
             console.log(req.url);
@@ -154,6 +157,10 @@ new BulkActionsRoutes(apiRouter);
 
 if (Config.flags.enableSwagger) {
     swaggerDocument.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
+    if (!Config.flags.enableGithubPAT) {
+        // @ts-expect-error it complains about it not being undefineable. this just in! i dont care.
+        swaggerDocument.components.securitySchemes.bearerAuth = undefined;
+    }
     apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
         swaggerOptions: {
             docExpansion: `list`,
@@ -197,6 +204,61 @@ if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
 
 new CDNRoutes(cdnRouter);
 
+apiRouter.use(session(sessionConfigData));
+import(`@octokit/rest`).then((Octokit) => {
+    passport.use(`bearer`, new BearerStrategy(
+        function(token, done) {
+            const octokit = new Octokit.Octokit({ auth: token });
+            if (invalidAttempts.filter((t) => token === t).length > 2) {
+                return done(null, false);
+            }
+            // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+            octokit.rest.users.getAuthenticated().then((response) => {
+                if (response.status !== 200 || response.data === undefined) {
+                    invalidAttempts.push(token ? token : `unknown`);
+                    return done(null, false);
+                }
+                let profile = response.data;
+                DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
+                    if (!user) {
+                        return done(null, false);
+                    } else {
+                        return done(null, user);
+                    }
+                }).catch((err) => {
+                    Logger.error(`Error finding user: ${err}`, `Auth`);
+                    return done(err, null);
+                });
+            }).catch((err) => {
+                if (err.status === 401) {
+                    invalidAttempts.push(token ? token : `unknown`);
+                    return done(null, false);
+                }
+                Logger.warn(`Error getting user: ${err}`, `Auth`);
+                return done(err, null);
+            });
+        }
+    ));
+});
+
+let invalidAttempts: string[] = [];
+app.use(async (req, res, next) => {
+    if (req.session.userId || Config.flags.enableGithubPAT == false) {
+        next();
+    } else {
+        passport.authenticate(`bearer`, { session: false }, (err:any, user:any) => {
+            if (err) {
+                return res.status(401).send({ message: `Unauthorized` });
+            }
+            if (user && user.id) {
+                req.session.userId = user.id;
+                req.session.goodMorning47YourTargetIsThisSession = true;
+            }
+            next();
+        })(req, res, next);
+    }
+});
+
 app.use(Config.server.apiRoute, apiRouter);
 app.use(Config.server.cdnRoute, cdnRouter);
 
@@ -219,6 +281,18 @@ apiRouter.use((err:any, req:any, res:any, next:any) => {
 cdnRouter.use((err:any, req:any, res:any, next:any) => {
     console.error(err.stack);
     return res.status(500).send({message: `Server error`});
+});
+
+// destroy the auth session if its marked to be destoryed
+app.use((req, res, next) => {
+    if (req.session.goodMorning47YourTargetIsThisSession) {
+        req.session.destroy((err) => {
+            if (err) {
+                Logger.error(`Error destroying session: ${err}`, `Session`);
+            }
+        });
+    }
+    next();
 });
 
 process.on(`exit`, (code) => {

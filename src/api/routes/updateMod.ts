@@ -20,6 +20,10 @@ export class UpdateModRoutes {
         // #region Update Mod
         this.router.patch(`/mods/:modIdParam`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.description = `Update a mod.`
             // #swagger.parameters['modIdParam'] = { description: 'Mod ID', type: 'integer' }
             /* #swagger.requestBody = {
@@ -133,6 +137,10 @@ export class UpdateModRoutes {
         });
 
         this.router.post(`/mods/:modIdParam/icon`, async (req, res) => {
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             /* #swagger.parameters['icon'] = {
                 in: 'formData',
                 type: 'file',
@@ -205,6 +213,10 @@ export class UpdateModRoutes {
         // #region Update Mod Version
         this.router.patch(`/modversion/:modVersionIdParam`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.description = `Update a mod version.`
             // #swagger.parameters['modVersionIdParam'] = { description: 'Mod Version ID', type: 'integer' }
             /* #swagger.requestBody = {
@@ -311,6 +323,10 @@ export class UpdateModRoutes {
         // #region Submit to Approval
         this.router.post(`/mods/:modIdParam/submit`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
@@ -339,6 +355,10 @@ export class UpdateModRoutes {
 
         this.router.post(`/modVersions/:modVersionIdParam/submit`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;

@@ -90,6 +90,10 @@ export class GetModRoutes {
 
         this.router.get(`/mods/:modIdParam`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Get a specific mod by ID.'
             // #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
             // #swagger.responses[200] = { description: 'Returns the mod.' }
@@ -152,6 +156,10 @@ export class GetModRoutes {
 
         this.router.get(`/modversions/:modVersionIdParam`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Get a specific mod version by ID.'
             // #swagger.description = 'Get a specific mod version by ID.'
             // #swagger.responses[200] = { description: 'Returns the mod version.' }

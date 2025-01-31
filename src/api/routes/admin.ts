@@ -17,6 +17,10 @@ export class AdminRoutes {
     private async loadRoutes() {
         this.router.get(`/admin/health/hashCheck`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
@@ -42,6 +46,10 @@ export class AdminRoutes {
 
         this.router.get(`/admin/health/missingIcons`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
@@ -67,6 +75,10 @@ export class AdminRoutes {
 
         this.router.get(`/admin/health/dependencyResolution`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.parameters['versionId'] = { description: 'The version ID to check.', required: true }
             // #swagger.parameters['gameName'] = { description: 'The game name to check.', required: true }
             // #swagger.parameters['includeUnverified'] = { description: 'Include unverified mods.', required: false, type: 'boolean' }
@@ -167,6 +179,10 @@ export class AdminRoutes {
 
         this.router.post(`/admin/linkversions`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Mark all versions as compatible with another gameversion.'
             // #swagger.description = 'Link two versions together.'
             /* #swagger.requestBody = {
@@ -212,6 +228,10 @@ export class AdminRoutes {
 
         this.router.post(`/admin/users/addRole`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Add a role to a user.'
             // #swagger.description = 'Add a role to a user.'
             /* #swagger.requestBody = {
@@ -352,6 +372,10 @@ export class AdminRoutes {
 
         this.router.post(`/admin/users/removeRole`, async (req, res) => {
             // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Remove a role from a user.'
             // #swagger.description = 'Remove a role from a user.'
             /* #swagger.requestBody = {

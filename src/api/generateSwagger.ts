@@ -440,6 +440,17 @@ const doc = {
         { name: `BeatMods`, description: `Legacy BeatMods API endpoints` },
     ],
     components: {
+        securitySchemes: {
+            cookieAuth: {
+                type: `apiKey`,
+                in: `cookie`,
+                name: `bbm_session`,
+            },
+            bearerAuth: {
+                type: `http`,
+                scheme: `bearer`,
+            }
+        },
         "@schemas": {
             ModAPIPublicResponse,
             ModVersionAPIPublicResponse,

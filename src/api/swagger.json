@@ -324,7 +324,13 @@
           "404": {
             "description": "Mod not found."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       },
       "patch": {
         "tags": [
@@ -359,6 +365,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "Mod data",
           "required": true,
@@ -413,7 +425,13 @@
           "404": {
             "description": "Mod version not found."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/hashlookup": {
@@ -487,6 +505,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -550,6 +574,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -609,7 +639,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/modversion/{modVersionIdParam}": {
@@ -646,6 +682,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "Mod version data",
           "required": true,
@@ -696,7 +738,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/modVersions/{modVersionIdParam}/submit": {
@@ -731,7 +779,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/auth": {
@@ -748,7 +802,13 @@
           "401": {
             "description": "Unauthorized."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/auth/github": {
@@ -790,7 +850,13 @@
           "400": {
             "description": "Bad Request"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/auth/discord/callback": {
@@ -806,7 +872,13 @@
           "400": {
             "description": "Bad Request"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/auth/logout": {
@@ -882,38 +954,27 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The gameName and version to create",
           "required": true,
+          "type": "object",
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "gameName": {
-                    "type": "string",
-                    "description": "The game name"
-                  },
-                  "version": {
-                    "type": "string",
-                    "description": "The version to create"
-                  }
-                }
+                "gameName": "BeatSaber",
+                "version": "1.0.0"
               }
             },
             "application/xml": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "gameName": {
-                    "type": "string",
-                    "description": "The game name"
-                  },
-                  "version": {
-                    "type": "string",
-                    "description": "The version to create"
-                  }
-                }
+                "gameName": "BeatSaber",
+                "version": "1.0.0"
               }
             }
           }
@@ -960,6 +1021,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The ID of the version to set as default",
           "required": true,
@@ -1008,7 +1075,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/admin/health/missingIcons": {
@@ -1024,7 +1097,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/admin/health/dependencyResolution": {
@@ -1075,7 +1154,13 @@
           "500": {
             "description": "Internal Server Error"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/admin/linkversions": {
@@ -1096,6 +1181,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The versions to link.",
           "required": true,
@@ -1134,6 +1225,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The role to add.",
           "required": true,
@@ -1174,6 +1271,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The role to remove.",
           "required": true,
@@ -1337,7 +1440,13 @@
           "401": {
             "description": "Unauthorized."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/approval/mod/{modIdParam}/approve": {
@@ -1410,6 +1519,12 @@
             }
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "The status to set the mod to.",
@@ -1512,6 +1627,12 @@
             }
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "The status to set the modVersion to.",
@@ -1579,6 +1700,12 @@
             "description": "Error approving edit."
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "The accepted value.",
@@ -1924,6 +2051,12 @@
             }
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "description": "The edit object to update.",
@@ -2031,6 +2164,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2083,7 +2222,13 @@
           "400": {
             "description": "Bad Request"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/motd/{id}": {
@@ -2112,7 +2257,13 @@
           "404": {
             "description": "Not Found"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/user": {
@@ -2132,7 +2283,13 @@
           "500": {
             "description": "Internal server error."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/user/{id}": {
@@ -2210,7 +2367,13 @@
           "404": {
             "description": "User not found."
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay": {
@@ -2269,7 +2432,13 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/ba/addGameVersion": {
@@ -2368,6 +2537,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2591,6 +2766,12 @@
             "description": "Not Found"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2617,6 +2798,17 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bbm_session"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
     "schemas": {
       "ModAPIPublicResponse": {
         "type": "object",

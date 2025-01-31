@@ -23,6 +23,10 @@ export class AuthRoutes {
             // #swagger.tags = ['Auth']
             // #swagger.summary = 'Get logged in user information.'
             // #swagger.description = 'Get user information.'
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.responses[200] = { description: 'Returns user information.' }
             // #swagger.responses[401] = { description: 'Unauthorized.' }
             let session = await validateSession(req, res, false);
@@ -104,6 +108,7 @@ export class AuthRoutes {
 
             // @ts-expect-error 2339 its there bro trust me i promise bro its there bro
             req.session.userId = req.user.id;
+            req.session.goodMorning47YourTargetIsThisSession = false;
             req.session.save();
 
             Logger.log(`User ${req.session.userId} logged in.`, `Auth`);
@@ -128,6 +133,10 @@ export class AuthRoutes {
 
         this.router.get(`/auth/discord`, async (req, res, next) => {
             // #swagger.tags = ['Auth']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let session = await validateSession(req, res, false);
             if (!session.user) {
                 return;
@@ -141,6 +150,10 @@ export class AuthRoutes {
 
         this.router.get(`/auth/discord/callback`, passport.authenticate(`discord`, { failureRedirect: `/`, session: false }), async (req, res) => {
             // #swagger.tags = ['Auth']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let state = req.query[`state`];
             if (!state) {
                 return res.status(400).send({ error: `Invalid parameters.` });

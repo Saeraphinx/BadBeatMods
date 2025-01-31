@@ -29,6 +29,10 @@ export class MOTDRoutes {
 
         this.router.post(`/motd`, async (req, res) => {
             // #swagger.tags = ['MOTD']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let reqBody = Validator.zCreateMOTD.safeParse(req.body);
             if (!reqBody.success) {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
@@ -56,6 +60,10 @@ export class MOTDRoutes {
 
         this.router.delete(`/motd/:id`, async (req, res) => {
             // #swagger.tags = ['MOTD']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             let id = Validator.zDBID.safeParse(req.params.id);
             if (!id.success) {
                 return res.status(400).send({ message: `Invalid ID.` });

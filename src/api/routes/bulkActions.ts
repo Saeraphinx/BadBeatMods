@@ -17,6 +17,10 @@ export class BulkActionsRoutes {
         this.router.post(`/ba/addGameVersion`, async (req, res) => {
             /*
             #swagger.tags = ['Bulk Actions']
+            #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }]
             #swagger.summary = 'Add a game version to multiple mod versions'
             #swagger.description = 'Add a game version to multiple mod versions. Submits edits if the mod is already approved, otherwise queues an edit for approval. Requires the user to be an approver.'
             #swagger.requestBody = {
@@ -219,6 +223,10 @@ export class BulkActionsRoutes {
         this.router.post(`/ba/approveEdits`, async (req, res) => {
             /*
             #swagger.tags = ['Bulk Actions']
+            #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }]
             #swagger.summary = 'Approve multiple edit requests'
             #swagger.description = 'Approve multiple edit requests. Requires the user to be an approver.'
             #swagger.requestBody = {

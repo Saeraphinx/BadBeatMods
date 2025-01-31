@@ -21,6 +21,10 @@ export class CreateModRoutes {
     private async loadRoutes() {
         this.router.post(`/mods/create`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Create a mod.'
             // #swagger.description = 'Create a mod.'
             /* #swagger.requestBody = {
@@ -103,6 +107,10 @@ export class CreateModRoutes {
 
         this.router.post(`/mods/:modIdParam/upload`, async (req, res) => {
             // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
             // #swagger.summary = 'Upload a mod version.'
             // #swagger.description = 'Upload a mod version.'
             // #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }

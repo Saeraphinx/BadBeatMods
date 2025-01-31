@@ -64,6 +64,7 @@ const DEFAULT_CONFIG = {
         enableBanner: false, // enables the banner route /banner.png
         enableSwagger: true, // enables the swagger docs at /api/docs
         enableDBHealthCheck: false, // enables the database health check
+        enableGithubPAT: false // enables the use of a GitHub Personal Access Token to auth API requests
     }
 };
 
@@ -121,6 +122,7 @@ export class Config {
         enableBanner: boolean;
         enableSwagger: boolean;
         enableDBHealthCheck: boolean;
+        enableGithubPAT: boolean;
     };
     // #endregion
     // #region Public Static Properties
@@ -567,6 +569,12 @@ export class Config {
                 Config._flags.enableDBHealthCheck = process.env.FLAGS_ENABLEDBHEALTHCHECK === `true`;
             } else {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
+            }
+
+            if (process.env.FLAGS_ENABLEGITHUBPAT) {
+                Config._flags.enableGithubPAT = process.env.FLAGS_ENABLEGITHUBPAT === `true`;
+            } else {
+                failedToLoad.push(`flags.enableGithubPAT`);
             }
             // #endregion
 
