@@ -145,6 +145,10 @@ export class CreateModRoutes {
                 return res.status(401).send({ message: `You cannot upload to this mod.` });
             }
 
+            if (mod.status === Status.Removed) {
+                return res.status(401).send({ message: `This mod has been denied and removed` });
+            }
+
             if ((await Validator.validateIDArray(reqBody.data.supportedGameVersionIds, `gameVersions`, false, false)) == false) {
                 return res.status(400).send({ message: `Invalid game version.` });
             }
