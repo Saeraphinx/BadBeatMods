@@ -157,7 +157,7 @@ export class CreateModRoutes {
                 return res.status(400).send({ message: `Invalid dependency.` });
             }
 
-            if (!file || Array.isArray(file) || file.size > 75 * 1024 * 1024) {
+            if (!file || Array.isArray(file) || file.size > 150 * 1024 * 1024) {
                 return res.status(413).send({ message: `File missing or too large.` });
             }
             //#endregion
