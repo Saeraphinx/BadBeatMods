@@ -48,7 +48,7 @@ app.use(cors({
 }));
 app.use(fileUpload({
     limits: {
-        fileSize: 75 * 1024 * 1024, // here you go kaitlyn
+        fileSize: Config.fileUploadLimitMB * 1024 * 1024, // here you go kaitlyn
         files: 1
     },
     abortOnLimit: true,

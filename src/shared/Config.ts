@@ -64,7 +64,8 @@ const DEFAULT_CONFIG = {
         enableBanner: false, // enables the banner route /banner.png
         enableSwagger: true, // enables the swagger docs at /api/docs
         enableDBHealthCheck: false, // enables the database health check
-    }
+    },
+    fileUploadLimitMB: 150
 };
 
 
@@ -122,6 +123,7 @@ export class Config {
         enableSwagger: boolean;
         enableDBHealthCheck: boolean;
     };
+    private static _fileUloadLimitMB: number = DEFAULT_CONFIG.fileUploadLimitMB;
     // #endregion
     // #region Public Static Properties
     public static get auth() {
@@ -150,6 +152,9 @@ export class Config {
     }
     public static get flags() {
         return this._flags;
+    }
+    public static get fileUploadLimitMB() {
+        return this._fileUloadLimitMB;
     }
     // #endregion
     constructor() {
@@ -305,6 +310,16 @@ export class Config {
                     }
                 } else {
                     failedToLoad.push(`bot`);
+                }
+
+                if (`fileUploadLimitMB` in cf) {
+                    if (!doObjKeysMatch(cf.fileUploadLimitMB, DEFAULT_CONFIG.fileUploadLimitMB)) {
+                        failedToLoad.push(`fileUploadLimitMB`);
+                    } else {
+                        Config._fileUloadLimitMB = cf.fileUploadLimitMB;
+                    }
+                } else {
+                    failedToLoad.push(`fileUploadLimitMB`);
                 }
                 return failedToLoad;
             } catch (e) {
@@ -565,6 +580,12 @@ export class Config {
 
             if (process.env.FLAGS_ENABLEDBHEALTHCHECK) {
                 Config._flags.enableDBHealthCheck = process.env.FLAGS_ENABLEDBHEALTHCHECK === `true`;
+            } else {
+                failedToLoad.push(`flags.enableDBHealthCheck`);
+            }
+
+            if (process.env.FILE_UPLOAD_LIMIT_MB) {
+                Config._fileUloadLimitMB= parseInt(process.env.FILE_UPLOAD_LIMIT_MB);
             } else {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
             }
