@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database';
+import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User, UserRoles } from '../../shared/Database';
 import { allowedToSeeMod, validateSession } from '../../shared/AuthHelper';
 import { Validator } from '../../shared/Validator';
 
@@ -134,6 +134,34 @@ export class UserRoutes {
             return res.status(200).send({ user: user.toAPIResponse() });
         });
         */
+
+        this.router.post(`/user/:id/roles/`, async (req, res) => {
+            const session = await validateSession(req, res, UserRoles.Admin);
+            if (!session.user) {
+                return res.status(401).send({ error: `No Permission to Add Role` });
+            }
+
+            let id = Validator.zDBID.safeParse(req.params.id);
+            if (!id.success) {
+                return res.status(400).send({ error: `Invalid parameters.` });
+            }
+
+            let addedRole = Validator.zUserRoles.safeParse(req.body.role);
+            if (!addedRole.success) {
+                return res.status(400).send({ error: `Invalid parameters.` });
+            }
+            
+            let user = await DatabaseHelper.database.Users.findByPk(id.data);
+            if (!user) {
+                return res.status(404).send({ error: `No User Found.` });
+            }
+
+            user.roles.sitewide.push(addedRole.data);
+            user.save();
+
+            return res.status(200).send("Role Added To User");
+        })
+        
     }
 }
 
