@@ -584,8 +584,8 @@ export class Config {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
             }
 
-            if (process.env.FILE_UPLOAD_LIMIT_MB) {
-                Config._fileUloadLimitMB= parseInt(process.env.FILE_UPLOAD_LIMIT_MB);
+            if (process.env.PUBLIC_FILE_UPLOAD_LIMIT_MB) {
+                Config._fileUloadLimitMB= parseInt(process.env.PUBLIC_FILE_UPLOAD_LIMIT_MB);
             } else {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
             }
