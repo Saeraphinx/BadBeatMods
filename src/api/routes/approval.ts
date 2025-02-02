@@ -636,6 +636,7 @@ export class ApprovalRoutes {
                         category: reqBodym.data.category || edit.object.category,
                         authorIds: reqBodym.data.authorIds || edit.object.authorIds,
                         gameName: reqBodym.data.gameName || edit.object.gameName,
+                        fileSize: mod.fileSize || edit.object.fileSize
                     };
                     edit.save();
                     break;
@@ -669,6 +670,7 @@ export class ApprovalRoutes {
                         supportedGameVersionIds: reqBodyv.data.supportedGameVersionIds || edit.object.supportedGameVersionIds,
                         dependencies: reqBodyv.data.dependencies || edit.object.dependencies,
                         platform: reqBodyv.data.platform || edit.object.platform,
+                        fileSize: mod.fileSize || edit.object.fileSize
                     };
                     edit.save();
                     break;

@@ -88,7 +88,8 @@ export class CreateModRoutes {
                 // this is fine because we've already validated the icon to be a single file assuming icon
                 iconFileName: iconIsValid ? `${(icon as UploadedFile).md5}${path.extname((icon as UploadedFile).name)}` : `default.png`,
                 lastUpdatedById: session.user.id,
-                status: Status.Private,
+                fileSize: 0,
+                status: Status .Private,
             }).then(async (mod) => {
                 DatabaseHelper.refreshCache(`mods`);
                 if (iconIsValid) {
@@ -157,7 +158,7 @@ export class CreateModRoutes {
                 return res.status(400).send({ message: `Invalid dependency.` });
             }
 
-            if (!file || Array.isArray(file) || file.size > Config.fileUploadLimitMB * 1024 * 1024) {
+            if (!file || Array.isArray(file) || file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
                 return res.status(413).send({ message: `File missing or too large.` });
             }
             //#endregion
@@ -202,8 +203,12 @@ export class CreateModRoutes {
                 contentHashes: hashs,
                 zipHash: file.md5,
                 lastUpdatedById: session.user.id,
+                fileSize: file.size
             }).then(async (modVersion) => {
+                mod.fileSize = modVersion.fileSize;
+                mod.save()
                 DatabaseHelper.refreshCache(`modVersions`);
+                DatabaseHelper.refreshCache(`mods`);
                 let retVal = await modVersion.toRawAPIResonse();
                 return res.status(200).send({ modVersion: retVal });
             }).catch((error) => {

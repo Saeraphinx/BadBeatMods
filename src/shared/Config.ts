@@ -41,6 +41,8 @@ const DEFAULT_CONFIG = {
         corsOrigins: `*`, // can be a string or an array of strings. this is the setting for all endpoints
         apiRoute: `/api`, // the base route for the api. no trailing slash
         cdnRoute: `/cdn` // the base route for the cdn. no trailing slash
+        fileUploadLimitMB: 150, // the file size limit for mod uploads
+        fileWarningSizeMB: 50 // a recommended file size to warn if a mod is over
     },
     webhooks: {
         // If you don't want to use the webhook, just leave it blank. if a urls is under 8 characters, it will be ignored.
@@ -64,8 +66,7 @@ const DEFAULT_CONFIG = {
         enableBanner: false, // enables the banner route /banner.png
         enableSwagger: true, // enables the swagger docs at /api/docs
         enableDBHealthCheck: false, // enables the database health check
-    },
-    fileUploadLimitMB: 150
+    }
 };
 
 
@@ -98,6 +99,8 @@ export class Config {
         corsOrigins: string | string[];
         apiRoute: string;
         cdnRoute: string;
+        fileUploadLimitMB: number;
+        fileWarningSizeMB: number;
     };
     private static _devmode: boolean = DEFAULT_CONFIG.devmode;
     private static _authBypass: boolean = DEFAULT_CONFIG.authBypass;
@@ -123,7 +126,6 @@ export class Config {
         enableSwagger: boolean;
         enableDBHealthCheck: boolean;
     };
-    private static _fileUloadLimitMB: number = DEFAULT_CONFIG.fileUploadLimitMB;
     // #endregion
     // #region Public Static Properties
     public static get auth() {
@@ -152,9 +154,6 @@ export class Config {
     }
     public static get flags() {
         return this._flags;
-    }
-    public static get fileUploadLimitMB() {
-        return this._fileUloadLimitMB;
     }
     // #endregion
     constructor() {
@@ -310,16 +309,6 @@ export class Config {
                     }
                 } else {
                     failedToLoad.push(`bot`);
-                }
-
-                if (`fileUploadLimitMB` in cf) {
-                    if (!doObjKeysMatch(cf.fileUploadLimitMB, DEFAULT_CONFIG.fileUploadLimitMB)) {
-                        failedToLoad.push(`fileUploadLimitMB`);
-                    } else {
-                        Config._fileUloadLimitMB = cf.fileUploadLimitMB;
-                    }
-                } else {
-                    failedToLoad.push(`fileUploadLimitMB`);
                 }
                 return failedToLoad;
             } catch (e) {
@@ -484,6 +473,18 @@ export class Config {
             } else {
                 failedToLoad.push(`server.cdnRoute`);
             }
+
+            if (process.env.SERVER_FILE_UPLOAD_LIMIT_MB) {
+                Config.server.fileUploadLimitMB= parseInt(process.env.SERVER_FILE_UPLOAD_LIMIT_MB);
+            } else {
+                failedToLoad.push(`fileUploadLimitMB`);
+            }
+
+            if (process.env.SERVER_FILE_WARNING_SIZE_MB) {
+                Config.server.fileWarningSizeMB= parseInt(process.env.SERVER_FILE_WARNING_SIZE_MB);
+            } else {
+                failedToLoad.push(`fileWarningSizeMB`);
+            }
             // #endregion
             // #region Webhooks
             if (process.env.WEBHOOKS_ENABLEWEBHOOKS) {
@@ -580,12 +581,6 @@ export class Config {
 
             if (process.env.FLAGS_ENABLEDBHEALTHCHECK) {
                 Config._flags.enableDBHealthCheck = process.env.FLAGS_ENABLEDBHEALTHCHECK === `true`;
-            } else {
-                failedToLoad.push(`flags.enableDBHealthCheck`);
-            }
-
-            if (process.env.PUBLIC_FILE_UPLOAD_LIMIT_MB) {
-                Config._fileUloadLimitMB= parseInt(process.env.PUBLIC_FILE_UPLOAD_LIMIT_MB);
             } else {
                 failedToLoad.push(`flags.enableDBHealthCheck`);
             }
