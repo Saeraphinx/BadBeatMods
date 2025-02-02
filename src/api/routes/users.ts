@@ -107,8 +107,8 @@ export class UserRoutes {
             }
         });
 
-        /*
-        this.app.patch(`/user/:id/`, async (req, res) => {
+        
+        this.router.patch(`/user/:id/`, async (req, res) => {
             // #swagger.tags = ['User']
             // #swagger.summary = 'Get user information.'
             // #swagger.description = 'Get user information.'
@@ -122,18 +122,16 @@ export class UserRoutes {
             if (!session) {
                 return;
             }
-
-            if (!HTTPTools.validateNumberParameter(req.params.id)) {
+            let id = Validator.zDBID.safeParse(req.params.id);
+            if (!id.success) {
                 return res.status(400).send({ error: `Invalid parameters.` });
             }
-            let id = HTTPTools.parseNumberParameter(req.params.id);
-            let user = await editUser(id, displayName, sponsorUrl, bio);
+            let user = await editUser(id.data, displayName, sponsorUrl, bio);
             if (user === `usererror`) {
                 return res.status(400).send({ error: `Invalid parameters.` });
             }
             return res.status(200).send({ user: user.toAPIResponse() });
         });
-        */
 
         this.router.post(`/user/:id/roles/`, async (req, res) => {
             const session = await validateSession(req, res, UserRoles.Admin);
