@@ -47,8 +47,8 @@ app.use(cors({
     credentials: Config.server.iHateSecurity ? true : false,
 }));
 app.use(fileUpload({
-    limits: {
-        fileSize: Config.server.fileUploadLimitMB * 1024 * 1024, // here you go kaitlyn
+    limits: {            // allow 3x limit for users with LargeFiles role. (File size is checked again later at the limit)
+        fileSize: Config.server.fileUploadLimitMB * 3 * 1024 * 1024, // here you go kaitlyn
         files: 1
     },
     abortOnLimit: true,

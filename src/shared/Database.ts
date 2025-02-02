@@ -763,6 +763,7 @@ export enum UserRoles {
     Poster = `poster`,
     Approver = `approver`,
     Moderator = `moderator`,
+    LargeFiles = `largefiles`,
     Banned = `banned`,
 }
 // #endregion

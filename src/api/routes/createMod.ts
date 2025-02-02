@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import path from 'node:path';
-import { DatabaseHelper, ContentHash, Status } from '../../shared/Database';
+import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database';
 import JSZip from 'jszip';
 import crypto from 'crypto';
 import { validateSession } from '../../shared/AuthHelper';
@@ -158,8 +158,15 @@ export class CreateModRoutes {
                 return res.status(400).send({ message: `Invalid dependency.` });
             }
 
-            if (!file || Array.isArray(file) || file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
-                return res.status(413).send({ message: `File missing or too large.` });
+            if (!file || Array.isArray(file)) {
+                return res.status(413).send({ message: `File missing.` });
+            }
+
+            if (file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
+                if (!(session.user.roles.sitewide.includes(UserRoles.AllPermissions) || session.user.roles.sitewide.includes(UserRoles.LargeFiles))) {
+                    return res.status(413).send({ message: `File missing or too large.` });
+                }
+                console.log("User uploading oversized file!");
             }
             //#endregion
             let isZip = (file.mimetype === `application/zip` || file.mimetype === `application/x-zip-compressed`) && file.name.endsWith(`.zip`);
