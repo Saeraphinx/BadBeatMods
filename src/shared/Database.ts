@@ -5,18 +5,22 @@ import { Logger } from "./Logger";
 import { coerce, SemVer } from "semver";
 import { Config } from "./Config";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash, Categories, GameVersionAPIPublicResponse, ModAPIPublicResponse, ModVersionAPIPublicResponse, PostType, Status, Translations, UserAPIPublicResponse } from "./database/DBHelper";
+import { DatabaseHelper, Platform, ContentHash } from "./database/DBHelper";
 import { EditQueue } from "./database/models/EditQueue";
 import { GameVersion } from "./database/models/GameVersion";
-import { Mod, ModApproval, ModInfer } from "./database/models/Mod";
-import { ModVersion, ModVersionApproval, ModVersionInfer } from "./database/models/ModVersion";
+import { Mod } from "./database/models/Mod";
+import { ModVersion } from "./database/models/ModVersion";
 import { MOTD } from "./database/models/MOTD";
-import { User, UserRoles, UserRolesObject } from "./database/models/User";
+import { User, UserRoles } from "./database/models/User";
 
 // in use by this file
-export { User, UserRoles, UserRolesObject, Mod, ModVersion, GameVersion, EditQueue, MOTD, Platform, ContentHash, DatabaseHelper };
-// in use by other files
-export { ModVersionApproval, ModInfer, ModVersionInfer, ModApproval, Categories, GameVersionAPIPublicResponse, ModAPIPublicResponse, ModVersionAPIPublicResponse, PostType, Status, Translations, UserAPIPublicResponse };
+export * from "./database/models/EditQueue";
+export * from "./database/models/GameVersion";
+export * from "./database/models/Mod";
+export * from "./database/models/ModVersion";
+export * from "./database/models/MOTD";
+export * from "./database/models/User";
+export * from "./database/DBHelper";
 
 export enum SupportedGames {
     BeatSaber = `BeatSaber`,
