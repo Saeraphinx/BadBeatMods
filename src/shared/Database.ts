@@ -197,9 +197,8 @@ export class DatabaseManager {
         }
     }
 
-    
-    // #region LoadTables
     private loadTables() {
+        // #region Users
         this.Users = User.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -260,7 +259,8 @@ export class DatabaseManager {
             tableName: `users`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region GameVersions
         this.GameVersions = GameVersion.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -292,7 +292,8 @@ export class DatabaseManager {
             tableName: `gameVersions`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region Mods
         this.Mods = Mod.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -370,7 +371,8 @@ export class DatabaseManager {
             tableName: `mods`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region ModVersions
         this.ModVersions = ModVersion.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -479,7 +481,8 @@ export class DatabaseManager {
             tableName: `modVersions`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region EditApprovalQueue
         this.EditApprovalQueue = EditQueue.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -531,7 +534,8 @@ export class DatabaseManager {
             tableName: `editApprovalQueues`, // fuck you sequelize.
             paranoid: true,
         });
-
+        // #endregion
+        // #region MOTD
         this.MOTDs = MOTD.init({
             id: {
                 type: DataTypes.INTEGER,

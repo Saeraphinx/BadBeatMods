@@ -1,4 +1,4 @@
-import { InferAttributes, Model, InferCreationAttributes, CreationOptional } from "sequelize";
+import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger";
 import { SupportedGames } from "../../Database";
 import { sendModLog } from "../../ModWebhooks";
@@ -94,6 +94,31 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         }
 
         return latest;
+    }
+
+    public async createEdit(object: ModApproval, submitter: User) {
+        if (this.status !== Status.Verified) {
+            // do not create an edit if the mod is not verified
+            return this;
+        }
+
+        // check if there is already a pending edit
+        let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `mods`, approved: { [Op.eq]: null } } });
+        if (existingEdit) {
+            // if an edit already exists, update it
+            existingEdit.object = object;
+            existingEdit.submitterId = submitter.id;
+            return await existingEdit.save();
+        }
+
+        // create a new edit
+        let edit = await DatabaseHelper.database.EditApprovalQueue.create({
+            objectId: this.id,
+            objectTableName: `mods`,
+            object: object,
+            submitterId: submitter.id,
+        });
+        return edit;
     }
 
     public async setStatus(status:Status, user: User) {

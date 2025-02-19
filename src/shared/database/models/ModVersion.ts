@@ -82,6 +82,31 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         }
     }
 
+    public async createEdit(object: ModVersionApproval, submitter: User) {
+        if (this.status !== Status.Verified) {
+            // do not create an edit if the mod is not verified
+            return this;
+        }
+    
+        // check if there is already a pending edit
+        let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, approved: { [Op.eq]: null } } });
+        if (existingEdit) {
+            // if an edit already exists, update it
+            existingEdit.object = object;
+            existingEdit.submitterId = submitter.id;
+            return await existingEdit.save();
+        }
+    
+        // create a new edit
+        let edit = await DatabaseHelper.database.EditApprovalQueue.create({
+            objectId: this.id,
+            objectTableName: `modVersions`,
+            object: object,
+            submitterId: submitter.id,
+        });
+        return edit;
+    }
+
     public async setStatus(status:Status, user: User) {
         this.status = status;
         try {

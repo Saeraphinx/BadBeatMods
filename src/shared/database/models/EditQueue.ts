@@ -1,5 +1,5 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { sendEditLog } from "src/shared/ModWebhooks";
+import { sendEditLog } from "../../ModWebhooks";
 import { Logger } from "../../Logger";
 import { DatabaseHelper, Status } from "../DBHelper";
 import { User } from "./User";
@@ -87,7 +87,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
             return;
         }
 
-        let record = this.isMod() ? await DatabaseHelper.database.Mods.findByPk(this.objectId) : await DatabaseHelper.database.ModVersions.findByPk(this.objectId);
+        //let record = this.isMod() ? await DatabaseHelper.database.Mods.findByPk(this.objectId) : await DatabaseHelper.database.ModVersions.findByPk(this.objectId);
         this.approved = false;
         this.approverId = approver.id;
         this.save().then(() => {
