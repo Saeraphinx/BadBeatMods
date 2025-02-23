@@ -176,7 +176,7 @@ export class BulkActionsRoutes {
                 return;
             }
 
-            if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, false, false) == false) {
+            if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, true, true) == false) {
                 res.status(404).send({ message: `One or more mod versions not found`});
                 return;
             }
