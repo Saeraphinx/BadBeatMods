@@ -69,7 +69,7 @@ const sessionConfigData: SessionOptions = {
     unset: `destroy`,
     rolling: true,
     cookie: {
-        maxAge: 86400000,
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
         secure: `auto`,
         httpOnly: true,
         sameSite: Config.server.iHateSecurity ? `none` : `strict`,
