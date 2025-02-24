@@ -2,7 +2,7 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger";
 import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper";
-import { sendModVersionLog } from "../../ModWebhooks";
+import { sendEditLog, sendModVersionLog } from "../../ModWebhooks";
 import { User, UserRoles } from "./User";
 import { Mod } from "./Mod";
 
@@ -104,6 +104,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             object: object,
             submitterId: submitter.id,
         });
+        sendEditLog(edit, submitter, `New`, this);
         return edit;
     }
 
