@@ -1,11 +1,19 @@
 import { Logger } from "../Logger";
-import { DatabaseManager, SupportedGames } from "../Database";
+import { DatabaseManager } from "../Database";
 import { EditQueue } from "./models/EditQueue";
 import { GameVersion } from "./models/GameVersion";
 import { Mod } from "./models/Mod";
 import { ModVersion } from "./models/ModVersion";
 import { MOTD } from "./models/MOTD";
 import { User, UserRolesObject } from "./models/User";
+
+// #region Enums & Types
+export enum SupportedGames {
+    BeatSaber = `BeatSaber`,
+    ChroMapper = `ChroMapper`,
+    TromboneChampUnflattened = `TromboneChampUnflattened`,
+    SpinRhythmXD = `SpinRhythmXD`,
+}
 
 export type UserAPIPublicResponse = {
     id: number;
@@ -106,6 +114,7 @@ export enum Categories {
     Editor = `editor`,
     Other = `other`,
 }
+// #endregion
 
 // yoink thankies bstoday & bns
 function validateEnumValue(value: string | number, enumType: object): boolean {
@@ -114,7 +123,7 @@ function validateEnumValue(value: string | number, enumType: object): boolean {
     }
     return false;
 }
-
+// #region DatabaseHelper
 export class DatabaseHelper {
     public static database: DatabaseManager;
     public static cache: {
@@ -249,3 +258,4 @@ export class DatabaseHelper {
         return validateEnumValue(value, PostType);
     }
 }
+// #endregion

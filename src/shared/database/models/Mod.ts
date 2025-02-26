@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger";
 import { SupportedGames } from "../../Database";
 import { sendModLog } from "../../ModWebhooks";
-import { Categories, Platform, DatabaseHelper, Status } from "../DBHelper";
+import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper";
 import { ModVersion } from "./ModVersion";
 import { User, UserRoles } from "./User";
 
@@ -155,7 +155,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return count;
     }
 
-    public toAPIResponse() {
+    public toAPIResponse(): ModAPIPublicResponse {
         return {
             id: this.id,
             name: this.name,

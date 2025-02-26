@@ -1,6 +1,6 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { Logger } from "../../Logger";
-import { SupportedGames } from "../../Database";
+import { SupportedGames, UserAPIPublicResponse } from "../../Database";
 
 export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare readonly id: CreationOptional<number>;
@@ -65,7 +65,7 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
         }
     }
 
-    public toAPIResponse() {
+    public toAPIResponse(): UserAPIPublicResponse {
         return {
             id: this.id.valueOf(), // this is a number, but the type system doesn't like it
             username: this.username,

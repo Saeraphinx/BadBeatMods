@@ -2,7 +2,8 @@ import { Model, InferAttributes, InferCreationAttributes, CreationOptional } fro
 import { SupportedGames } from "../../Database";
 import { Mod } from "./Mod";
 import { ModVersion } from "./ModVersion";
-import { DatabaseHelper, Platform, Status } from "../DBHelper";
+import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper";
+import { coerce } from "semver";
 
 export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
     declare readonly id: CreationOptional<number>;
@@ -13,7 +14,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date>;
 
-    public toAPIResponse() {
+    public toAPIResponse(): GameVersionAPIPublicResponse {
         return {
             id: this.id,
             gameName: this.gameName,
@@ -59,5 +60,15 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
             }
         }
         return supportedMods;
+    }
+
+    public static compareVersions(a: GameVersion, b: GameVersion): number {
+        let svA = coerce(a.version, { loose: true });
+        let svB = coerce(b.version, { loose: true });
+        if (svA && svB) {
+            return svA.compare(svB); // the earliest version is first in the array
+        } else {
+            return b.version.localeCompare(a.version);
+        }
     }
 }

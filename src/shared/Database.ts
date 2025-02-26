@@ -5,7 +5,7 @@ import { Logger } from "./Logger";
 import { coerce, SemVer } from "semver";
 import { Config } from "./Config";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash } from "./database/DBHelper";
+import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper";
 import { EditQueue } from "./database/models/EditQueue";
 import { GameVersion } from "./database/models/GameVersion";
 import { Mod } from "./database/models/Mod";
@@ -21,13 +21,6 @@ export * from "./database/models/ModVersion";
 export * from "./database/models/MOTD";
 export * from "./database/models/User";
 export * from "./database/DBHelper";
-
-export enum SupportedGames {
-    BeatSaber = `BeatSaber`,
-    ChroMapper = `ChroMapper`,
-    TromboneChampUnflattened = `TromboneChampUnflattened`,
-    SpinRhythmXD = `SpinRhythmXD`,
-}
 
 function isValidDialect(dialect: string): dialect is `sqlite` |`postgres` {
     return [`sqlite`, `postgres`].includes(dialect);
@@ -697,13 +690,7 @@ export class DatabaseManager {
                     return 0;
                 }
 
-                let svA = coerce(gvA.version, { loose: true });
-                let svB = coerce(gvB.version, { loose: true });
-                if (svA && svB) {
-                    return svA.compare(svB); // the earliest version is first in the array
-                } else {
-                    return gvB.version.localeCompare(gvA.version);
-                }
+                return GameVersion.compareVersions(gvA, gvB);
             });
 
             if (modVersion.dependencies.length > 0) {
