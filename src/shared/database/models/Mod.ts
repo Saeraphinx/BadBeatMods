@@ -1,10 +1,10 @@
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
-import { Logger } from "../../Logger";
-import { SupportedGames } from "../../Database";
-import { sendModLog } from "../../ModWebhooks";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper";
-import { ModVersion } from "./ModVersion";
-import { User, UserRoles } from "./User";
+import { Logger } from "../../Logger.js";
+import { SupportedGames } from "../../Database.js";
+import { sendModLog } from "../../ModWebhooks.js";
+import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper.js";
+import { ModVersion } from "./ModVersion.js";
+import { User, UserRoles } from "./User.js";
 
 export type ModInfer = InferAttributes<Mod>;
 export type ModApproval = InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>
@@ -60,41 +60,70 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         }
     }
 
-
-    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
-        let versions = DatabaseHelper.cache.modVersions.filter((version) => {
-            // if the version is not for the correct platform
-            if (version.modId !== this.id) {
-                return false;
-            }
-
-            if (!statusesToSearchFor.includes(version.status)) {
-                return false;
-            }
-
-            // if the version is not for the correct game
-            if (!version.supportedGameVersionIds.includes(gameVersionId)) {
-                return false;
-            }
-
-            if (version.platform === Platform.UniversalQuest) {
-                return platform === Platform.UniversalQuest;
-            } else {
-                if (version.platform === Platform.UniversalPC || version.platform === platform) {
-                    return true;
-                }
-            }
-        });
+    //#region Get Versions
+    public getLatestVersion(platform: Platform, statusesToSearchFor: Status[], gameVersionId?: number, user?: User): ModVersion | null {
+        let versions = this.getAllVersions(platform, statusesToSearchFor, gameVersionId, user);
 
         let latest = null;
         for (let version of versions) {
-            if (!latest || version.modVersion.compare(latest.modVersion) > 0) {
+            if (!latest) {
+                latest = version;
+            }
+
+            if (ModVersion.compareVersions(version, latest) >= 1) {
                 latest = version;
             }
         }
 
         return latest;
     }
+
+    public static Test() {
+        return `Test`;
+    }
+
+    public getAllVersions(platform?: Platform, statusesToSearchFor?: Status[], gameVersionId?: number, user?: User): ModVersion[] {
+        let versions = DatabaseHelper.cache.modVersions.filter((version) => {
+            if (version.modId !== this.id) {
+                return false;
+            }
+
+            if (statusesToSearchFor) {
+                if (!statusesToSearchFor.includes(version.status)) {
+                    return false;
+                }
+            }
+
+            if (gameVersionId) {
+                if (!version.supportedGameVersionIds.includes(gameVersionId)) {
+                    return false;
+                }
+            }
+
+            if (user) {
+                if (!version.isAllowedToView(user)) {
+                    return false;
+                }
+            }
+
+            if (platform) {
+                if (version.platform === Platform.UniversalQuest) {
+                    return platform === Platform.UniversalQuest;
+                } else {
+                    if (version.platform === Platform.UniversalPC || version.platform === platform) {
+                        return true;
+                    }
+                }
+            } else { // only do this because its the last filter
+                return true;
+            }
+
+            return false;
+        });
+
+        return versions;
+    }
+    //#endregion
 
     public async createEdit(object: ModApproval, submitter: User) {
         if (this.status !== Status.Verified) {
