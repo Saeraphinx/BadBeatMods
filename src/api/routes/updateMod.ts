@@ -132,8 +132,11 @@ export class UpdateModRoutes {
                 }).then((mod) => {
                     res.status(200).send({ message: `Mod ${mod.id} updated by ${session.user.id}.`, edit: mod });
                 }).catch((error) => {
-                    Logger.error(`Error updating mod: ${error}`);
-                    res.status(500).send({ message: `Error updating mod ${mod.id}.` });
+                    let message = `Error updating mod.`;
+                    if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
+                        message = error.errors.map((e: any) => e.message).join(`, `);
+                    }
+                    res.status(500).send({ message: `Error updating mod: ${error} ${message} ${error?.name}` });
                 });
             }
         });
@@ -318,8 +321,11 @@ export class UpdateModRoutes {
                     DatabaseHelper.refreshCache(`modVersions`);
                     res.status(200).send({ message: `Mod version updated.`, modVersion });
                 }).catch((error) => {
-                    Logger.error(`Error updating mod version: ${error}`);
-                    res.status(500).send({ message: `Error updating mod version.` });
+                    let message = `Error updating version.`;
+                    if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
+                        message = error.errors.map((e: any) => e.message).join(`, `);
+                    }
+                    res.status(500).send({ message: `Error updating version: ${error} ${message} ${error?.name}` });
                 });
             }
         });
@@ -354,7 +360,11 @@ export class UpdateModRoutes {
                 res.status(200).send({ message: `Mod submitted.`, mod });
                 DatabaseHelper.refreshCache(`mods`);
             }).catch((error) => {
-                res.status(500).send({ message: `Error submitting mod: ${error}` });
+                let message = `Error submitting mod.`;
+                if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
+                    message = error.errors.map((e: any) => e.message).join(`, `);
+                }
+                res.status(500).send({ message: `Error submitting mod: ${error} ${message} ${error?.name}` });
             });
         });
 
