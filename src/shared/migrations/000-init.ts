@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { Migration, Platform, SupportedGames } from "../Database";
+import { Migration, Platform, SupportedGames } from "../Database.js";
 
 /*
     Inital Database structure.

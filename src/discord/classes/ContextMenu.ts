@@ -1,6 +1,6 @@
 import { Routes, REST, RESTGetAPIApplicationCommandResult, ContextMenuCommandBuilder, ContextMenuCommandInteraction, Collection } from "discord.js";
-import { Luma } from "./Luma";
-import { Config } from "../../shared/Config";
+import { Luma } from "./Luma.js";
+import { Config } from "../../shared/Config.js";
 import path from "node:path";
 import fs from "node:fs";
 

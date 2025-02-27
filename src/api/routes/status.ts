@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import swaggerDocument from '../../api/swagger.json';
+import swaggerDocument from '../../api/swagger.json' assert { type: 'json'};
 import * as fs from 'fs';
-import { validateSession } from '../../shared/AuthHelper';
-import { User } from 'src/shared/Database';
+import { validateSession } from '../../shared/AuthHelper.js';
+import { User } from 'src/shared/Database.js';
 
 export class StatusRoutes {
     private router: Router;

@@ -1,14 +1,14 @@
-import e, { Router } from 'express';
+import { Router } from 'express';
 import path from 'node:path';
-import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database';
+import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database.js';
+import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.js';
+import { Config } from '../../shared/Config.js';
+import { Logger } from '../../shared/Logger.js';
+import { SemVer } from 'semver';
+import { Validator } from '../../shared/Validator.js';
+import { UploadedFile } from 'express-fileupload';
 import JSZip from 'jszip';
 import crypto from 'crypto';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper';
-import { Config } from '../../shared/Config';
-import { Logger } from '../../shared/Logger';
-import { SemVer } from 'semver';
-import { Validator } from '../../shared/Validator';
-import { UploadedFile } from 'express-fileupload';
 
 export class CreateModRoutes {
     private router: Router;

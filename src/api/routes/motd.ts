@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../shared/Database.js';
+import { validateSession } from '../../shared/AuthHelper.js';
+import { Validator } from '../../shared/Validator.js';
 
 export class MOTDRoutes {
     private router: Router;

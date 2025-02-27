@@ -1,8 +1,8 @@
 import { SlashCommandBuilder, InteractionContextType, CommandInteraction, MessageFlags } from "discord.js";
-import { Command } from "../../classes/Command";
-import { Luma } from "../../classes/Luma";
-import { sendEditLog, sendModLog, sendModVersionLog } from "../../../shared/ModWebhooks";
-import { DatabaseHelper } from "../../../shared/Database";
+import { Command } from "../../classes/Command.js";
+import { Luma } from "../../classes/Luma.js";
+import { sendEditLog, sendModLog, sendModVersionLog } from "../../../shared/ModWebhooks.js";
+import { DatabaseHelper } from "../../../shared/Database.js";
 import { randomInt } from "crypto";
 let commandData = new SlashCommandBuilder();
 commandData.setName(`embed`)

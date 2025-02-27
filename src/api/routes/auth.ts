@@ -2,12 +2,12 @@ import { Router } from 'express';
 import passport from 'passport';
 import { Strategy as GitHubStrategy } from 'passport-github';
 import { Strategy as DiscordStrategy } from 'passport-discord';
-import { validateSession } from '../../shared/AuthHelper';
-import { HTTPTools } from '../../shared/HTTPTools';
-import { DatabaseHelper } from '../../shared/Database';
-import { Logger } from '../../shared/Logger';
-import { Config } from '../../shared/Config';
-import { Validator } from '../../shared/Validator';
+import { validateSession } from '../../shared/AuthHelper.js';
+import { HTTPTools } from '../../shared/HTTPTools.js';
+import { DatabaseHelper } from '../../shared/Database.js';
+import { Logger } from '../../shared/Logger.js';
+import { Config } from '../../shared/Config.js';
+import { Validator } from '../../shared/Validator.js';
 
 export class AuthRoutes {
     private router: Router;

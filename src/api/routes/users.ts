@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database.js';
+import { validateSession } from '../../shared/AuthHelper.js';
+import { Validator } from '../../shared/Validator.js';
 
 export class UserRoutes {
     private router: Router;
@@ -102,7 +102,7 @@ export class UserRoutes {
                         continue;
                     }
 
-                    let latest = await mod.getLatestVersion(latestGameVersion.id, platform.data, [status.data]);
+                    let latest = await mod.getLatestVersion(platform.data, [status.data]);
                     if (latest) {
                         mods.push({mod: mod.toAPIResponse(), latest: latest});
                     } else {

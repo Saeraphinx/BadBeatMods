@@ -1,11 +1,11 @@
-import { Logger } from "../Logger";
-import { DatabaseManager } from "../Database";
-import { EditQueue } from "./models/EditQueue";
-import { GameVersion } from "./models/GameVersion";
-import { Mod } from "./models/Mod";
-import { ModVersion } from "./models/ModVersion";
-import { MOTD } from "./models/MOTD";
-import { User, UserRolesObject } from "./models/User";
+import { Logger } from "../Logger.js";
+import { DatabaseManager } from "../Database.js";
+import { EditQueue } from "./models/EditQueue.js";
+import { GameVersion } from "./models/GameVersion.js";
+import { Mod } from "./models/Mod.js";
+import { ModVersion } from "./models/ModVersion.js";
+import { MOTD } from "./models/MOTD.js";
+import { User, UserRolesObject } from "./models/User.js";
 
 // #region Enums & Types
 export enum SupportedGames {
@@ -65,6 +65,7 @@ export type ModVersionAPIPublicResponse = {
     fileSize: number;
     createdAt: Date;
     updatedAt: Date;
+    error?: string;
 }
 
 export enum PostType {
@@ -96,6 +97,7 @@ export enum Status {
     Removed = `removed`,
     Unverified = `unverified`,
     Verified = `verified`,
+    HiddenByServer = `hiddenbyserver`,
 }
 
 export enum Categories {

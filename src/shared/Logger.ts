@@ -1,4 +1,4 @@
-import { Config } from "../shared/Config";
+import { Config } from "../shared/Config.js";
 import * as Winston from "winston";
 import { DiscordTransport } from "winston-transport-discord";
 

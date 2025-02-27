@@ -1,8 +1,8 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { SupportedGames } from "../../Database";
-import { Mod } from "./Mod";
-import { ModVersion } from "./ModVersion";
-import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper";
+import { SupportedGames } from "../../Database.js";
+import { Mod } from "./Mod.js";
+import { ModVersion } from "./ModVersion.js";
+import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper.js";
 import { coerce } from "semver";
 
 export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
@@ -54,7 +54,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         let supportedMods: {mod: Mod, latest:ModVersion}[] = [];
         for (let mod of mods) {
             // get the latest version for the mod, and if it exists, add it to the list of supported mods
-            let latest = await mod.getLatestVersion(this.id, platform, statusesToSearchFor);
+            let latest = await mod.getLatestVersion(platform, statusesToSearchFor, this.id);
             if (latest) {
                 supportedMods.push({mod, latest});
             }

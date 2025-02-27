@@ -1,7 +1,7 @@
 import { APIMessage, EmbedBuilder, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
-import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database";
-import { Config } from "./Config";
-import { Logger } from "./Logger";
+import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database.js";
+import { Config } from "./Config.js";
+import { Logger } from "./Logger.js";
 import { SemVer } from "semver";
 
 let webhookClient1: WebhookClient;

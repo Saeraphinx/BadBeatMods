@@ -1,11 +1,12 @@
 {
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rimraf ./build && tsc",
     "start": "node build/index.js",
     "docker_build": "docker build -t badbeatmods .",
     "build_start": "npm run build && npm run start",
-    "swagger": "ts-node src/api/generateSwagger.ts"
+    "swagger": "tsx src/api/generateSwagger.ts"
   },
   "dependencies": {
     "@octokit/rest": "^21.1.0",
@@ -56,7 +57,7 @@
     "eslint": "^8.57.1",
     "rimraf": "^5.0.10",
     "swagger-autogen": "^2.23.7",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.6.2"
   }
 }

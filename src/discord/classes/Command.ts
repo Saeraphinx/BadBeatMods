@@ -1,8 +1,8 @@
 import { CommandInteraction, SlashCommandBuilder, Routes, REST, RESTGetAPIApplicationCommandResult, Collection, AutocompleteInteraction } from "discord.js";
 import * as fs from 'fs';
 import * as path from 'path';
-import { Luma } from "./Luma";
-import { Config } from "../../shared/Config";
+import { Luma } from "./Luma.js";
+import { Config } from "../../shared/Config.js";
 
 export interface ICommand {
     data:SlashCommandBuilder;

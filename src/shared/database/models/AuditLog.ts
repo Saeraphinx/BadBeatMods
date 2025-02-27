@@ -1,6 +1,6 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { ModInfer } from "./Mod";
-import { ModVersionInfer } from "./ModVersion";
+import { ModInfer } from "./Mod.js";
+import { ModVersionInfer } from "./ModVersion.js";
 
 export class AuditLog extends Model<InferAttributes<AuditLog>, InferCreationAttributes<AuditLog>> {
     declare readonly id: CreationOptional<number>;

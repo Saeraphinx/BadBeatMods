@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Logger } from '../../shared/Logger';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database.js';
+import { validateSession } from '../../shared/AuthHelper.js';
+import { Logger } from '../../shared/Logger.js';
+import { Validator } from '../../shared/Validator.js';
 import { coerce } from 'semver';
 
 export class VersionsRoutes {

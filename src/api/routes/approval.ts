@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse, User } from '../../shared/Database';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper';
-import { Logger } from '../../shared/Logger';
+import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse, User } from '../../shared/Database.js';
+import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.js';
+import { Logger } from '../../shared/Logger.js';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
-import { Validator } from '../../shared/Validator';
-import { sendModVersionLog } from '../../shared/ModWebhooks';
+import { Validator } from '../../shared/Validator.js';
+import { sendModVersionLog } from '../../shared/ModWebhooks.js';
 
 export class ApprovalRoutes {
     private router: Router;
