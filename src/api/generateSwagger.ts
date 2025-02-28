@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { Categories, Mod, Platform, Status, UserRoles } from '../shared/Database';
+import { Categories, Platform, Status, UserRoles } from '../shared/Database';
 import swaggerAutogen from 'swagger-autogen';
-import { OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
+import { OpenAPIV3_1 } from 'openapi-types';
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
 const options = {
@@ -36,7 +36,7 @@ const DBObject: OpenAPIV3_1.SchemaObject = {
             example: `2023-10-01T00:00:00.000Z`,
         },
     }
-}
+};
 
 const ModDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
