@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.js';
-import { validateSession } from '../../shared/AuthHelper.js';
-import { Config } from '../../shared/Config.js';
+import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database';
+import { validateSession } from '../../shared/AuthHelper';
+import { Config } from '../../shared/Config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Validator } from '../../shared/Validator.js';
-import { Logger } from '../../shared/Logger.js';
+import { Validator } from '../../shared/Validator';
+import { Logger } from '../../shared/Logger';
 import { coerce } from 'semver';
 
 export class AdminRoutes {

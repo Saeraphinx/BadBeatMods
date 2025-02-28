@@ -1,7 +1,7 @@
 import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionContextType, AutocompleteInteraction } from "discord.js";
-import { Command } from "../../classes/Command.js";
-import { Luma } from "../../classes/Luma.js";
-import { DatabaseHelper } from "../../../shared/Database.js";
+import { Command } from "../../classes/Command";
+import { Luma } from "../../classes/Luma";
+import { DatabaseHelper } from "../../../shared/Database";
 import { Op } from "sequelize";
 import { rcompare } from "semver";
 

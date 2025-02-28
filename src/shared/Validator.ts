@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.js";
+import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database";
 import { valid } from "semver";
-import { Config } from "./Config.js";
+import { Config } from "./Config";
 
 //generic types that I use a lot
 const ZodDBID = z.number({coerce: true}).int().positive();

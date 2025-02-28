@@ -3043,8 +3043,7 @@
               "private",
               "removed",
               "unverified",
-              "verified",
-              "hiddenbyserver"
+              "verified"
             ]
           },
           "iconFileName": {
@@ -3132,8 +3131,7 @@
               "private",
               "removed",
               "unverified",
-              "verified",
-              "hiddenbyserver"
+              "verified"
             ]
           },
           "dependencies": {
@@ -3540,8 +3538,7 @@
               "private",
               "removed",
               "unverified",
-              "verified",
-              "hiddenbyserver"
+              "verified"
             ]
           },
           "iconFileName": {
@@ -3638,8 +3635,7 @@
               "private",
               "removed",
               "unverified",
-              "verified",
-              "hiddenbyserver"
+              "verified"
             ]
           },
           "dependencies": {

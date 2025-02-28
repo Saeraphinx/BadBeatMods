@@ -1,5 +1,5 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { SupportedGames, PostType, Platform, Translations, DatabaseHelper } from "../../Database.js";
+import { SupportedGames, PostType, Platform, Translations, DatabaseHelper } from "../../Database";
 
 export class MOTD extends Model<InferAttributes<MOTD>, InferCreationAttributes<MOTD>> {
     declare readonly id: CreationOptional<number>;

@@ -1,7 +1,7 @@
 import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionContextType, MessageFlags } from "discord.js";
-import { Command } from "../../classes/Command.js";
-import { Luma } from "../../classes/Luma.js";
-import swaggerDocument from '../../../api/swagger.json' assert { type: 'json'};
+import { Command } from "../../classes/Command";
+import { Luma } from "../../classes/Luma";
+import swaggerDocument from '../../../api/swagger.json';
 import * as os from "os";
 import * as fs from "fs";
 

@@ -1,9 +1,9 @@
 import * as Discord from "discord.js";
 import { REST } from '@discordjs/rest';
-import { Logger } from "../../shared/Logger.js";
-import { Command, loadCommands } from "./Command.js";
-import { Config } from "../../shared/Config.js";
-import { ContextMenu } from "./ContextMenu.js";
+import { Logger } from "../../shared/Logger";
+import { Command, loadCommands } from "./Command";
+import { Config } from "../../shared/Config";
+import { ContextMenu } from "./ContextMenu";
 import path from "path";
 
 export class Luma extends Discord.Client {

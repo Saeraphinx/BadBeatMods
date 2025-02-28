@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { Categories, Mod, Platform, Status, UserRoles } from '../shared/Database.js';
+import { Categories, Mod, Platform, Status, UserRoles } from '../shared/Database';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
 
