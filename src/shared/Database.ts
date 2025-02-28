@@ -1,26 +1,26 @@
 import path from "path";
 import { exit } from "process";
 import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
-import { Logger } from "./Logger.js";
+import { Logger } from "./Logger";
 import { coerce, SemVer } from "semver";
-import { Config } from "./Config.js";
+import { Config } from "./Config";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash, SupportedGames, Status } from "./database/DBHelper.js";
-import { EditQueue } from "./database/models/EditQueue.js";
-import { GameVersion } from "./database/models/GameVersion.js";
-import { Mod } from "./database/models/Mod.js";
-import { ModVersion } from "./database/models/ModVersion.js";
-import { MOTD } from "./database/models/MOTD.js";
-import { User, UserRoles } from "./database/models/User.js";
+import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper";
+import { EditQueue } from "./database/models/EditQueue";
+import { GameVersion } from "./database/models/GameVersion";
+import { Mod } from "./database/models/Mod";
+import { ModVersion } from "./database/models/ModVersion";
+import { MOTD } from "./database/models/MOTD";
+import { User, UserRoles } from "./database/models/User";
 
 // in use by this file
-export * from "./database/models/EditQueue.js";
-export * from "./database/models/GameVersion.js";
-export * from "./database/models/Mod.js";
-export * from "./database/models/ModVersion.js";
-export * from "./database/models/MOTD.js";
-export * from "./database/models/User.js";
-export * from "./database/DBHelper.js";
+export * from "./database/models/EditQueue";
+export * from "./database/models/GameVersion";
+export * from "./database/models/Mod";
+export * from "./database/models/ModVersion";
+export * from "./database/models/MOTD";
+export * from "./database/models/User";
+export * from "./database/DBHelper";
 
 function isValidDialect(dialect: string): dialect is `sqlite` |`postgres` {
     return [`sqlite`, `postgres`].includes(dialect);
@@ -644,10 +644,6 @@ export class DatabaseManager {
             if (mod.authorIds.length == 0) {
                 throw new Error(`Mod must have at least one author.`);
             }
-
-            if (mod.status === Status.HiddenByServer) {
-                throw new Error(`Mod status cannot be set to ${Status.HiddenByServer}.`);
-            }
         });
 
         this.ModVersions.afterValidate(async (modVersion) => {
@@ -710,14 +706,10 @@ export class DatabaseManager {
                         throw new Error(`ModVersion cannot depend on itself.`);
                     }
 
-                    //if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
-                    //    throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
-                    //}
+                    if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
+                        throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
+                    }
                 }
-            }
-
-            if (modVersion.status === Status.HiddenByServer) {
-                throw new Error(`ModVersion status cannot be set to ${Status.HiddenByServer}.`);
             }
         });
 

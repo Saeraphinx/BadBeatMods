@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames, ModVersionAPIPublicResponse, ModVersion } from '../../shared/Database.js';
-import { Validator } from '../../shared/Validator.js';
-import { validateSession } from '../../shared/AuthHelper.js';
-import { Logger } from '../../shared/Logger.js';
+import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames } from '../../shared/Database';
+import { Validator } from '../../shared/Validator';
+import { validateSession } from '../../shared/AuthHelper';
+import { Config } from '../../shared/Config';
+import { Logger } from '../../shared/Logger';
+import { SemVer } from 'semver';
 
 export class GetModRoutes {
     private router: Router;
@@ -28,34 +30,45 @@ export class GetModRoutes {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqQuery.error.issues });
             }
 
-            // process gameverions
-            let shouldIgnoreGameVersion = false;
-            let gameVersion: GameVersion | undefined = undefined;
-            if (reqQuery.data.gameVersion !== undefined) {
-                let dbgv = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === reqQuery.data.gameVersion);
-                if (dbgv) {
-                    gameVersion = dbgv;
-                } else {
-                    return res.status(400).send({ message: `Invalid game version.` });
-                }
+            // set the default gameversion if it's not provided
+            if (reqQuery.data.gameVersion === undefined || reqQuery.data.gameVersion === null) {
+                await GameVersion.getDefaultVersion(reqQuery.data.gameName).then((gameVersion) => {
+                    if (gameVersion) {
+                        reqQuery.data.gameVersion = undefined;
+                    } else {
+                        return res.status(400).send({ message: `Invalid game version.` });
+                    }
+                });
             }
-            
+
             // only show approved or unverified mods
             if (reqQuery.data.status !== Status.Verified && reqQuery.data.status !== Status.Unverified) {
                 return res.status(400).send({ message: `Invalid status.` });
             }
+
+            let gameVersion = reqQuery.data.gameVersion ? DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === reqQuery.data.gameVersion && gameVersion.gameName === reqQuery.data.gameName) : null;
+
+            if (gameVersion === undefined) {
+                return res.status(400).send({ message: `Invalid game version.` });
+            }
+
             let showUnverified = reqQuery.data.status !== `verified`;
             let statuses = showUnverified ? [Status.Verified, Status.Unverified] : [Status.Verified];
-
-            let mods: {mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse}[] = [];
-            if (gameVersion === undefined) {
+            let mods: {mod: ModAPIPublicResponse, latest: any}[] = [];
+            if (gameVersion === null) {
                 let modDb = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
 
                 for (let mod of modDb) {
-                    let latest = mod.getLatestVersion(reqQuery.data.platform, statuses);
+                    let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id && statuses.includes(modVersion.status));
+
+                    modVersions = modVersions.sort((a, b) => {
+                        return b.modVersion.compare(a.modVersion);
+                    });
+
+                    let latest = modVersions[0];
 
                     if (latest) {
-                        let latestVer = await latest.toAPIResonse(undefined, statuses);
+                        let latestVer = await latest.toAPIResonse(latest.supportedGameVersionIds[0], statuses);
                         if (latestVer) {
                             mods.push({ mod: mod.toAPIResponse(), latest: latestVer });
                         }
@@ -66,19 +79,26 @@ export class GetModRoutes {
                 let preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
+                    let mod = retMod.mod.toAPIResponse();
                     let latest = await retMod.latest.toAPIResonse(gameVersion.id, statuses);
-                    if (latest && latest.status !== Status.HiddenByServer) { // don't show mods that are hidden by the server
-                        mods.push({ mod: retMod.mod.toAPIResponse(), latest: latest });
-                    }
+                    mods.push({ mod, latest });
                 }
 
-                // remove mods that have missing dependencies
                 mods = mods.filter((mod) => {
+                    if (!mod?.latest) {
+                        return false;
+                    }
+
+                    if (!mod?.latest?.dependencies) {
+                        return false;
+                    }
+
                     for (let dependency of mod.latest.dependencies) {
                         if (!mods.find((mod) => mod?.latest?.id === dependency)) {
                             return false;
                         }
                     }
+
                     return true;
                 });
 
@@ -123,19 +143,19 @@ export class GetModRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            let modVersions = mod.getAllVersions();
+            let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id);
             let returnVal: any[] = [];
 
             for (let version of (modVersions)) {
-                let isAllowed = await version.isAllowedToView(session.user, mod);
-                if (isAllowed == false) {
+                let allowedToSeeItems = await version.isAllowedToView(session.user, mod);
+                if (allowedToSeeItems == false) {
                     continue;
                 }
                 // if raw is true, return the raw mod version info instead of attempting to resolve the dependencies & other fields
                 if (raw) {
                     returnVal.push(version.toRawAPIResonse());
                 } else {
-                    let resolvedVersion = await version.toAPIResonse(undefined, [Status.Verified, Status.Unverified, Status.Private]);
+                    let resolvedVersion = await version.toAPIResonse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
@@ -145,7 +165,11 @@ export class GetModRoutes {
             }
 
             returnVal.sort((a, b) => {
-                return ModVersion.compareVersions(b.modVersion, a.modVersion);
+                if (a?.modVersion && b?.modVersion) {
+                    return new SemVer(b?.modVersion).compare(a?.modVersion);
+                } else {
+                    return 0;
+                }
             });
 
             return res.status(200).send({ mod: { info: raw ? mod : mod.toAPIResponse(), versions: returnVal } });
