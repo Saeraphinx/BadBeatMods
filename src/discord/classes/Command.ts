@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Luma } from "./Luma";
 import { Config } from "../../shared/Config";
+import { Logger } from "../../shared/Logger";
 
 export interface ICommand {
     data:SlashCommandBuilder;
@@ -57,7 +58,7 @@ export class Command {
         try {
             await this.execute(luma, interaction);
         } catch (error: any) {
-            console.error(error);
+            Logger.error(error);
             luma.logger.warn(`Interaction (${interaction.commandName}) did not reply.`, `Interactions`);
         }
     }

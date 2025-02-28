@@ -1,4 +1,4 @@
-import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
+import { Model, InferAttributes, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { ModInfer } from "./Mod";
 import { ModVersionInfer } from "./ModVersion";
 
@@ -29,5 +29,15 @@ export class AuditLog extends Model<InferAttributes<AuditLog>, InferCreationAttr
 
     public isMod(): this is AuditLog & { objectTableName: `mods`, object: ModInfer } {
         return this.objectTableName === `mods`;
+    }
+
+    public static pruneOldLogs(): Promise<number> {
+        return this.destroy({
+            where: {
+                heldUntil: {
+                    [Op.lt]: new Date(Date.now()) // 30 days
+                }
+            }
+        });
     }
 }
