@@ -277,8 +277,8 @@ export async function sendEditLog(edit:EditQueue, userMakingChanges:User, action
                     if (editDescription.length > 100) {
                         editDescription = editDescription.substring(0, 100) + `...`;
                     }
-                    originalDescription = originalDescription.replaceAll(/#/, `\\#`);
-                    editDescription = editDescription.replaceAll(/#/, `\\#`);
+                    originalDescription = originalDescription.replaceAll(`#`, `\\#`);
+                    editDescription = editDescription.replaceAll(`#`, `\\#`);
                     description += `**${key}**: ${originalDescription} -> ${editDescription}\n`;
                     continue;
                 }
