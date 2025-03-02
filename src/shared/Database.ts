@@ -2,7 +2,7 @@ import path from "path";
 import { exit } from "process";
 import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
 import { Logger } from "./Logger";
-import { coerce, SemVer } from "semver";
+import { SemVer } from "semver";
 import { Config } from "./Config";
 import { SequelizeStorage, Umzug } from "umzug";
 import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper";
@@ -42,12 +42,21 @@ export class DatabaseManager {
     constructor() {
         Logger.log(`Loading DatabaseManager...`);
 
+        let storagePath = undefined;
+        if (Config.database.dialect === `sqlite`) {
+            if (Config.database.url !== `:memory:`) {
+                storagePath = path.resolve(Config.database.url);
+            } else {
+                storagePath = `:memory:`;
+            }
+        }
+
         this.sequelize = new Sequelize(`bbm_database`, Config.database.username, Config.database.password, {
             host: Config.database.dialect === `sqlite` ? `localhost` : Config.database.url,
             port: Config.database.dialect === `sqlite` ? undefined : 5432,
             dialect: isValidDialect(Config.database.dialect) ? Config.database.dialect : `sqlite`,
             logging: Config.flags.logRawSQL ? Logger.winston.log : false,
-            storage: Config.database.dialect === `sqlite` ? path.resolve(Config.database.url) : undefined,
+            storage: storagePath,
         });
 
         this.umzug = new Umzug({

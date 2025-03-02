@@ -166,6 +166,19 @@ export class Config {
     }
     // #endregion
     constructor() {
+        if (process.env.NODE_ENV === `test`) {
+            for (let key of Object.keys(DEFAULT_CONFIG)) {
+                // @ts-expect-error 7046
+                Config[`_${key}`] = DEFAULT_CONFIG[key];
+            }
+    
+            Config._server.sessionSecret = Utils.createRandomString(64);
+            Config._database.url = `:memory:`;
+            Config._server.port = 8485;
+            Config._server.url = `http://localhost:8485`;
+            return;
+        }
+
         if (process.env.IS_DOCKER !== `true` && fs.existsSync(CONFIG_PATH)) {
             console.log(`Loading config using config file.`);
             let success = Config.loadConfigFromFile(CONFIG_PATH);

@@ -2,12 +2,10 @@
   "scripts": {
     "dev": "npm run build && npm run swagger && npm run start",
     "start": "node build/index.js",
-
     "build": "rimraf ./build && tsc",
     "docker_build": "docker build -t badbeatmods .",
     "build_start": "npm run build && npm run start",
     "swagger": "tsx src/api/generateSwagger.ts",
-
     "lint": "npx eslint ./src --ext .ts"
   },
   "dependencies": {
