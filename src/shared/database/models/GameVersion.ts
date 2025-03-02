@@ -1,10 +1,11 @@
-import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
+import { Model, InferAttributes, InferCreationAttributes, CreationOptional, Sequelize, DataTypes, ModelStatic } from "sequelize";
 import { SupportedGames } from "../../Database";
 import { Mod } from "./Mod";
 import { ModVersion } from "./ModVersion";
 import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper";
 import { coerce } from "semver";
 
+export type GameVersionInfer = InferAttributes<GameVersion>;
 export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
     declare readonly id: CreationOptional<number>;
     declare gameName: SupportedGames;
