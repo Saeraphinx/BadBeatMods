@@ -34,6 +34,7 @@ import { StatusRoutes } from './api/routes/status';
 import { BulkActionsRoutes } from './api/routes/bulkActions';
 
 import swaggerDocument from './api/swagger.json';
+import { Server } from 'node:http';
 // eslint-disable-next-line no-console
 console.log(`Starting setup...`);
 new Config();
@@ -42,6 +43,8 @@ const app = express();
 const memstore = MemoryStore(session);
 const port = Config.server.port;
 let database = new DatabaseManager();
+let server: Server | undefined = undefined;
+let bot: Luma | undefined = undefined;
 
 // handle parsing request bodies
 app.use(express.json({ limit: 100000 }));
@@ -332,10 +335,13 @@ process.on(`unhandledRejection`, (reason: Error | any, promise: Promise<any>) =>
 
 Logger.debug(`Setup complete.`);
 
-async function startServer() {
+export async function startServer() {
+    if (process.env.NODE_ENV === `test`) {
+        Logger.debug(`Running in test mode.`);
+    }
     await database.init();
     Logger.debug(`Starting server.`);
-    app.listen(port, () => {
+    let server = app.listen(port, () => {
         Logger.log(`Server listening on port ${port} - Expected to be available at ${Config.server.url}`, ``, true);
         Config.devmode ? Logger.warn(`Development mode is enabled!`) : null;
         Config.authBypass ? Logger.warn(`Authentication bypass is enabled!`) : null;
@@ -350,5 +356,21 @@ async function startServer() {
         luma.login(Config.bot.token);
     }
 
+    return {app, server, database};
 }
-startServer();
+
+export async function stopServer(doExit = true, code:number = 0) {
+    let promises = [];
+    promises.push(database.sequelize.close());
+    server?.closeAllConnections();
+    server?.close();
+    promises.push(bot?.destroy());
+
+    await Promise.all(promises).then(() => {
+        doExit ? process.exit(code) : undefined;
+    });
+}
+
+if (process.env.NODE_ENV !== `test`) {
+    startServer();
+}
