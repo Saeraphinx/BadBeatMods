@@ -11,29 +11,32 @@ import fs from 'node:fs';
 import { ActivityType } from 'discord.js';
 import passport from 'passport';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
+import { Octokit } from '@octokit/rest';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 
-import { DatabaseHelper, DatabaseManager } from './shared/Database';
-import { Logger } from './shared/Logger';
-import { Config } from './shared/Config';
-import { Luma } from './discord/classes/Luma';
+import { DatabaseHelper, DatabaseManager } from './shared/Database.ts';
+import { Logger } from './shared/Logger.ts';
+import { Config } from './shared/Config.ts';
+import { Luma } from './discord/classes/Luma.ts';
 
-import { CreateModRoutes } from './api/routes/createMod';
-import { GetModRoutes } from './api/routes/getMod';
-import { UpdateModRoutes } from './api/routes/updateMod';
-import { AuthRoutes } from './api/routes/auth';
-import { VersionsRoutes } from './api/routes/versions';
-import { ImportRoutes } from './api/routes/import';
-import { AdminRoutes } from './api/routes/admin';
-import { ApprovalRoutes } from './api/routes/approval';
-import { BeatModsRoutes } from './api/routes/beatmods';
-import { CDNRoutes } from './api/routes/cdn';
-import { MOTDRoutes } from './api/routes/motd';
-import { UserRoutes } from './api/routes/users';
-import { StatusRoutes } from './api/routes/status';
-import { BulkActionsRoutes } from './api/routes/bulkActions';
+import { CreateModRoutes } from './api/routes/createMod.ts';
+import { GetModRoutes } from './api/routes/getMod.ts';
+import { UpdateModRoutes } from './api/routes/updateMod.ts';
+import { AuthRoutes } from './api/routes/auth.ts';
+import { VersionsRoutes } from './api/routes/versions.ts';
+import { ImportRoutes } from './api/routes/import.ts';
+import { AdminRoutes } from './api/routes/admin.ts';
+import { ApprovalRoutes } from './api/routes/approval.ts';
+import { BeatModsRoutes } from './api/routes/beatmods.ts';
+import { CDNRoutes } from './api/routes/cdn.ts';
+import { MOTDRoutes } from './api/routes/motd.ts';
+import { UserRoutes } from './api/routes/users.ts';
+import { StatusRoutes } from './api/routes/status.ts';
+import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
 
-import swaggerDocument from './api/swagger.json';
+// eslint-disable-next-line quotes
+import swaggerDocument from './api/swagger.json' with { type: "json" };
+import { Server } from 'node:http';
 // eslint-disable-next-line no-console
 console.log(`Starting setup...`);
 new Config();
@@ -42,6 +45,8 @@ const app = express();
 const memstore = MemoryStore(session);
 const port = Config.server.port;
 let database = new DatabaseManager();
+let server: Server | undefined = undefined;
+let bot: Luma | undefined = undefined;
 
 // handle parsing request bodies
 app.use(express.json({ limit: 100000 }));
@@ -195,42 +200,39 @@ if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
 
 new CDNRoutes(cdnRouter);
 
-app.use(session(sessionConfigData));
-import(`@octokit/rest`).then((Octokit) => {
-    passport.use(`bearer`, new BearerStrategy(
-        function(token, done) {
-            const octokit = new Octokit.Octokit({ auth: token });
-            if (invalidAttempts.filter((t) => token === t).length > 2) {
+passport.use(`bearer`, new BearerStrategy(
+    function(token, done) {
+        const octokit = new Octokit({ auth: token });
+        if (invalidAttempts.filter((t) => token === t).length > 2) {
+            return done(null, false);
+        }
+        // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+        octokit.rest.users.getAuthenticated().then((response) => {
+            if (response.status !== 200 || response.data === undefined) {
+                invalidAttempts.push(token ? token : `unknown`);
                 return done(null, false);
             }
-            // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-            octokit.rest.users.getAuthenticated().then((response) => {
-                if (response.status !== 200 || response.data === undefined) {
-                    invalidAttempts.push(token ? token : `unknown`);
+            let profile = response.data;
+            DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
+                if (!user) {
                     return done(null, false);
+                } else {
+                    return done(null, user);
                 }
-                let profile = response.data;
-                DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
-                    if (!user) {
-                        return done(null, false);
-                    } else {
-                        return done(null, user);
-                    }
-                }).catch((err) => {
-                    Logger.error(`Error finding user: ${err}`);
-                    return done(err, null);
-                });
             }).catch((err) => {
-                if (err.status === 401) {
-                    invalidAttempts.push(token ? token : `unknown`);
-                    return done(null, false);
-                }
-                Logger.warn(`Error getting user: ${err}`);
+                Logger.error(`Error finding user: ${err}`);
                 return done(err, null);
             });
-        }
-    ));
-});
+        }).catch((err) => {
+            if (err.status === 401) {
+                invalidAttempts.push(token ? token : `unknown`);
+                return done(null, false);
+            }
+            Logger.warn(`Error getting user: ${err}`);
+            return done(err, null);
+        });
+    }
+));
 
 let invalidAttempts: string[] = [];
 apiRouter.use(async (req, res, next) => {
@@ -332,10 +334,13 @@ process.on(`unhandledRejection`, (reason: Error | any, promise: Promise<any>) =>
 
 Logger.debug(`Setup complete.`);
 
-async function startServer() {
+export async function startServer() {
+    if (process.env.NODE_ENV === `test`) {
+        Logger.debug(`Running in test mode.`);
+    }
     await database.init();
     Logger.debug(`Starting server.`);
-    app.listen(port, () => {
+    let server = app.listen(port, () => {
         Logger.log(`Server listening on port ${port} - Expected to be available at ${Config.server.url}`, ``, true);
         Config.devmode ? Logger.warn(`Development mode is enabled!`) : null;
         Config.authBypass ? Logger.warn(`Authentication bypass is enabled!`) : null;
@@ -350,5 +355,21 @@ async function startServer() {
         luma.login(Config.bot.token);
     }
 
+    return {app, server, database};
 }
-startServer();
+
+export async function stopServer(doExit = true, code:number = 0) {
+    let promises = [];
+    promises.push(database.sequelize.close());
+    server?.closeAllConnections();
+    server?.close();
+    promises.push(bot?.destroy());
+
+    await Promise.all(promises).then(() => {
+        doExit ? process.exit(code) : undefined;
+    });
+}
+
+if (process.env.NODE_ENV !== `test`) {
+    startServer();
+}

@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Logger } from '../../shared/Logger';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, Status, UserRoles } from '../../shared/Database.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Logger } from '../../shared/Logger.ts';
+import { Validator } from '../../shared/Validator.ts';
 import { SemVer } from 'semver';
 import path from 'node:path';
-import { Config } from '../../shared/Config';
-import { sendEditLog } from '../../shared/ModWebhooks';
+import { Config } from '../../shared/Config.ts';
+import { sendEditLog } from '../../shared/ModWebhooks.ts';
 
 export class UpdateModRoutes {
     private router: Router;

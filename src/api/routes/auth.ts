@@ -2,12 +2,12 @@ import { Router } from 'express';
 import passport from 'passport';
 import { Strategy as GitHubStrategy } from 'passport-github';
 import { Strategy as DiscordStrategy } from 'passport-discord';
-import { validateSession } from '../../shared/AuthHelper';
-import { HTTPTools } from '../../shared/HTTPTools';
-import { DatabaseHelper } from '../../shared/Database';
-import { Logger } from '../../shared/Logger';
-import { Config } from '../../shared/Config';
-import { Validator } from '../../shared/Validator';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { DatabaseHelper } from '../../shared/Database.ts';
+import { Logger } from '../../shared/Logger.ts';
+import { Config } from '../../shared/Config.ts';
+import { Validator } from '../../shared/Validator.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export class AuthRoutes {
     private router: Router;
@@ -310,7 +310,7 @@ export class AuthRoutes {
         if (!redirect.success) {
             return null;
         }
-        let state = HTTPTools.createRandomString(32);
+        let state = Utils.createRandomString(32);
         if (userId) {
             this.validStates.push({stateId: state, ip: req.ip, redirectUrl: new URL(redirect.data), userId});
         } else {

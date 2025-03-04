@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import swaggerDocument from '../../api/swagger.json';
+
+import swaggerDocument from '../../api/swagger.json' with { type: "json" };
 import * as fs from 'fs';
-import { validateSession } from '../../shared/AuthHelper';
+import { validateSession } from '../../shared/AuthHelper.ts';
 import { User } from 'src/shared/Database';
 
 export class StatusRoutes {

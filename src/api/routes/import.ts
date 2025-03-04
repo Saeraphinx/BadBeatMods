@@ -3,13 +3,13 @@
 /* eslint-disable no-console */ // see above
 
 import { Router } from 'express';
-import { validateSession } from '../../shared/AuthHelper';
-import { Categories, ContentHash, DatabaseHelper, Mod, ModVersion, Platform, SupportedGames, UserRoles, Status } from '../../shared/Database';
-import { Logger } from '../../shared/Logger';
-import { BeatModsMod } from './beatmods';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Categories, ContentHash, DatabaseHelper, Mod, ModVersion, Platform, SupportedGames, UserRoles, Status } from '../../shared/Database.ts';
+import { Logger } from '../../shared/Logger.ts';
+import { BeatModsMod } from './beatmods.ts';
 import { coerce, satisfies } from 'semver';
 import crypto from 'crypto';
-import { Config } from '../../shared/Config';
+import { Config } from '../../shared/Config.ts';
 import path from 'path';
 import fs from 'fs';
 import { exit } from 'process';

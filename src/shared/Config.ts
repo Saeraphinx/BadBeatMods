@@ -1,12 +1,12 @@
 /* eslint-disable no-console */ // Logger can't be initialized before Config, so we need to disable this here.
 import * as fs from 'fs';
 import * as path from 'path';
-import { HTTPTools } from './HTTPTools';
+import { Utils } from './Utils.ts';
 
 // This is a simple config loader that reads from a JSON file and maps the values to a static class. It's a little excessive but this way the config is clearly communicated, and is available without a refrence to the file itself.
 // To add a config option, add it to the DEFAULT_CONFIG object, and add a property to the Config class with the same name. The Config class will automatically load the config from the file and map it to the static properties.
 const CONFIG_PATH = path.resolve(`./storage/config.json`);
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
     auth: {
         discord: {
             clientId: `DISCORD_CLIENT_ID`,
@@ -166,6 +166,19 @@ export class Config {
     }
     // #endregion
     constructor() {
+        if (process.env.NODE_ENV === `test`) {
+            for (let key of Object.keys(DEFAULT_CONFIG)) {
+                // @ts-expect-error 7046
+                Config[`_${key}`] = DEFAULT_CONFIG[key];
+            }
+    
+            Config._server.sessionSecret = Utils.createRandomString(64);
+            Config._database.url = `:memory:`;
+            Config._server.port = 8485;
+            Config._server.url = `http://localhost:8485`;
+            return;
+        }
+
         if (process.env.IS_DOCKER !== `true` && fs.existsSync(CONFIG_PATH)) {
             console.log(`Loading config using config file.`);
             let success = Config.loadConfigFromFile(CONFIG_PATH);
@@ -338,7 +351,7 @@ export class Config {
             Config[`_${key}`] = DEFAULT_CONFIG[key];
         }
 
-        Config._server.sessionSecret = HTTPTools.createRandomString(64);
+        Config._server.sessionSecret = Utils.createRandomString(64);
 
         try {
             // #region Auth
