@@ -65,7 +65,7 @@ export class DatabaseManager {
             },
             storage: new SequelizeStorage({sequelize: this.sequelize}),
             context: this.sequelize.getQueryInterface(),
-            logger: console
+            logger: Logger
         });
     }
 

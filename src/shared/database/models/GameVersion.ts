@@ -13,7 +13,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
     declare defaultVersion: boolean;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
+    declare readonly deletedAt: CreationOptional<Date> | null;
 
     public toAPIResponse(): GameVersionAPIPublicResponse {
         return {
@@ -71,5 +71,15 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         } else {
             return b.version.localeCompare(a.version);
         }
+    }
+
+    public static getGames() {
+        let games: SupportedGames[] = [];
+        for (let version of DatabaseHelper.cache.gameVersions) {
+            if (!games.includes(version.gameName)) {
+                games.push(version.gameName);
+            }
+        }
+        return games;
     }
 }

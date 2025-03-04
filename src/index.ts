@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import { ActivityType } from 'discord.js';
 import passport from 'passport';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
+import { Octokit } from '@octokit/rest';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 
 import { DatabaseHelper, DatabaseManager } from './shared/Database.ts';
@@ -199,42 +200,39 @@ if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
 
 new CDNRoutes(cdnRouter);
 
-app.use(session(sessionConfigData));
-import(`@octokit/rest`).then((Octokit) => {
-    passport.use(`bearer`, new BearerStrategy(
-        function(token, done) {
-            const octokit = new Octokit.Octokit({ auth: token });
-            if (invalidAttempts.filter((t) => token === t).length > 2) {
+passport.use(`bearer`, new BearerStrategy(
+    function(token, done) {
+        const octokit = new Octokit({ auth: token });
+        if (invalidAttempts.filter((t) => token === t).length > 2) {
+            return done(null, false);
+        }
+        // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+        octokit.rest.users.getAuthenticated().then((response) => {
+            if (response.status !== 200 || response.data === undefined) {
+                invalidAttempts.push(token ? token : `unknown`);
                 return done(null, false);
             }
-            // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-            octokit.rest.users.getAuthenticated().then((response) => {
-                if (response.status !== 200 || response.data === undefined) {
-                    invalidAttempts.push(token ? token : `unknown`);
+            let profile = response.data;
+            DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
+                if (!user) {
                     return done(null, false);
+                } else {
+                    return done(null, user);
                 }
-                let profile = response.data;
-                DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
-                    if (!user) {
-                        return done(null, false);
-                    } else {
-                        return done(null, user);
-                    }
-                }).catch((err) => {
-                    Logger.error(`Error finding user: ${err}`);
-                    return done(err, null);
-                });
             }).catch((err) => {
-                if (err.status === 401) {
-                    invalidAttempts.push(token ? token : `unknown`);
-                    return done(null, false);
-                }
-                Logger.warn(`Error getting user: ${err}`);
+                Logger.error(`Error finding user: ${err}`);
                 return done(err, null);
             });
-        }
-    ));
-});
+        }).catch((err) => {
+            if (err.status === 401) {
+                invalidAttempts.push(token ? token : `unknown`);
+                return done(null, false);
+            }
+            Logger.warn(`Error getting user: ${err}`);
+            return done(err, null);
+        });
+    }
+));
 
 let invalidAttempts: string[] = [];
 apiRouter.use(async (req, res, next) => {

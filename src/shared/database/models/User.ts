@@ -2,6 +2,7 @@ import { Model, InferAttributes, InferCreationAttributes, CreationOptional } fro
 import { Logger } from "../../Logger.ts";
 import { SupportedGames, UserAPIPublicResponse } from "../../Database.ts";
 
+export type UserInfer = InferAttributes<User>;
 export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare readonly id: CreationOptional<number>;
     declare username: string;
@@ -13,7 +14,7 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
     declare roles: UserRolesObject;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
+    declare readonly deletedAt: CreationOptional<Date> | null;
 
     public addSiteWideRole(role: UserRoles) {
         if (!this.roles.sitewide.includes(role)) {

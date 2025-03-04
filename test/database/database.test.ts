@@ -1,6 +1,6 @@
 import { describe } from 'node:test';
 import { test, expect, beforeAll, afterAll } from 'vitest';
-import { DatabaseManager } from '../../src/shared/Database.ts';
+import { DatabaseManager, UserRoles } from '../../src/shared/Database.ts';
 
 describe(`Database Initialization`, () => {
     let db: DatabaseManager;
@@ -32,4 +32,10 @@ describe(`Database Initialization`, () => {
         expect(db.serverAdmin).toBeDefined();
         expect(db.serverAdmin.id).toBe(1);
     });
+
+    test(`should have a server admin user with the correct roles`, async () => {
+        expect(db.serverAdmin.roles.sitewide).toContain(UserRoles.AllPermissions);
+    });
+
+
 });

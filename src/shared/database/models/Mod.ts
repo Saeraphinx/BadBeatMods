@@ -23,7 +23,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare lastUpdatedById: number;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
+    declare readonly deletedAt: CreationOptional<Date> | null;
 
     public isAllowedToView(user: User|null) {
         if (this.status == Status.Verified || this.status == Status.Unverified) {

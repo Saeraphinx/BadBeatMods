@@ -14,6 +14,7 @@ export class Logger {
         if (Config.webhooks.enableWebhooks && Config.webhooks.loggingUrl.length > 8) {
             transports.push(new DiscordTransport({
                 level: `info`,
+                silent: process.env.NODE_ENV == `test`,
                 discord: {
                     webhook: {
                         url: Config.webhooks.loggingUrl,
@@ -25,6 +26,7 @@ export class Logger {
         transports.push(new Winston.transports.Console({
             forceConsole: true,
             level: Config.devmode ? `http` : `consoleInfo`,
+            silent: process.env.NODE_ENV == `test`,
             consoleWarnLevels: [`consoleWarn`, `warn`, `error`, `debugWarn`],
             format: Winston.format.combine(
                 Winston.format.timestamp({ format: `MM/DD/YY HH:mm:ss` }),
@@ -38,6 +40,7 @@ export class Logger {
             //filename: `storage/logs/${new Date(Date.now()).toLocaleDateString(`en-US`, { year: `numeric`, month: `numeric`, day: `numeric`}).replaceAll(`/`, `-`)}.log`,
             zippedArchive: true,
             maxsize: 20 * 1024 * 1024,
+            silent: process.env.NODE_ENV == `test`,
             maxFiles: Config.flags.enableUnlimitedLogs ? undefined : 14,
             level: Config.devmode ? `debug` : `info`,
             format: Winston.format.combine(
