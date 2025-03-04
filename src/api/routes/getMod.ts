@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames } from '../../shared/Database';
-import { Validator } from '../../shared/Validator';
-import { validateSession } from '../../shared/AuthHelper';
-import { Config } from '../../shared/Config';
-import { Logger } from '../../shared/Logger';
+import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames } from '../../shared/Database.ts';
+import { Validator } from '../../shared/Validator.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Config } from '../../shared/Config.ts';
+import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 
 export class GetModRoutes {

@@ -1,26 +1,26 @@
 import path from "path";
 import { exit } from "process";
 import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
-import { Logger } from "./Logger";
+import { Logger } from "./Logger.ts";
 import { SemVer } from "semver";
-import { Config } from "./Config";
+import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper";
-import { EditQueue } from "./database/models/EditQueue";
-import { GameVersion } from "./database/models/GameVersion";
-import { Mod } from "./database/models/Mod";
-import { ModVersion } from "./database/models/ModVersion";
-import { MOTD } from "./database/models/MOTD";
-import { User, UserRoles } from "./database/models/User";
+import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper.ts";
+import { EditQueue } from "./database/models/EditQueue.ts";
+import { GameVersion } from "./database/models/GameVersion.ts";
+import { Mod } from "./database/models/Mod.ts";
+import { ModVersion } from "./database/models/ModVersion.ts";
+import { MOTD } from "./database/models/MOTD.ts";
+import { User, UserRoles } from "./database/models/User.ts";
 
 // in use by this file
-export * from "./database/models/EditQueue";
-export * from "./database/models/GameVersion";
-export * from "./database/models/Mod";
-export * from "./database/models/ModVersion";
-export * from "./database/models/MOTD";
-export * from "./database/models/User";
-export * from "./database/DBHelper";
+export * from "./database/models/EditQueue.ts";
+export * from "./database/models/GameVersion.ts";
+export * from "./database/models/Mod.ts";
+export * from "./database/models/ModVersion.ts";
+export * from "./database/models/MOTD.ts";
+export * from "./database/models/User.ts";
+export * from "./database/DBHelper.ts";
 
 function isValidDialect(dialect: string): dialect is `sqlite` |`postgres` {
     return [`sqlite`, `postgres`].includes(dialect);

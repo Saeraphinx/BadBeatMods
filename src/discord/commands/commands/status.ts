@@ -1,11 +1,12 @@
 import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionContextType, MessageFlags } from "discord.js";
-import { Command } from "../../classes/Command";
-import { Luma } from "../../classes/Luma";
-import swaggerDocument from '../../../api/swagger.json';
+import { Command } from "../../classes/Command.ts";
+import { Luma } from "../../classes/Luma.ts";
+// eslint-disable-next-line quotes
+import swaggerDocument from '../../../api/swagger.json' with { type: "json" };
 import * as os from "os";
 import * as fs from "fs";
 
-module.exports = {
+export default {
     command: new Command({
         data: new SlashCommandBuilder()
             .setName(`status`)

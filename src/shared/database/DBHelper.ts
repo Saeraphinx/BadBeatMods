@@ -1,11 +1,11 @@
-import { Logger } from "../Logger";
-import { DatabaseManager } from "../Database";
-import { EditQueue } from "./models/EditQueue";
-import { GameVersion } from "./models/GameVersion";
-import { Mod } from "./models/Mod";
-import { ModVersion } from "./models/ModVersion";
-import { MOTD } from "./models/MOTD";
-import { User, UserRolesObject } from "./models/User";
+import { Logger } from "../Logger.ts";
+import { DatabaseManager } from "../Database.ts";
+import { EditQueue } from "./models/EditQueue.ts";
+import { GameVersion } from "./models/GameVersion.ts";
+import { Mod } from "./models/Mod.ts";
+import { ModVersion } from "./models/ModVersion.ts";
+import { MOTD } from "./models/MOTD.ts";
+import { User, UserRolesObject } from "./models/User.ts";
 
 // #region Enums & Types
 export enum SupportedGames {

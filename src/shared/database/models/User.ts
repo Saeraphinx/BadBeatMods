@@ -1,6 +1,6 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { Logger } from "../../Logger";
-import { SupportedGames, UserAPIPublicResponse } from "../../Database";
+import { Logger } from "../../Logger.ts";
+import { SupportedGames, UserAPIPublicResponse } from "../../Database.ts";
 
 export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare readonly id: CreationOptional<number>;

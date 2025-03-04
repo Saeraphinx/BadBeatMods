@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { DatabaseHelper, EditQueue, ModVersion, Status, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, EditQueue, ModVersion, Status, UserRoles } from '../../shared/Database.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Validator } from '../../shared/Validator.ts';
 import { Op } from 'sequelize';
-import { Logger } from '../../shared/Logger';
+import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 
 export class BulkActionsRoutes {

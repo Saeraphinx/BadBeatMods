@@ -1,6 +1,6 @@
 import { describe } from 'node:test';
 import { test, expect, beforeAll, afterAll } from 'vitest';
-import { DatabaseManager } from '../../src/shared/Database';
+import { DatabaseManager } from '../../src/shared/Database.ts';
 
 describe(`Database Initialization`, () => {
     let db: DatabaseManager;

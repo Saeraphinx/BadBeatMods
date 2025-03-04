@@ -1,7 +1,7 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional, Op, DataTypes, Sequelize, ModelOptions, NonAttribute } from "sequelize";
-import { Mod, ModInfer } from "./Mod";
-import { ModVersion, ModVersionInfer } from "./ModVersion";
-import { GameVersion, GameVersionInfer } from "./GameVersion";
+import { Mod, ModInfer } from "./Mod.ts";
+import { ModVersion, ModVersionInfer } from "./ModVersion.ts";
+import { GameVersion, GameVersionInfer } from "./GameVersion.ts";
 
 export type AuditLogInfer = InferAttributes<AuditLog>;
 export type AuditLogActionType = `create` | `update` | `delete`;

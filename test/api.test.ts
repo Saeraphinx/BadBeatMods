@@ -1,6 +1,6 @@
 import { test, expect, describe, beforeAll, afterAll, vi } from 'vitest';
 import supertest from 'supertest';
-import { startServer, stopServer } from '../src';
+import { startServer, stopServer } from '../src/index.ts';
 
 const api = supertest(`http://localhost:8485/api`);
 

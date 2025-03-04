@@ -13,27 +13,28 @@ import passport from 'passport';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 
-import { DatabaseHelper, DatabaseManager } from './shared/Database';
-import { Logger } from './shared/Logger';
-import { Config } from './shared/Config';
-import { Luma } from './discord/classes/Luma';
+import { DatabaseHelper, DatabaseManager } from './shared/Database.ts';
+import { Logger } from './shared/Logger.ts';
+import { Config } from './shared/Config.ts';
+import { Luma } from './discord/classes/Luma.ts';
 
-import { CreateModRoutes } from './api/routes/createMod';
-import { GetModRoutes } from './api/routes/getMod';
-import { UpdateModRoutes } from './api/routes/updateMod';
-import { AuthRoutes } from './api/routes/auth';
-import { VersionsRoutes } from './api/routes/versions';
-import { ImportRoutes } from './api/routes/import';
-import { AdminRoutes } from './api/routes/admin';
-import { ApprovalRoutes } from './api/routes/approval';
-import { BeatModsRoutes } from './api/routes/beatmods';
-import { CDNRoutes } from './api/routes/cdn';
-import { MOTDRoutes } from './api/routes/motd';
-import { UserRoutes } from './api/routes/users';
-import { StatusRoutes } from './api/routes/status';
-import { BulkActionsRoutes } from './api/routes/bulkActions';
+import { CreateModRoutes } from './api/routes/createMod.ts';
+import { GetModRoutes } from './api/routes/getMod.ts';
+import { UpdateModRoutes } from './api/routes/updateMod.ts';
+import { AuthRoutes } from './api/routes/auth.ts';
+import { VersionsRoutes } from './api/routes/versions.ts';
+import { ImportRoutes } from './api/routes/import.ts';
+import { AdminRoutes } from './api/routes/admin.ts';
+import { ApprovalRoutes } from './api/routes/approval.ts';
+import { BeatModsRoutes } from './api/routes/beatmods.ts';
+import { CDNRoutes } from './api/routes/cdn.ts';
+import { MOTDRoutes } from './api/routes/motd.ts';
+import { UserRoutes } from './api/routes/users.ts';
+import { StatusRoutes } from './api/routes/status.ts';
+import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
 
-import swaggerDocument from './api/swagger.json';
+// eslint-disable-next-line quotes
+import swaggerDocument from './api/swagger.json' with { type: "json" };
 import { Server } from 'node:http';
 // eslint-disable-next-line no-console
 console.log(`Starting setup...`);

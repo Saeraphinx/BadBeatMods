@@ -1,10 +1,10 @@
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
-import { Logger } from "../../Logger";
-import { SupportedGames } from "../../Database";
-import { sendModLog } from "../../ModWebhooks";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper";
-import { ModVersion } from "./ModVersion";
-import { User, UserRoles } from "./User";
+import { Logger } from "../../Logger.ts";
+import { SupportedGames } from "../../Database.ts";
+import { sendModLog } from "../../ModWebhooks.ts";
+import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper.ts";
+import { ModVersion } from "./ModVersion.ts";
+import { User, UserRoles } from "./User.ts";
 
 export type ModInfer = InferAttributes<Mod>;
 export type ModApproval = InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>

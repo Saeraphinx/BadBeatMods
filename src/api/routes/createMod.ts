@@ -1,13 +1,13 @@
 import e, { Router } from 'express';
 import path from 'node:path';
-import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database';
+import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database.ts';
 import JSZip from 'jszip';
 import crypto from 'crypto';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper';
-import { Config } from '../../shared/Config';
-import { Logger } from '../../shared/Logger';
+import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
+import { Config } from '../../shared/Config.ts';
+import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
-import { Validator } from '../../shared/Validator';
+import { Validator } from '../../shared/Validator.ts';
 import { UploadedFile } from 'express-fileupload';
 
 export class CreateModRoutes {

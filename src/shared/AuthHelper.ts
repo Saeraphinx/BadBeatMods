@@ -1,5 +1,5 @@
-import { Config } from "./Config";
-import { DatabaseHelper, Mod, SupportedGames, User, UserRoles } from "./Database";
+import { Config } from "./Config.ts";
+import { DatabaseHelper, Mod, SupportedGames, User, UserRoles } from "./Database.ts";
 
 // eslint-disable-next-line quotes
 declare module 'express-session' {

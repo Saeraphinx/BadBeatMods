@@ -1,10 +1,10 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { sendEditLog } from "../../ModWebhooks";
-import { Logger } from "../../Logger";
-import { DatabaseHelper, Status } from "../DBHelper";
-import { User } from "./User";
-import { Mod, ModApproval, ModInfer } from "./Mod";
-import { ModVersion, ModVersionApproval, ModVersionInfer } from "./ModVersion";
+import { sendEditLog } from "../../ModWebhooks.ts";
+import { Logger } from "../../Logger.ts";
+import { DatabaseHelper, Status } from "../DBHelper.ts";
+import { User } from "./User.ts";
+import { Mod, ModApproval, ModInfer } from "./Mod.ts";
+import { ModVersion, ModVersionApproval, ModVersionInfer } from "./ModVersion.ts";
 
 export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAttributes<EditQueue>> {
     declare readonly id: CreationOptional<number>;

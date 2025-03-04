@@ -1,9 +1,10 @@
 import { Routes, REST, RESTGetAPIApplicationCommandResult, ContextMenuCommandBuilder, ContextMenuCommandInteraction, Collection } from "discord.js";
-import { Luma } from "./Luma";
-import { Config } from "../../shared/Config";
+import { Luma } from "./Luma.ts";
+import { Config } from "../../shared/Config.ts";
 import path from "node:path";
 import fs from "node:fs";
-import { Logger } from "../../shared/Logger";
+import { Logger } from "../../shared/Logger.ts";
+import { fileURLToPath } from "node:url";
 
 
 export interface IContextMenu {
@@ -73,7 +74,7 @@ export function loadContextMenus(luma: Luma, commandsPath?: string) {
     if (commandsPath) {
         commandsDirectory = commandsPath;
     } else {
-        commandsDirectory = path.resolve(__dirname);
+        commandsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
     }
 
     fs.readdirSync(path.join(commandsDirectory), { withFileTypes: true })

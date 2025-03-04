@@ -1,10 +1,10 @@
 import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
-import { Logger } from "../../Logger";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper";
-import { sendEditLog, sendModVersionLog } from "../../ModWebhooks";
-import { User, UserRoles } from "./User";
-import { Mod } from "./Mod";
+import { Logger } from "../../Logger.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper.ts";
+import { sendEditLog, sendModVersionLog } from "../../ModWebhooks.ts";
+import { User, UserRoles } from "./User.ts";
+import { Mod } from "./Mod.ts";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
 export type ModVersionApproval = InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>
