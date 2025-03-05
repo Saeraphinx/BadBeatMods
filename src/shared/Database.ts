@@ -289,6 +289,19 @@ export class DatabaseManager {
                 allowNull: false,
                 defaultValue: false,
             },
+            linkedVersionIds: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`linkedVersionIds`));
+                },
+                set(value: number[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`linkedVersionIds`, JSON.stringify(value));
+                },
+            },
             createdAt: DataTypes.DATE, // just so that typescript isn't angy
             updatedAt: DataTypes.DATE,
             deletedAt: DataTypes.DATE,
