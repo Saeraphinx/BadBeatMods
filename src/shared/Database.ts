@@ -715,9 +715,9 @@ export class DatabaseManager {
                         throw new Error(`ModVersion cannot depend on itself.`);
                     }
 
-                    if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
+                    /*if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
                         throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
-                    }
+                    }*/
                 }
             }
         });

@@ -43,11 +43,17 @@ for (let i = 0; i < 100; i++) {
 }
 
 for (let i = 0; i < 200; i++) {
+    let name = `${faker.hacker.noun()} ${faker.hacker.adjective()} ${faker.hacker.verb()}}`;
+    if (fakeProjectData.find((project) => project.name == name) != null) {
+        i--;
+        continue;
+    }
+
     fakeProjectData.push({
         id: i + 1,
-        name: `${faker.hacker.noun()} ${faker.hacker.adjective()}`,
+        name: name,
         description: faker.lorem.paragraph(),
-        category: Categories.Core,
+        category: faker.helpers.arrayElement(getEnumValues(Categories)) as Categories,
         authorIds: [faker.number.int({ min: 1, max: 100 })],
         gameName: faker.helpers.arrayElement(Object.values(SupportedGames)) as SupportedGames,
         status: faker.helpers.arrayElement(getEnumValues(Status)) as Status,
@@ -74,18 +80,19 @@ for (let mod of fakeProjectData) {
         }
 
         let deps: number[] = [];
-        for (let j = 0; j < faker.number.int({ min: 0, max: 10 }); j++) {
-            let genDep = faker.helpers.arrayElements(fakeVersionData, faker.number.int({ min: 0, max: 10 }));
-            genDep.filter((dep) => dep.modId != mod.id).forEach((dep) => {
+        let genDeps = faker.helpers.arrayElements(fakeVersionData, faker.number.int({ min: 0, max: 10 }));
+        genDeps.filter((dep) => dep.modId != mod.id).forEach((dep) => {
+            if (dep.id < fakeVersionData.length + 1) {
                 deps.push(dep.id);
-            });
-        }
+            }
+        });
+        
 
         let validGameVersions = fakeGameVersionData.filter((gameVersion) => gameVersion.gameName == mod.gameName);
 
 
-        fakeVersionData.push({
-            id: i + 1,
+        let data = {
+            id: fakeVersionData.length + 1,
             modId: mod.id,
             modVersion: new SemVer(faker.system.semver()),
             status: faker.helpers.arrayElement(getEnumValues(Status)) as Status,
@@ -98,11 +105,19 @@ for (let mod of fakeProjectData) {
             lastApprovedById: faker.number.int({ min: 1, max: 100 }),
             lastUpdatedById: faker.number.int({ min: 1, max: 100 }),
             dependencies: [...new Set(deps)],
-            supportedGameVersionIds: [...new Set(faker.helpers.arrayElements(validGameVersions, faker.number.int({ min: 0, max: validGameVersions.length - 1 })).map((gameVersion) => gameVersion.id))],
+            supportedGameVersionIds: [...new Set(faker.helpers.arrayElements(validGameVersions, faker.number.int({ min: 1, max: validGameVersions.length - 1 })).map((gameVersion) => gameVersion.id))],
             createdAt: faker.date.past(),
             updatedAt: faker.date.recent(),
             deletedAt: /*faker.datatype.boolean() ? faker.date.recent() :*/ null
-        });
+        };
+        if (fakeVersionData.find((version) => {
+            return version.modVersion == data.modVersion && version.platform == data.platform && version.modId == data.modId;
+        })) {
+            i--;
+            continue;
+        }
+
+        fakeVersionData.push(data);
     }
 }
 

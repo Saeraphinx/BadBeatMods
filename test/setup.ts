@@ -5,6 +5,7 @@ import { log } from "console";
 import { beforeAll, beforeEach, vi } from "vitest";
 import { Logger } from "../src/shared/Logger.ts";
 import { Config } from "../src/shared/Config.ts";
+import { Utils } from "../src/shared/Utils.ts";
 
 beforeEach(async () => {
     vi.mock(`../src/shared/Logger.ts`, async (original) => {
@@ -33,7 +34,19 @@ beforeEach(async () => {
         const originalModule = await importOriginal() as typeof import('../src/shared/Config.ts');
         process.env.NODE_ENV = `test`;
         return {
-            Config: originalModule.DEFAULT_CONFIG
+            Config: {
+                ...originalModule.DEFAULT_CONFIG,
+                database: {
+                    ...originalModule.DEFAULT_CONFIG.database,
+                    url: `:memory:`,
+                },
+                server: {
+                    ...originalModule.DEFAULT_CONFIG.server,
+                    port: 8486,
+                    url: `http://localhost:8486`,
+                    sessionSecret: Utils.createRandomString(64)
+                }
+            }
         };
     });
 });
