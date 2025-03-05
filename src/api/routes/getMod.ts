@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Config } from '../../shared/Config.ts';
@@ -54,7 +54,7 @@ export class GetModRoutes {
 
             let showUnverified = reqQuery.data.status !== `verified`;
             let statuses = showUnverified ? [Status.Verified, Status.Unverified] : [Status.Verified];
-            let mods: {mod: ModAPIPublicResponse, latest: any}[] = [];
+            let mods: {mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse | null}[] = [];
             if (gameVersion === null) {
                 let modDb = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
 

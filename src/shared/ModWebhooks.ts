@@ -112,7 +112,7 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
     let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
     let gameVersions = await modVersion.getSupportedGameVersions();
     let dependancies: string[] = [];
-    let resolvedDependancies = await modVersion.getUpdatedDependencies(gameVersions[0].id, [Status.Verified, Status.Unverified]);
+    let resolvedDependancies = await modVersion.getLiveDependencies(gameVersions[0].id, [Status.Verified, Status.Unverified]);
 
     if (!author) {
         return Logger.error(`Author not found for mod version ${modVersion.id}`);

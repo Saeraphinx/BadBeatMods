@@ -7,6 +7,7 @@
     "docker_build": "docker build -t badbeatmods .",
     "build_start": "npm run build && npm run start",
     "swagger": "npx tsx src/api/generateSwagger.ts",
+    "test": "vitest run",
     "lint": "npx eslint ./src --ext .ts"
   },
   "dependencies": {
