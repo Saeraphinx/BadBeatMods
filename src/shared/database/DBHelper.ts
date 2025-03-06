@@ -95,6 +95,7 @@ export enum Status {
     Private = `private`,
     Removed = `removed`,
     Unverified = `unverified`,
+    Pending = `pending`,
     Verified = `verified`,
 }
 

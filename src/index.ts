@@ -157,11 +157,29 @@ if (Config.flags.enableSwagger) {
         // @ts-expect-error it complains about it not being undefineable. this just in! i dont care.
         swaggerDocument.components.securitySchemes.bearerAuth = undefined;
     }
-    apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    apiRouter.get(`/swagger/full.json`, (req, res) => {
+        res.json(swaggerDocument);
+    });
+    apiRouter.get(`/swagger/public.json`, (req, res) => {
+        res.sendFile(path.resolve(`./api/public.json`));
+    });
+
+    apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(undefined, {
+        explorer: true,
         swaggerOptions: {
             docExpansion: `list`,
             defaultModelExpandDepth: 2,
             defaultModelsExpandDepth: 2,
+            urls: [
+                {
+                    url: `${Config.server.url}${Config.server.apiRoute}/swagger/full.json`,
+                    name: `Full API`
+                },
+                {
+                    url: `${Config.server.url}${Config.server.apiRoute}/swagger/public.json`,
+                    name: `Public API`,
+                }
+            ]
         }
     }));
 }
@@ -200,6 +218,7 @@ if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
 
 new CDNRoutes(cdnRouter);
 
+app.use(session(sessionConfigData));
 passport.use(`bearer`, new BearerStrategy(
     function(token, done) {
         const octokit = new Octokit({ auth: token });
