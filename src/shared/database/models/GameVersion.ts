@@ -10,7 +10,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
     declare readonly id: CreationOptional<number>;
     declare gameName: SupportedGames;
     declare version: string; // semver-esc version (e.g. 1.29.1)
-    declare defaultVersion: boolean;
+    declare defaultVersion: CreationOptional<boolean>;
     declare linkedVersionIds: CreationOptional<number[]>;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;

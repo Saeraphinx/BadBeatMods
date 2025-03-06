@@ -5,9 +5,6 @@ export default defineConfig({
         include: [`**/*.test.ts`],
         setupFiles: [`./test/setup.ts`],
         //globalSetup: './test/setup.ts',
-        //reporters: [`hanging-process`],
-        alias: {
-            "@shared": `./src/shared`
-        }
+        reporters: process.env.GITHUB_ACTIONS ? [`github-actions`, [`verbose`, { summary: true }]] : [[`default`]],
     }
 });

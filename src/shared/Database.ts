@@ -702,6 +702,25 @@ export class DatabaseManager {
                 if (gameVersion.gameName != parentMod.gameName) {
                     throw new Error(`ModVersion must only have game versions for the parent mod's game.`);
                 }
+
+                // check if game version is linked to another game version
+                if (gameVersion.linkedVersionIds.length > 0) {
+                    let linkedVersions = await this.GameVersions.findAll({ where: { id: gameVersion.linkedVersionIds } });
+                    // ensure that all linked versions are valid and for the same game
+                    if (linkedVersions.length != gameVersion.linkedVersionIds.length) {
+                        throw new Error(`Invalid linked game versions found. Please contact a site administrator.`);
+                    }
+
+                    for (let linkedVersion of linkedVersions) {
+                        if (linkedVersion.gameName != parentMod.gameName) {
+                            throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the parent mod's game. Please contact a site administrator.`);
+                        }
+
+                        if (!modVersion.supportedGameVersionIds.includes(linkedVersion.id)) {
+                            modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, linkedVersion.id];
+                        }
+                    }
+                }
             }
 
             modVersion.supportedGameVersionIds = modVersion.supportedGameVersionIds.sort((a, b) => {
@@ -742,6 +761,32 @@ export class DatabaseManager {
                     gameVersion.defaultVersion = true;
                 }
             });
+        });
+
+        this.GameVersions.afterValidate(async (gameVersion) => {
+            if (gameVersion.linkedVersionIds.length > 0) {
+                let linkedVersions = await this.GameVersions.findAll({ where: { id: gameVersion.linkedVersionIds } });
+                // ensure that all linked versions are valid and for the same game
+                if (linkedVersions.length != gameVersion.linkedVersionIds.length) {
+                    throw new Error(`Invalid linked Game Version IDs.`);
+                }
+
+                for (let linkedVersion of linkedVersions) {
+                    if (linkedVersion.gameName != gameVersion.gameName) {
+                        throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the same game.`);
+                    }
+
+                    if (linkedVersion.id == gameVersion.id) {
+                        throw new Error(`Game Version cannot link to itself.`);
+                    }
+
+                    // ensure that the linked version is also linked back to this version
+                    if (!linkedVersion.linkedVersionIds.includes(gameVersion.id)) {
+                        linkedVersion.linkedVersionIds = [...linkedVersion.linkedVersionIds, gameVersion.id];
+                        await linkedVersion.save({hooks: false});
+                    }
+                }
+            }
         });
 
         this.EditApprovalQueue.beforeCreate(async (queueItem) => {

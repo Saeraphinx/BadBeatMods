@@ -1,26 +1,23 @@
-import { test, expect, beforeAll, afterAll, beforeEach, describe } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, Mod, ModVersion, Status, SupportedGames, Platform, ModVersionInfer } from '../../src/shared/Database.ts';
+import { test, expect, beforeAll, afterAll, beforeEach, describe, afterEach, vi } from 'vitest';
+import { Categories, DatabaseManager, GameVersion, Mod, ModVersion, Status, SupportedGames, Platform, ModVersionInfer, User, DatabaseHelper, UserRoles } from '../../src/shared/Database.ts';
 import { UniqueConstraintError } from 'sequelize';
 // eslint-disable-next-line quotes
-import { projects } from '../fakeData.json' with { type: 'json' };
+import { projects, users } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
+import { sendEditLog, sendModLog, sendModVersionLog } from '../../src/shared/ModWebhooks.ts';
 
-describe.sequential(`Versions`, async () => {
+describe.sequential(`Versions - Hooks`, async () => {
     let db: DatabaseManager;
     let testMod1: Mod;
     let testMod2: Mod;
     let testModGV: GameVersion[];
-    let testVersion: ModVersion;
     let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
-
-    let modVersion: ModVersion|undefined;
 
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
         try {
-            
             testModGV = await db.GameVersions.bulkCreate([
                 {
                     gameName: SupportedGames.BeatSaber,
@@ -68,9 +65,6 @@ describe.sequential(`Versions`, async () => {
                 downloadCount: 0,
                 lastApprovedById: null
             };
-            testVersion = await db.ModVersions.create({
-                ...defaultVersionData,
-            });
         } catch (e) {
             if (e instanceof UniqueConstraintError) {
                 // eslint-disable-next-line no-console
@@ -85,9 +79,7 @@ describe.sequential(`Versions`, async () => {
     });
 
     beforeEach(async () => {
-        if (modVersion !== undefined) {
-            await modVersion.destroy();
-        }
+        db.ModVersions.truncate();
     });
 
     test(`able to create mod w/o dependencies`, async () => {
@@ -96,11 +88,17 @@ describe.sequential(`Versions`, async () => {
             modId: testMod1.id,
             modVersion: new SemVer(`1.0.0`),
         });*/
+        let testVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
         expect(testVersion).toBeDefined();
     });
 
     test(`able to create mod w/ dependencies`, async () => {
-        modVersion = await db.ModVersions.create({
+        let testVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+        let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
@@ -110,7 +108,10 @@ describe.sequential(`Versions`, async () => {
     });
 
     test(`able to deduplicate dependencies`, async () => {
-        modVersion = await db.ModVersions.create({
+        let testVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+        let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
@@ -122,23 +123,35 @@ describe.sequential(`Versions`, async () => {
 
     test(`does not allow invalid dependencies`, async () => {
         await expect(async () => {
-            modVersion = await db.ModVersions.create({
+            await db.ModVersions.create({
                 ...defaultVersionData,
                 modId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
-                dependencies: [testVersion.id + 999],
+                dependencies: [999],
             });
         }).rejects.toThrow();
     });
 
-    test(`does not allow for dependency on itself or another version of the same mod`, async () => {
+    test(`does not allow for dependency on another version of the same mod`, async () => {
+        let testVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
         await expect(async () => {
-            modVersion = await db.ModVersions.create({
+            await db.ModVersions.create({
                 ...defaultVersionData,
                 modVersion: new SemVer(`1.0.0`),
                 dependencies: [testVersion.id],
             });
         }).rejects.toThrow();
+    });
+
+    test(`does not allow for dependency on self`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+
+        modVersion.dependencies = [modVersion.id];
+        await expect(modVersion.save()).rejects.toThrow();
     });
 
     test(`sorts game versions by semver`, async () => {
@@ -148,7 +161,7 @@ describe.sequential(`Versions`, async () => {
         expect(firstVersion.version).toBe(`1.0.0`);
         expect(secondVersion.version).toBe(`1.1.0`);
 
-        modVersion = await db.ModVersions.create({
+        let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modVersion: new SemVer(`1.0.0`),
             supportedGameVersionIds: [secondVersion.id, firstVersion.id],
@@ -162,7 +175,7 @@ describe.sequential(`Versions`, async () => {
 
     test(`does not allow invalid game versions`, async () => {
         await expect(async () => {
-            modVersion = await db.ModVersions.create({
+            await db.ModVersions.create({
                 ...defaultVersionData,
                 modVersion: new SemVer(`1.0.0`),
                 supportedGameVersionIds: [1, 999],
@@ -173,7 +186,7 @@ describe.sequential(`Versions`, async () => {
     test(`removes duplicate game versions`, async () => {
         let firstVersion = testModGV[0];
 
-        modVersion = await db.ModVersions.create({
+        let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modVersion: new SemVer(`1.0.0`),
             supportedGameVersionIds: [firstVersion.id, firstVersion.id],
@@ -186,7 +199,7 @@ describe.sequential(`Versions`, async () => {
 
     test(`requires at least one game version`, async () => {
         await expect(async () => {
-            modVersion = await db.ModVersions.create({
+            await db.ModVersions.create({
                 ...defaultVersionData,
                 modVersion: new SemVer(`1.0.0`),
                 supportedGameVersionIds: [],
@@ -195,6 +208,293 @@ describe.sequential(`Versions`, async () => {
     });
 });
 
+describe.sequential(`Versions - Visibility`, async () => {
+    let db: DatabaseManager;
+    let testUser1: User;
+    let testUser2: User;
+    let testMod1: Mod;
+    let testMod2: Mod;
+    let testGv1: GameVersion;
+    let testGv2: GameVersion;
+    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`> = {
+        modId: 1,
+        authorId: 1,
+        modVersion: new SemVer(`0.0.1`),
+        platform: Platform.UniversalPC,
+        lastUpdatedById: 1,
+        supportedGameVersionIds: [1],
+        status: Status.Private,
+        contentHashes: [],
+        zipHash: faker.git.commitSha(),
+        dependencies: [],
+        fileSize: 0,
+        downloadCount: 0,
+        lastApprovedById: null
+    };
+
+    beforeAll(async () => {
+        db = new DatabaseManager();
+        await db.init();
+        testUser1 = await db.Users.create({
+            ...users[0],
+            roles: {sitewide: [], perGame: {}},
+            createdAt: new Date(users[0].createdAt),
+            updatedAt: new Date(users[0].updatedAt),
+        });
+        testUser2 = await db.Users.create({
+            ...users[1],
+            roles: {sitewide: [], perGame: {}},
+            createdAt: new Date(users[1].createdAt),
+            updatedAt: new Date(users[1].updatedAt),
+        });
+        testGv1 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.0.0`,
+            defaultVersion: true,
+        });
+        testGv2 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.1.0`,
+            defaultVersion: false,
+        });
+        testMod1 = await db.Mods.create({
+            ...projects[0],
+            gameName: SupportedGames.BeatSaber,
+            status: Status.Verified,
+            category: projects[0].category as Categories,
+            authorIds: [testUser1.id],
+            createdAt: new Date(projects[0].createdAt),
+            updatedAt: new Date(projects[0].updatedAt),
+        });
+        testMod2 = await db.Mods.create({
+            ...projects[1],
+            gameName: SupportedGames.BeatSaber,
+            status: Status.Verified,
+            category: projects[0].category as Categories,
+            authorIds: [testUser1.id],
+            createdAt: new Date(projects[0].createdAt),
+            updatedAt: new Date(projects[0].updatedAt),
+        });
+        await DatabaseHelper.refreshAllCaches();
+    });
+
+    afterAll(async () => {
+        await db.sequelize.close();
+    });
+
+    afterEach(async () => {
+        db.ModVersions.truncate();
+        testUser1 = await testUser1.reload();
+        testUser2 = await testUser2.reload();
+        // Do not restore data for the NR user.
+    });
+
+    test(`should show private versions to the author`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        let v = await modVersion.isAllowedToView(testUser1);
+        expect(v).toBe(true);
+    });
+
+    test(`should show private versions to sitewide all permissions`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        let v = await modVersion.isAllowedToView(db.serverAdmin);
+        expect(v).toBe(true);
+    });
+
+    test(`should show private versions to sitewide approver`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        testUser2.roles = {
+            sitewide: [UserRoles.Approver],
+            perGame: {},
+        };
+        let v = await modVersion.isAllowedToView(testUser2);
+        expect(v).toBe(true);
+    });
+
+    test(`should show private versions to game approver`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            supportedGameVersionIds: [testGv1.id],
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        testUser2.roles = {
+            sitewide: [],
+            perGame: {
+                [SupportedGames.BeatSaber]: [UserRoles.Approver],
+            },
+        };
+        let v = await modVersion.isAllowedToView(testUser2);
+        expect(v).toBe(true);
+    });
+
+    test(`should not show private versions to random user`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        let v = await modVersion.isAllowedToView(testUser2);
+        expect(v).toBe(false);
+    });
+
+    test(`should not show private versions to not logged in user`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Private,
+        });
+        let v = await modVersion.isAllowedToView(null);
+        expect(v).toBe(false);
+    });
+
+    test(`should show verified versions to regular user`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Verified,
+        });
+        let v = await modVersion.isAllowedToView(testUser2);
+        expect(v).toBe(true);
+    });
+
+    test(`should show verified versions to not logged in user`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modId: testMod1.id,
+            authorId: testUser1.id,
+            modVersion: new SemVer(`1.0.0`),
+            status: Status.Verified,
+        });
+        let v = await modVersion.isAllowedToView(null);
+        expect(v).toBe(true);
+    });
+});
+
+describe.skip.sequential(`Versions - Editing`, async () => {
+    let db: DatabaseManager;
+    let testUser1: User;
+    let testUser2: User;
+    let testMod1: Mod;
+    let testMod2: Mod;
+    let testGv1: GameVersion;
+    let testGv2: GameVersion;
+    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+
+    beforeAll(async () => {
+        db = new DatabaseManager();
+        await db.init();
+        testUser1 = await db.Users.create({
+            ...users[0],
+            roles: {sitewide: [], perGame: {}},
+            createdAt: new Date(users[0].createdAt),
+            updatedAt: new Date(users[0].updatedAt),
+        });
+        testUser2 = await db.Users.create({
+            ...users[1],
+            roles: {sitewide: [], perGame: {}},
+            createdAt: new Date(users[1].createdAt),
+            updatedAt: new Date(users[1].updatedAt),
+        });
+        testGv1 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.0.0`,
+            defaultVersion: true,
+        });
+        testGv2 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.1.0`,
+            defaultVersion: false,
+        });
+        testMod1 = await db.Mods.create({
+            ...projects[0],
+            gameName: SupportedGames.BeatSaber,
+            status: Status.Verified,
+            category: projects[0].category as Categories,
+            authorIds: [testUser1.id],
+            createdAt: new Date(projects[0].createdAt),
+            updatedAt: new Date(projects[0].updatedAt),
+        });
+        testMod2 = await db.Mods.create({
+            ...projects[1],
+            gameName: SupportedGames.BeatSaber,
+            status: Status.Verified,
+            category: projects[0].category as Categories,
+            authorIds: [testUser1.id],
+            createdAt: new Date(projects[0].createdAt),
+            updatedAt: new Date(projects[0].updatedAt),
+        });
+        defaultVersionData = {
+            modId: testMod1.id,
+            authorId: 1,
+            modVersion: new SemVer(`0.0.1`),
+            platform: Platform.UniversalPC,
+            lastUpdatedById: 1,
+            supportedGameVersionIds: [1],
+            status: Status.Private,
+            contentHashes: [],
+            zipHash: faker.git.commitSha(),
+            dependencies: [],
+            fileSize: 0,
+            downloadCount: 0,
+            lastApprovedById: null
+        };
+        await DatabaseHelper.refreshAllCaches();
+
+        vi.mock(`../src/shared/ModWebhooks.ts`, () => ({
+            sendEditLog: vi.fn((...args:any[]) => {}),
+            sendModLog: vi.fn((...args:any[]) => {}),
+            sendModVersionLog: vi.fn((...args:any[]) => {}),
+        }, { spy: true }));
+    });
+
+    afterAll(async () => {
+        await db.sequelize.close();
+    });
+
+    afterEach(async () => {
+        db.ModVersions.truncate();
+        testUser1 = await testUser1.reload();
+        testUser2 = await testUser2.reload();
+        // Do not restore data for the NR user.
+    });
+
+    test(`should allow author to edit`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+
+        modVersion.setStatus(Status.Verified, testUser1);
+        expect(modVersion.status).toBe(Status.Verified);
+        expect(sendEditLog).toHaveBeenCalled();
+    });
+});
 /*
         let promises: Promise<GameVersion | User | ModVersion | Mod>[] = [];
             for (let version of gameVersions) {

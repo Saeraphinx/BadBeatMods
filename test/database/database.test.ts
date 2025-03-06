@@ -1,5 +1,4 @@
-import { describe } from 'node:test';
-import { test, expect, beforeAll, afterAll } from 'vitest';
+import { test, expect, beforeAll, afterAll, describe } from 'vitest';
 import { DatabaseManager, UserRoles } from '../../src/shared/Database.ts';
 
 describe(`Database Initialization`, () => {
