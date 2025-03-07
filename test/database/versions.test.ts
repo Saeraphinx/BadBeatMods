@@ -5,7 +5,13 @@ import { UniqueConstraintError } from 'sequelize';
 import { projects, users } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
-import { sendEditLog, sendModLog, sendModVersionLog } from '../../src/shared/ModWebhooks.ts';
+
+
+vi.mock('../../src/shared/ModWebhooks.ts', () => ({
+    sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, action: 'New' | 'Approved' | 'Rejected') => {}),
+    sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, action: 'New' | 'Approved' | 'Rejected' | 'Revoked', modObj?: Mod) => {}),
+    sendEditLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, changes: Partial<ModVersionInfer>) => {}),
+}));
 
 describe.sequential(`Versions - Hooks`, async () => {
     let db: DatabaseManager;
@@ -79,7 +85,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 
     beforeEach(async () => {
-        db.ModVersions.truncate();
+        await db.ModVersions.truncate();
     });
 
     test(`able to create mod w/o dependencies`, async () => {
@@ -397,7 +403,7 @@ describe.sequential(`Versions - Visibility`, async () => {
     });
 });
 
-describe.skip.sequential(`Versions - Editing`, async () => {
+describe.sequential(`Versions - Editing`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
     let testUser2: User;
@@ -406,6 +412,7 @@ describe.skip.sequential(`Versions - Editing`, async () => {
     let testGv1: GameVersion;
     let testGv2: GameVersion;
     let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
 
     beforeAll(async () => {
         db = new DatabaseManager();
@@ -466,33 +473,49 @@ describe.skip.sequential(`Versions - Editing`, async () => {
             lastApprovedById: null
         };
         await DatabaseHelper.refreshAllCaches();
-
-        vi.mock(`../src/shared/ModWebhooks.ts`, () => ({
-            sendEditLog: vi.fn((...args:any[]) => {}),
-            sendModLog: vi.fn((...args:any[]) => {}),
-            sendModVersionLog: vi.fn((...args:any[]) => {}),
-        }, { spy: true }));
     });
 
     afterAll(async () => {
         await db.sequelize.close();
     });
 
-    afterEach(async () => {
-        db.ModVersions.truncate();
+    beforeEach(async () => {
+        await db.ModVersions.truncate();
         testUser1 = await testUser1.reload();
         testUser2 = await testUser2.reload();
-        // Do not restore data for the NR user.
     });
 
-    test(`should allow author to edit`, async () => {
+    test(`should send log on status update unverified`, async () => {
         let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
         });
 
-        modVersion.setStatus(Status.Verified, testUser1);
+        await modVersion.setStatus(Status.Unverified, testUser1);
+        expect(modVersion.status).toBe(Status.Unverified);
+        expect(sendModVersionLog).toHaveBeenCalled();
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `New`);
+    });
+
+    test(`should send log on status update verified`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+
+        await modVersion.setStatus(Status.Verified, testUser1);
         expect(modVersion.status).toBe(Status.Verified);
-        expect(sendEditLog).toHaveBeenCalled();
+        expect(sendModVersionLog).toHaveBeenCalled();
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `Approved`);
+    });
+
+    test(`should send log on status update removed`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+        });
+
+        await modVersion.setStatus(Status.Removed, testUser1);
+        expect(modVersion.status).toBe(Status.Removed);
+        expect(sendModVersionLog).toHaveBeenCalled();
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `Rejected`);
     });
 });
 /*

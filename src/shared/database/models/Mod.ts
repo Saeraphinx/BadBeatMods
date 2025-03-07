@@ -63,7 +63,6 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
 
     public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
         let versions = DatabaseHelper.cache.modVersions.filter((version) => {
-            // if the version is not for the correct platform
             if (version.modId !== this.id) {
                 return false;
             }
@@ -77,8 +76,9 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 return false;
             }
 
-            if (version.platform === Platform.UniversalQuest) {
-                return platform === Platform.UniversalQuest;
+            
+            if (platform === Platform.UniversalQuest) {
+                return version.platform === Platform.UniversalQuest;
             } else {
                 if (version.platform === Platform.UniversalPC || version.platform === platform) {
                     return true;

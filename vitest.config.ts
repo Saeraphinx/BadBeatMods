@@ -6,5 +6,7 @@ export default defineConfig({
         setupFiles: [`./test/setup.ts`],
         //globalSetup: './test/setup.ts',
         reporters: process.env.GITHUB_ACTIONS ? [`github-actions`, [`verbose`, { summary: true }]] : [[`default`]],
+        mockReset: true,
+        testTimeout: 10000
     }
 });

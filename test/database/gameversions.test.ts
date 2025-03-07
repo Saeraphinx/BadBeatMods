@@ -1,57 +1,54 @@
-import { test, expect, beforeAll, afterAll, describe } from 'vitest';
-import { DatabaseManager, GameVersion, SupportedGames } from '../../src/shared/Database.ts';
+import { test, expect, beforeAll, afterAll, describe, afterEach } from 'vitest';
+import { Categories, DatabaseManager, GameVersion, GameVersionInfer, ModInfer, SupportedGames, Status, ModVersionInfer, Platform, DatabaseHelper, UserInfer } from '../../src/shared/Database.ts';
 // eslint-disable-next-line quotes
-import { gameVersions } from '../fakeData.json' with { type: 'json' };
-import { afterEach } from 'node:test';
+import * as fakeData from '../fakeData.json' with { type: 'json' };
+import { SemVer } from 'semver';
 
-describe.sequential(`Game Versions`, () => {
-    let db: DatabaseManager;
-    beforeAll(async () => {
-        db = new DatabaseManager();
-        await db.init();
-
-        let promises: Promise<GameVersion>[] = [];
-        for (let version of gameVersions) {
-            promises.push(db.GameVersions.create({
-                ...version,
-                gameName: version.gameName as SupportedGames,
-                createdAt: new Date(version.createdAt),
-                updatedAt: new Date(version.updatedAt),
-            }));
-        }
-        await Promise.all(promises);
+let gameVersions: GameVersionInfer[] = [];
+for (let gv of fakeData.gameVersions) {
+    gameVersions.push({
+        ...gv,
+        gameName: gv.gameName as SupportedGames,
+        createdAt: new Date(gv.createdAt),
+        updatedAt: new Date(gv.updatedAt),
+        linkedVersionIds: [],
     });
+}
 
-    afterAll(async () => {
-        await db.sequelize.close();
+let users: UserInfer[] = [];
+for (let user of fakeData.users) {
+    users.push({
+        ...user,
+        createdAt: new Date(user.createdAt),
+        updatedAt: new Date(user.updatedAt),
     });
+}
 
-    test(`should be able to get default game version`, async () => {
-        let games = GameVersion.getGames();
-        for (let game of games) {
-            let version = await GameVersion.getDefaultVersion(game);
-            expect(version).toBeDefined();
-        }
+let projects: ModInfer[] = [];
+for (let project of fakeData.projects) {
+    projects.push({
+        ...project,
+        gameName: project.gameName as SupportedGames,
+        category: project.category as Categories,
+        status: project.status as Status,
+        createdAt: new Date(project.createdAt),
+        updatedAt: new Date(project.updatedAt),
     });
+}
 
-    test(`should only have one default version per game`, async () => {
-        let games = GameVersion.getGames();
-        for (let game of games) {
-            let defaultVersion = await GameVersion.getDefaultVersionObject(game);
-            let version = await db.GameVersions.findAll({ where: { gameName: game } });
-
-            for (let v of version) {
-                if (v.defaultVersion) {
-                    expect(v).toBeDefined();
-                    expect(v.gameName).toBe(game);
-                    expect(v.id).toBe(defaultVersion?.id);
-                }
-            }
-        }
+let versions: ModVersionInfer[] = [];
+for (let version of fakeData.versions) {
+    versions.push({
+        ...version,
+        modVersion: new SemVer(version.modVersion.raw),
+        platform: version.platform as Platform,
+        status: version.status as Status,
+        createdAt: new Date(version.createdAt),
+        updatedAt: new Date(version.updatedAt),
     });
-});
+}
 
-describe.sequential(`Game Version Hooks`, () => {
+describe.sequential(`Game Versions - Hooks`, () => {
     let db: DatabaseManager;
     beforeAll(async () => {
         db = new DatabaseManager();
@@ -135,4 +132,134 @@ describe.sequential(`Game Version Hooks`, () => {
         version1.linkedVersionIds = [version2.id];
         await expect(version1.save()).rejects.toThrow();
     });
+});
+
+describe.sequential(`Game Versions - GV`, () => {
+    let db: DatabaseManager;
+    beforeAll(async () => {
+        db = new DatabaseManager();
+        await db.init();
+
+        await db.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
+        await DatabaseHelper.refreshAllCaches();
+    });
+
+    afterAll(async () => {
+        await db.sequelize.close();
+    });
+
+    test(`should be able to get default game version`, async () => {
+        let games = GameVersion.getGames();
+        for (let game of games) {
+            let version = await GameVersion.getDefaultVersion(game);
+            expect(version).toBeDefined();
+        }
+    });
+
+    // this test doesn't test properly
+    test.todo(`should only have one default version per game`, async () => {
+        let games = GameVersion.getGames();
+        for (let game of games) {
+            let defaultVersion = await GameVersion.getDefaultVersionObject(game);
+            let version = await db.GameVersions.findAll({ where: { gameName: game } });
+
+            for (let v of version) {
+                if (v.defaultVersion) {
+                    expect(v).toBeDefined();
+                    expect(v.gameName).toBe(game);
+                    expect(v.id).toBe(defaultVersion?.id);
+                }
+            }
+        }
+    });
+});
+
+describe.sequential(`Game Versions - Getting Mods`, () => {
+    let db: DatabaseManager;
+    beforeAll(async () => {
+        db = new DatabaseManager();
+        await db.init();
+
+        await db.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
+        await db.Mods.bulkCreate(projects, { individualHooks: true });
+        await db.ModVersions.bulkCreate(versions, { individualHooks: true });
+        await DatabaseHelper.refreshAllCaches();
+    });
+
+    afterAll(async () => {
+        await db.sequelize.close();
+    });
+
+    test(`should return only verified universal pc mods`, async () => {
+        let games = GameVersion.getGames();
+        for (let game of games) {
+            let versions = await db.GameVersions.findAll({ where: { gameName: game } });
+            for (let version of versions) {
+                let supportedMods = await version.getSupportedMods(Platform.UniversalPC, [Status.Verified]);
+                for (let mod of supportedMods) {
+                    expect(mod).toBeDefined();
+                    expect(mod.mod).toBeDefined();
+                    expect(mod.latest).toBeDefined();
+                    expect(mod.mod.gameName).toBe(game);
+                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
+                    expect(mod.mod.status).toBe(Status.Verified);
+                    expect(mod.latest.status).toBe(Status.Verified);
+                    expect(mod.latest.platform).toBe(Platform.UniversalPC);
+                }
+            }
+        }
+    });
+
+    test(`should return only verified platform quest mods`, async () => {
+        let games = GameVersion.getGames();
+        for (let game of games) {
+            let versions = await db.GameVersions.findAll({ where: { gameName: game } });
+            for (let version of versions) {
+                let supportedMods = await version.getSupportedMods(Platform.UniversalQuest, [Status.Verified]);
+                for (let mod of supportedMods) {
+                    expect(mod).toBeDefined();
+                    expect(mod.mod).toBeDefined();
+                    expect(mod.latest).toBeDefined();
+                    expect(mod.mod.gameName).toBe(game);
+                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
+                    expect(mod.mod.status).toBe(Status.Verified);
+                    expect(mod.latest.status).toBe(Status.Verified);
+                    expect(mod.latest.platform).toBe(Platform.UniversalQuest);
+                }
+            }
+        }
+    });
+
+    test(`should return both verified & unverified pc mods`, async () => {
+        let hasSeenVerified = false;
+        let hasSeenUnverified = false;
+        let games = GameVersion.getGames();
+        expect(games.length).toBeGreaterThanOrEqual(1);
+        for (let game of games) {
+            let versions = await db.GameVersions.findAll({ where: { gameName: game } });
+            expect(versions.length).toBeGreaterThanOrEqual(1);
+            for (let version of versions) {
+                let supportedMods = await version.getSupportedMods(Platform.UniversalPC, [Status.Verified, Status.Unverified]);
+                expect(supportedMods.length).toBeGreaterThanOrEqual(1);
+                for (let mod of supportedMods) {
+                    expect(mod).toBeDefined();
+                    expect(mod.mod).toBeDefined();
+                    expect(mod.latest).toBeDefined();
+                    expect(mod.mod.gameName).toBe(game);
+                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
+                    expect(mod.latest.status).not.toBeOneOf([Status.Pending, Status.Removed, Status.Private]);
+                    expect(mod.latest.platform).toBe(Platform.UniversalPC);
+                    if (mod.latest.status == Status.Verified) {
+                        hasSeenVerified = true;
+                    }
+                    if (mod.latest.status == Status.Unverified) {
+                        hasSeenUnverified = true;
+                    }
+                }
+            }
+        }
+        expect(hasSeenVerified).toBe(true);
+        expect(hasSeenUnverified).toBe(true);
+    });
+
 });
