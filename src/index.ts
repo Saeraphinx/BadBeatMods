@@ -35,7 +35,9 @@ import { StatusRoutes } from './api/routes/status.ts';
 import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
 
 // eslint-disable-next-line quotes
-import swaggerDocument from './api/swagger.json' with { type: "json" };
+import fullApi from './api/swagger_full.json' with { type: "json" };
+// eslint-disable-next-line quotes
+import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
 // eslint-disable-next-line no-console
 console.log(`Starting setup...`);
@@ -152,16 +154,21 @@ new StatusRoutes(apiRouter);
 new BulkActionsRoutes(apiRouter);
 
 if (Config.flags.enableSwagger) {
-    swaggerDocument.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
+    publicApi.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
+    fullApi.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
     if (!Config.flags.enableGithubPAT) {
         // @ts-expect-error it complains about it not being undefineable. this just in! i dont care.
-        swaggerDocument.components.securitySchemes.bearerAuth = undefined;
+        publicApi.components.securitySchemes.bearerAuth = undefined;
+        // @ts-expect-error it complains about it not being undefineable.
+        fullApi.components.securitySchemes.bearerAuth = undefined;
     }
     apiRouter.get(`/swagger/full.json`, (req, res) => {
-        res.json(swaggerDocument);
+        res.setHeader(`Cache-Control`, `public, max-age=3600`);
+        res.json(fullApi);
     });
     apiRouter.get(`/swagger/public.json`, (req, res) => {
-        res.sendFile(path.resolve(`./api/public.json`));
+        res.setHeader(`Cache-Control`, `public, max-age=3600`);
+        res.json(publicApi);
     });
 
     apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(undefined, {

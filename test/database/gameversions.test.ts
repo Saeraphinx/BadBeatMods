@@ -166,6 +166,7 @@ describe.sequential(`Game Versions - GV`, () => {
             for (let v of version) {
                 if (v.defaultVersion) {
                     expect(v).toBeDefined();
+                    expect(v).not.toBeNull();
                     expect(v.gameName).toBe(game);
                     expect(v.id).toBe(defaultVersion?.id);
                 }

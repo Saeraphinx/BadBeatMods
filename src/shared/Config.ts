@@ -164,6 +164,7 @@ export class Config {
     public static get flags() {
         return this._flags;
     }
+    public static readonly API_VERSION = `0.0.1`;
     // #endregion
     constructor() {
         if (process.env.NODE_ENV === `test`) {

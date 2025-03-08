@@ -475,7 +475,7 @@ const doc = {
     }
 };
 
-const outputFile = `./swagger.json`;
+const outputFile = `./swagger_full.json`;
 const routes = [
     `./routes/beatmods.ts`,
     `./routes/getMod.ts`,

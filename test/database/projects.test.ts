@@ -136,10 +136,12 @@ describe.sequential(`Projects - Getting Mods`, async () => {
         });
         await DatabaseHelper.refreshAllCaches();
 
-        let mods = await mod.getLatestVersion(testGV1.id, Platform.UniversalPC, [Status.Private]);
-        expect(mods).toBeDefined();
-        expect(mods).not.toBeNull();
-        expect(mods).toHaveLength(1);
-        expect(mods[0].id).toEqual(mv.id);
+        let latest = await mod.getLatestVersion(testGV1.id, Platform.UniversalPC, [Status.Verified]);
+        expect(latest).toBeDefined();
+        expect(latest).not.toBeNull();
+        if (!latest) {
+            throw new Error(`latest is null`);
+        }
+        expect(latest.id).toEqual(mv.id);
     });
 });

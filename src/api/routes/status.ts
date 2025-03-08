@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
-import swaggerDocument from '../../api/swagger.json' with { type: "json" };
 import * as fs from 'fs';
 import { validateSession } from '../../shared/AuthHelper.ts';
-import { User } from 'src/shared/Database';
+import { User } from '../../shared/Database';
+import { Config } from '../../shared/Config.ts';
 
 export class StatusRoutes {
     private router: Router;
@@ -44,7 +44,7 @@ export class StatusRoutes {
 
     private generateStatusResponse(user: User | null) {
         let gitVersion = `Version not found.`;
-        let apiVersion = `Version not found.`;
+        let apiVersion = Config.API_VERSION;
         if (fs.existsSync(`.git/HEAD`) || process.env.GIT_VERSION) {
             if (process.env.GIT_VERSION) {
                 gitVersion = `${process.env.GIT_VERSION.substring(0, 7)}`;
@@ -59,9 +59,6 @@ export class StatusRoutes {
             }
         }
 
-        if (swaggerDocument?.info?.version) {
-            apiVersion = `${swaggerDocument.info.version}`;
-        }
 
         let message = `API is running.`;
         if (user) {

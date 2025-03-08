@@ -26,7 +26,7 @@ describe(`Database Initialization`, () => {
     });
 
     test(`should have a server admin user`, async () => {
-        expect(await db.Users.findOne({ where: { id: 1 } })).toBeDefined();
+        expect(await db.Users.findOne({ where: { id: 1 } })).not.toBeNull();
 
         expect(db.serverAdmin).toBeDefined();
         expect(db.serverAdmin.id).toBe(1);

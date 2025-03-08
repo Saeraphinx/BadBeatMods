@@ -2,9 +2,9 @@ import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionConte
 import { Command } from "../../classes/Command.ts";
 import { Luma } from "../../classes/Luma.ts";
 // eslint-disable-next-line quotes
-import swaggerDocument from '../../../api/swagger.json' with { type: "json" };
 import * as os from "os";
 import * as fs from "fs";
+import { Config } from "../../../shared/Config.ts";
 
 export default {
     command: new Command({
@@ -28,9 +28,7 @@ export default {
                 }
             }
 
-            if (swaggerDocument?.info?.version) {
-                version += ` • Running on API version: ${swaggerDocument.info.version}`;
-            }
+            version += ` • Running on API version: ${Config.API_VERSION}`;
 
             let lastConnectionAt = `Last connection not found.`;
             if (luma.readyAt) {
