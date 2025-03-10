@@ -1,17 +1,22 @@
 import { test, expect, beforeAll, afterAll, beforeEach, describe, afterEach, vi } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, Mod, ModVersion, Status, SupportedGames, Platform, ModVersionInfer, User, DatabaseHelper, UserRoles } from '../../src/shared/Database.ts';
+import { Categories, DatabaseManager, GameVersion, Mod, ModVersion, Status, SupportedGames, Platform, ModVersionInfer, User, DatabaseHelper, UserRoles, EditQueue, ModInfer } from '../../src/shared/Database.ts';
 import { UniqueConstraintError } from 'sequelize';
 // eslint-disable-next-line quotes
 import { projects, users } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
+import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
 
 
-vi.mock('../../src/shared/ModWebhooks.ts', () => ({
-    sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, action: 'New' | 'Approved' | 'Rejected') => {}),
-    sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, action: 'New' | 'Approved' | 'Rejected' | 'Revoked', modObj?: Mod) => {}),
-    sendEditLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, changes: Partial<ModVersionInfer>) => {}),
-}));
+vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType) => {}),
+        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) => {}),
+        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
+    };
+});
 
 describe.sequential(`Versions - Hooks`, async () => {
     let db: DatabaseManager;
@@ -493,7 +498,7 @@ describe.sequential(`Versions - Editing`, async () => {
         await modVersion.setStatus(Status.Unverified, testUser1);
         expect(modVersion.status).toBe(Status.Unverified);
         expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `New`);
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.RejectedUnverified);
     });
 
     test(`should send log on status update verified`, async () => {
@@ -504,7 +509,7 @@ describe.sequential(`Versions - Editing`, async () => {
         await modVersion.setStatus(Status.Verified, testUser1);
         expect(modVersion.status).toBe(Status.Verified);
         expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `Approved`);
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.Verified);
     });
 
     test(`should send log on status update removed`, async () => {
@@ -515,7 +520,7 @@ describe.sequential(`Versions - Editing`, async () => {
         await modVersion.setStatus(Status.Removed, testUser1);
         expect(modVersion.status).toBe(Status.Removed);
         expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, `Rejected`);
+        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.Removed);
     });
 });
 /*
