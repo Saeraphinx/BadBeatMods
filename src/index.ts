@@ -41,7 +41,11 @@ import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
 // eslint-disable-next-line no-console
 console.log(`Starting setup...`);
-new Config();
+if (process.env.NODE_ENV === `test`) {
+    console.log(`Running in test mode.`);
+} else {
+    new Config();
+}
 new Logger();
 const app = express();
 const memstore = MemoryStore(session);

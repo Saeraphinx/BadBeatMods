@@ -1,21 +1,21 @@
-import { test, expect, describe, beforeAll, afterAll, vi } from 'vitest';
+import { test, expect, describe, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import supertest from 'supertest';
 import { Express } from 'express';
-import { startServer, stopServer } from '../src/index.ts';
+import { startServer, stopServer } from '../../src/index.ts';
 import { Server } from 'http';
-import { DatabaseManager, SupportedGames, UserRoles } from '../src/shared/Database.ts';
+import { DatabaseManager, SupportedGames, UserRoles } from '../../src/shared/Database.ts';
 
-const api = supertest(`http://localhost:8485/api`);
+const api = supertest(`http://localhost:8486/api`);
 let server: { server: Server, app: Express, database: DatabaseManager };
 let shouldAuthenticate = false;
 
 describe.sequential(`API`, () => {
     beforeAll(async () => {
         // Do not mock these files for a full server run.
-        vi.unmock(`../src/shared/Logger.ts`);
-        vi.unmock(`../src/shared/Config.ts`);
+        vi.unmock(`../../src/shared/Logger.ts`);
+        vi.unmock(`../../src/shared/Config.ts`);
 
-        vi.mock(`../src/shared/AuthHelper.ts`, () => ({
+        vi.mock(`../../src/shared/AuthHelper.ts`, () => ({
             validateSession: async (req: any, res: any, role: UserRoles|boolean = UserRoles.Admin, gameName:SupportedGames|null|boolean = null, handleRequest:boolean = true) => {
                 if (shouldAuthenticate) {
                     return { user: server.database.serverAdmin };
@@ -28,12 +28,39 @@ describe.sequential(`API`, () => {
             }
         }));
 
+        vi.mock(`../../src/shared/Config.ts`, async (importOriginal) => {
+            // eslint-disable-next-line quotes
+            const originalModule = await importOriginal() as typeof import('../../src/shared/Config.ts');
+            process.env.NODE_ENV = `test`;
+            return {
+                Config: {
+                    ...originalModule.DEFAULT_CONFIG,
+                    database: {
+                        ...originalModule.DEFAULT_CONFIG.database,
+                        url: `:memory:`,
+                    },
+                    server: {
+                        ...originalModule.DEFAULT_CONFIG.server,
+                        port: 8486,
+                        url: `http://localhost:8486`,
+                        sessionSecret: `secret`
+                    }
+                }
+            };
+        });
+
+
         process.env.NODE_ENV = `test`;
         server = await startServer();
+        //console.log(JSON.stringify(server.database.serverAdmin));
     });
 
     afterAll(async () => {
         await stopServer(false);
+    });
+
+    beforeEach(() => {
+        shouldAuthenticate = false;
     });
 
     test(`/status`, async () => {

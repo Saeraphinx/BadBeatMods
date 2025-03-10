@@ -7,7 +7,7 @@ import { Logger } from "../src/shared/Logger.ts";
 import { Config } from "../src/shared/Config.ts";
 import { Utils } from "../src/shared/Utils.ts";
 
-beforeEach(async () => {
+beforeAll(async () => {
     vi.mock(`../src/shared/Logger.ts`, async (original) => {
         let originalModule = await original()
         return {
