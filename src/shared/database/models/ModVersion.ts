@@ -2,9 +2,10 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper.ts";
-import { sendEditLog, sendModVersionLog } from "../../ModWebhooks.ts";
+import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User, UserRoles } from "./User.ts";
 import { Mod } from "./Mod.ts";
+import { EditQueue } from "./EditQueue.ts";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
 export type ModVersionApproval = InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>
@@ -82,10 +83,11 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         }
     }
 
-    public async createEdit(object: ModVersionApproval, submitter: User) {
+    public async edit(object: ModVersionApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: ModVersion}> {
         if (this.status !== Status.Verified) {
-            // do not create an edit if the mod is not verified
-            return this;
+            this.update(object);
+            sendModVersionLog(this, submitter, WebhookLogType.Text_Updated);
+            return {isEditObj: false, modVersion: this};
         }
     
         // check if there is already a pending edit
@@ -94,7 +96,9 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             // if an edit already exists, update it
             existingEdit.object = object;
             existingEdit.submitterId = submitter.id;
-            return await existingEdit.save();
+            let newEdit = await existingEdit.save();
+            sendEditLog(newEdit, submitter, WebhookLogType.Text_Updated, this);
+            return {isEditObj: true, newEdit: false, edit: newEdit};
         }
     
         // create a new edit
@@ -104,8 +108,9 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             object: object,
             submitterId: submitter.id,
         });
-        sendEditLog(edit, submitter, `New`, this);
-        return edit;
+
+        sendEditLog(edit, submitter, WebhookLogType.EditSubmitted, this);
+        return {isEditObj: true, newEdit: true, edit: edit};
     }
 
     public async setStatus(status:Status, user: User) {

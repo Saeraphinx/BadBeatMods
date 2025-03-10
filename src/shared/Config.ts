@@ -51,7 +51,9 @@ export const DEFAULT_CONFIG = {
         enableWebhooks: false, // acts as a sort of master switch for all webhooks. useful for dev when you dont want to deal with webhooks.
         loggingUrl: ``, // url for logging - sensitive data might be sent here
         modLogUrl: ``, // url for mod logging - new, approvals, and rejections
+        modLogTags: [], // tags to send to the mod log webhook
         modLog2Url: ``, // same as above
+        modLog2Tags: [], // same as above
         publicUrl: `` // url for public webhook - approved mods only... might have a delay? hasn't been done yet.
     },
     bot: {
@@ -114,7 +116,9 @@ export class Config {
         enableWebhooks: boolean;
         loggingUrl: string;
         modLogUrl: string;
+        modLogTags: string[];
         modLog2Url: string;
+        modLog2Tags: string[];
         publicUrl: string;
     };
     private static _bot: {

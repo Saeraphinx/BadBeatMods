@@ -177,56 +177,7 @@ export class AdminRoutes {
 
             return res.status(200).send({ message: `All dependencies are valid.` });
         });
-
-        this.router.post(`/admin/linkversions`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
-                "bearerAuth": [],
-                "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Mark all versions as compatible with another gameversion.'
-            // #swagger.description = 'Link two versions together.'
-            /* #swagger.requestBody = {
-                description: 'The versions to link.',
-                required: true,
-                schema: {
-                    version1: 1,
-                    version2: 2
-                }
-            } */
-            let session = await validateSession(req, res, UserRoles.Admin);
-            if (!session.user) {
-                return;
-            }
-
-            let versionId1 = Validator.zDBID.safeParse(req.body.version1);
-            let versionId2 = Validator.zDBID.safeParse(req.body.version2);
-
-            if (!versionId1.success || !versionId2.success) {
-                return res.status(400).send({ message: `Missing version.` });
-            }
-
-            const modVersions = await DatabaseHelper.database.ModVersions.findAll();
-            const version1 = await DatabaseHelper.database.GameVersions.findByPk(versionId1.data.toString());
-            const version2 = await DatabaseHelper.database.GameVersions.findByPk(versionId1.data.toString());
-            if (!version1 || !version2) {
-                return res.status(404).send({ message: `Versions not found.` });
-            }
-
-            for (let modVersion of modVersions) {
-                if (modVersion.supportedGameVersionIds.includes(version1.id) && !modVersion.supportedGameVersionIds.includes(version2.id)) {
-                    modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, version2.id];
-                }
-
-                if (modVersion.supportedGameVersionIds.includes(version2.id) && !modVersion.supportedGameVersionIds.includes(version1.id)) {
-                    modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, version1.id];
-                }
-                modVersion.save();
-            }
-
-            return res.status(200).send({ message: `Version ${version1.gameName} ${version1.version} & ${version2.gameName} ${version2.version} have been linked.` });
-        });
-      
+    
         this.router.post(`/admin/sortgameversions`, async (req, res) => {
             // #swagger.tags = ['Admin']
             /* #swagger.security = [{

@@ -222,9 +222,10 @@ export class GetModRoutes {
             // #swagger.responses[404] = { description: 'Hash not found.' }
             // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
             // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
-
+            // #swagger.parameters['status'] = { description: 'Only show mods with these statuses.', type: 'string' }
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
             const raw = Validator.zBool.safeParse(req.query.raw).data;
+            const status = Validator.zStatus.safeParse(req.query.status).data;
 
             if (!hash) {
                 return res.status(400).send({ message: `Missing hash.` });
@@ -235,6 +236,10 @@ export class GetModRoutes {
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
             for (const version of DatabaseHelper.cache.modVersions) {
+                if (status !== undefined && status !== version.status) {
+                    continue;
+                }
+
                 if (hashArr.includes(version.zipHash)) {
                     if (raw) {
                         retVal.push(Promise.resolve(version.toRawAPIResonse()));
@@ -270,8 +275,8 @@ export class GetModRoutes {
             // #swagger.responses[400] = { description: 'Missing hash.' }
             // #swagger.responses[404] = { description: 'Hash not found.' }
             // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
-
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
+            const status = Validator.zStatus.safeParse(req.query.status).data;
 
             if (!hash) {
                 return res.status(400).send({ message: `Missing hash.` });
@@ -282,6 +287,9 @@ export class GetModRoutes {
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
             for (const version of DatabaseHelper.cache.modVersions) {
+                if (status !== undefined && status !== version.status) {
+                    continue;
+                }
                 if (hashArr.includes(version.zipHash)) {
                     let existing = retVal.get(version.zipHash);
                     if (existing) {

@@ -1,4 +1,4 @@
-import { APIMessage, EmbedBuilder, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
+import { APIEmbed, APIMessage, ColorResolvable, Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
 import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database.ts";
 import { Config } from "./Config.ts";
 import { Logger } from "./Logger.ts";
@@ -7,8 +7,23 @@ import { SemVer } from "semver";
 let webhookClient1: WebhookClient;
 let webhookClient2: WebhookClient;
 
-async function sendToWebhooks(options: string | MessagePayload | WebhookMessageCreateOptions) {
-    let retVal:Promise<APIMessage>[] = [];
+export enum WebhookLogType {
+    SetToPending = `setToPending`, // submitted for approval
+    Verified = `verified`, // approved
+    RejectedUnverified = `unverified`, // rejected, set to unverified
+    VerificationRevoked = `verificationRevoked`, // verified mod has status changed
+    Removed = `removed`, // rejected, set to removed
+    EditSubmitted = `editSubmitted`, // submitted for approval
+    EditApproved = `editApproved`, // approved
+    EditRejected = `editRejected`, // rejected
+
+    Text_Created = `created`,
+    Text_StatusChanged = `statusChanged`,
+    Text_Updated = `updated`,
+}
+
+async function sendToWebhooks(content: string | MessagePayload | WebhookMessageCreateOptions, logType: WebhookLogType): Promise<APIMessage[]> {
+    let retVal: Promise<APIMessage>[] = [];
     if (Config.webhooks.enableWebhooks) {
         if (!webhookClient1 && Config.webhooks.modLogUrl.length > 8) {
             webhookClient1 = new WebhookClient({ url: Config.webhooks.modLogUrl });
@@ -18,29 +33,212 @@ async function sendToWebhooks(options: string | MessagePayload | WebhookMessageC
             webhookClient2 = new WebhookClient({ url: Config.webhooks.modLog2Url });
         }
         if (webhookClient1) {
-            retVal.push(webhookClient1.send(options));
+            if (Config.webhooks.modLogTags.includes(logType)) {
+                retVal.push(webhookClient1.send(content));
+            }
         }
 
         if (webhookClient2) {
-            retVal.push(webhookClient2.send(options));
+            if (Config.webhooks.modLog2Tags.includes(logType)) {
+                retVal.push(webhookClient2.send(content));
+            }
         }
     }
 
     return Promise.all(retVal);
 }
 
-async function sendEmbedToWebhooks(embed: EmbedBuilder) {
+async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, logType: WebhookLogType) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     sendToWebhooks({
         username: `BadBeatMods`,
         avatarURL: faviconUrl,
         embeds: [embed]
-    });
+    }, logType);
 }
 
-export async function sendModLog(mod: Mod, userMakingChanges:User, action: `New` | `Approved` | `Rejected`) {
+export async function sendModLog(mod: Mod, userMakingChanges: User, logType: WebhookLogType) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
-    let authors:User[] = [];
+    let color = 0x00FF00;
+
+    let embed;
+    switch (logType) {
+        case WebhookLogType.SetToPending:
+            color = Colors.Yellow;
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Submitted for Approval - ${mod.name}`, minimal: false });
+            break;
+        case WebhookLogType.Verified:
+            color = Colors.Green;
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Approved - ${mod.name}`, minimal: true });
+            break;
+        case WebhookLogType.RejectedUnverified:
+            color = Colors.Orange;
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Marked Unverified - ${mod.name}`, minimal: true });
+            break;
+        case WebhookLogType.VerificationRevoked:
+            color = Colors.Red;
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Verification Revoked - ${mod.name}`, minimal: true });
+            break;
+        case WebhookLogType.Removed:
+            color = Colors.Red;
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Removed - ${mod.name}`, minimal: true });
+            break;
+        case WebhookLogType.Text_Updated:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Updated by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        case WebhookLogType.Text_StatusChanged:
+            color = Colors.Blue;
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Status Changed to ${mod.status} by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        case WebhookLogType.Text_Created:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Created by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        default:
+            return Logger.error(`Invalid log type ${logType} for Project Log`);
+    }
+     
+    if (!embed) {
+        return Logger.error(`Failed to generate embed for mod ${mod.name}`);
+    }
+
+    sendEmbedToWebhooks(embed, logType);
+}
+
+export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) {
+    const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
+    let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+    let color = 0x00FF00;
+
+    if (!mod) {
+        return Logger.error(`Mod not found for mod version ${modVersion.id}`);
+    }
+
+    let embed;
+    switch (logType) {
+        case WebhookLogType.SetToPending:
+            color = Colors.Yellow;
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Submitted for Approval - ${mod.name} v${modVersion.modVersion.raw}`, minimal: false });
+            break;
+        case WebhookLogType.Verified:
+            color = Colors.Green;
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Approved - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            break;
+        case WebhookLogType.RejectedUnverified:
+            color = Colors.Orange;
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Marked Unverified - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            break;
+        case WebhookLogType.VerificationRevoked:
+            color = Colors.Red;
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Verification Revoked - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            break;
+        case WebhookLogType.Removed:
+            color = Colors.Red;
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Removed - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            break;
+        case WebhookLogType.Text_Updated:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Updated by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        case WebhookLogType.Text_StatusChanged:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Status Changed to ${modVersion.status} by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        case WebhookLogType.Text_Created:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Created by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        default:
+            return Logger.error(`Invalid log type ${logType} for Version Log`);
+    }
+
+
+    if (!embed) {
+        return Logger.error(`Failed to generate embed for mod ${mod.name}`);
+    }
+
+    sendEmbedToWebhooks(embed, logType);
+}
+
+export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) {
+    const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
+    let color = 0x00FF00;
+
+    let modId = edit.objectTableName === `mods` ? edit.objectId : null;
+    if (!modId) {
+        let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
+        if (!modVersion) {
+            return Logger.error(`Mod version not found for edit ${edit.id}`);
+        }
+        modId = modVersion.modId;
+    }
+
+    let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modId);
+    if (!mod) {
+        return Logger.error(`Mod not found for edit ${edit.id}`);
+    }
+
+    let embed;
+    switch (logType) {
+        case WebhookLogType.EditSubmitted:
+            color = Colors.Yellow;
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Submitted for Approval - ${mod.name}`, minimal: false });
+            break;
+        case WebhookLogType.EditApproved:
+            color = Colors.Green;
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Approved - ${mod.name}`, minimal: false });
+            break;
+        case WebhookLogType.EditRejected:
+            color = Colors.Red;
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Rejected - ${mod.name}`, minimal: false });
+            break;
+        case WebhookLogType.Text_Updated:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Edit Updated by ${userMakingChanges.username}`,
+            }, logType);
+            break;
+        default:
+            return Logger.error(`Invalid log type ${logType} for Edit Log`);
+    }
+
+    if (!embed) {
+        return Logger.error(`Failed to generate embed for edit ${edit.id}`);
+    }
+
+    sendEmbedToWebhooks(embed, logType);
+}
+
+//#region Generate Embeds
+async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number, options: {
+    title?: string,
+    useSummary?: boolean,
+    minimal?: boolean,
+} = {}): Promise<APIEmbed | void> {
+    const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
+
+    let authors: User[] = [];
     for (let author of mod.authorIds) {
         let authorDb = await DatabaseHelper.database.Users.findOne({ where: { id: author } });
         if (!authorDb) {
@@ -52,64 +250,71 @@ export async function sendModLog(mod: Mod, userMakingChanges:User, action: `New`
         return Logger.error(`No authors found for mod ${mod.name}`);
     }
 
-    let color = 0x00FF00;
-
-    if (action === `Rejected`) {
-        color = 0xFF0000;
-    } else if (action === `Approved`) {
-        color = 0x0000FF;
-    }
-
-    let whData = {
-        username: `BadBeatMods`,
-        avatarURL: faviconUrl,
-        embeds: [
-            {
-                title: `${action} Mod: ${mod.name}`,
-                url: `${Config.server.url}/mods/${mod.id}`,
-                description: `${mod.description.length > 100 ? mod.description.substring(0, 100) : mod.description} `,
-                author: {
-                    name: `${userMakingChanges.username} `,
-                    icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
-                },
-                fields: [
-                    {
-                        name: `Authors`,
-                        value: `${authors.map(author => { return author.username; }).join(`, `)} `,
-                        inline: true,
-                    },
-                    {
-                        name: `Category`,
-                        value: `${mod.category} `,
-                        inline: true,
-                    },
-                    {
-                        name: `Git URL`,
-                        value: `${mod.gitUrl} `,
-                        inline: false,
-                    },
-                        
-                ],
-                thumbnail: {
-                    url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
-                },
-                color: color,
-                timestamp: new Date().toISOString(),
-                footer: {
-                    text: `Mod ID: ${mod.id}`,
-                    icon_url: faviconUrl,
-                },
+    if (options?.minimal) {
+        return {
+            title: options.title ? options.title : `Mod: ${mod.name}`,
+            url: `${Config.server.url}/mods/${mod.id}`,
+            author: {
+                name: `${userMakingChanges.username} `,
+                icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
-        ],
-    };
+            description: `${mod.summary} `,
+            thumbnail: {
+                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+            },
+            color: color,
+            timestamp: new Date().toISOString(),
+            footer: {
+                text: `Mod ID: ${mod.id}`,
+                icon_url: faviconUrl,
+            },
+        };
+    } else {
+        return {
+            title: options?.title ? options.title : `Mod: ${mod.name}`,
+            url: `${Config.server.url}/mods/${mod.id}`,
+            description: options?.useSummary ? `${mod.summary} ` : `${mod.description.length > 100 ? mod.description.substring(0, 100) : mod.description} `,
+            author: {
+                name: `${userMakingChanges.username} `,
+                icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
+            },
+            fields: [
+                {
+                    name: `Authors`,
+                    value: `${authors.map(author => { return author.username; }).join(`, `)} `,
+                    inline: true,
+                },
+                {
+                    name: `Category`,
+                    value: `${mod.category} `,
+                    inline: true,
+                },
+                {
+                    name: `Git URL`,
+                    value: `${mod.gitUrl} `,
+                    inline: false,
+                },
 
-    sendToWebhooks(whData);
+            ],
+            thumbnail: {
+                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+            },
+            color: color,
+            timestamp: new Date().toISOString(),
+            footer: {
+                text: `Mod ID: ${mod.id}`,
+                icon_url: faviconUrl,
+            },
+        };
+    }
 }
 
-export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges:User, action: `New` | `Approved` | `Rejected` | `Revoked`, modObj?:Mod) {
+async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMakingChanges: User, color: number, options: {
+    title?: string,
+    minimal?: boolean,
+} = {}): Promise<APIEmbed | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let author = await DatabaseHelper.database.Users.findOne({ where: { id: modVersion.authorId } });
-    let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
     let gameVersions = await modVersion.getSupportedGameVersions();
     let dependancies: string[] = [];
     let resolvedDependancies = await modVersion.getLiveDependencies(gameVersions[0].id, [Status.Verified, Status.Unverified]);
@@ -133,94 +338,82 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
         }
         dependancies.push(`${dependancyMod.name} v${dependancy.modVersion.raw}`);
     }
-        
 
-    let color = 0x00FF00;
-    if (action === `Rejected`) {
-        color = 0xFF0000;
-    } else if (action === `Approved`) {
-        color = 0x0000FF;
-    } else if (action === `Revoked`) {
-        color = 0x7C0000;
-    }
-
-    sendToWebhooks({
-        username: `BadBeatMods`,
-        avatarURL: faviconUrl,
-        embeds: [
-            {
-                title: `${action} Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
-                url: `${Config.server.url}/mods/${mod.id}`,
-                description: `${mod.description.length > 100 ? mod.description.substring(0, 100) : mod.description} `,
-                author: {
-                    name: `${userMakingChanges.username} `,
-                    icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
-                },
-                fields: [
-                    {
-                        name: `Author`,
-                        value: `${author.username} `,
-                        inline: true,
-                    },
-                    {
-                        name: `Platform`,
-                        value: `${modVersion.platform} `,
-                        inline: true,
-                    },
-                    {
-                        name: `# of Files`,
-                        value: `${modVersion.contentHashes.length} `,
-                        inline: true,
-                    },
-                    {
-                        name: `Game Versions`,
-                        value: `${gameVersions.map((v) => v.version).join(`, `)} `,
-                        inline: true,
-                    },
-                    {
-                        name: `Dependencies`,
-                        value: `${dependancies.join(`, `)} `,
-                        inline: true,
-                    },
-                ],
-                thumbnail: {
-                    url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
-                },
-                color: color,
-                timestamp: new Date().toISOString(),
-                footer: {
-                    text: `Mod ID: ${mod.id} | Mod Version ID: ${modVersion.id}`,
-                    icon_url: faviconUrl,
-                },
+    if (options?.minimal) {
+        return {
+            title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
+            url: `${Config.server.url}/mods/${mod.id}`,
+            description: `${mod.summary} `,
+            author: {
+                name: `${userMakingChanges.username} `,
+                icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
-        ],
-    });
+            thumbnail: {
+                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+            },
+            color: color,
+            timestamp: new Date().toISOString(),
+            footer: {
+                text: `Mod ID: ${mod.id} | Mod Version ID: ${modVersion.id}`,
+                icon_url: faviconUrl,
+            },
+        };
+    } else {
+        return {
+            title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
+            url: `${Config.server.url}/mods/${mod.id}`,
+            description: `${mod.summary} `,
+            author: {
+                name: `${userMakingChanges.username} `,
+                icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
+            },
+            fields: [
+                {
+                    name: `Author`,
+                    value: `${author.username} `,
+                    inline: true,
+                },
+                {
+                    name: `Platform`,
+                    value: `${modVersion.platform} `,
+                    inline: true,
+                },
+                {
+                    name: `# of Files`,
+                    value: `${modVersion.contentHashes.length} `,
+                    inline: true,
+                },
+                {
+                    name: `Game Versions`,
+                    value: `${gameVersions.map((v) => v.version).join(`, `)} `,
+                    inline: true,
+                },
+                {
+                    name: `Dependencies`,
+                    value: `${dependancies.join(`, `)} `,
+                    inline: true,
+                },
+            ],
+            thumbnail: {
+                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+            },
+            color: color,
+            timestamp: new Date().toISOString(),
+            footer: {
+                text: `Mod ID: ${mod.id} | Mod Version ID: ${modVersion.id}`,
+                icon_url: faviconUrl,
+            },
+        };
+    }
 }
 
-export async function sendEditLog(edit:EditQueue, userMakingChanges:User, action: `New` | `Approved` | `Rejected`, originalObj?: ModInfer | ModVersionInfer) {
+async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: User, color: number, originalObj?: ModInfer | ModVersionInfer, options: {
+    title?: string,
+    description?: string,
+    minimal?: boolean,
+} = {}): Promise<EmbedBuilder | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
-    let color = 0x00FF00;
-
-    if (action === `Rejected`) {
-        color = 0xFF0000;
-    } else if (action === `New`) {
-        color = 0x0000FF;
-    }
-
-    let modId = edit.objectTableName === `mods` ? edit.objectId : null;
-    if (!modId) {
-        let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
-        if (!modVersion) {
-            return Logger.error(`Mod version not found for edit ${edit.id}`);
-        }
-        modId = modVersion.modId;
-    }
-
-    let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modId);
-    if (!mod) {
-        return Logger.error(`Mod not found for edit ${edit.id}`);
-    }
-
+    
     let embed = new EmbedBuilder();
     embed.setColor(color);
     embed.setTimestamp(new Date(Date.now()));
@@ -232,7 +425,7 @@ export async function sendEditLog(edit:EditQueue, userMakingChanges:User, action
         text: `Mod ID: ${mod.id} | Edit ID: ${edit.id}`,
         iconURL: faviconUrl,
     });
-    embed.setTitle(`${action} Edit: ${mod.name}`);
+    embed.setTitle(options.title ? `${options.title} ` : `Edit: ${mod.name}`);
     embed.setURL(`${Config.server.url}/mods/${mod.id}`);
     let original = undefined;
     if (originalObj) {
@@ -323,7 +516,13 @@ export async function sendEditLog(edit:EditQueue, userMakingChanges:User, action
         description = description.substring(0, 4096);
     }
 
+    if (options.minimal) {
+        embed.setDescription(description ? description : null);
+        return embed;
+    }
+
     embed.setDescription(description.length > 0 ? description : `No changes detected.`);
 
-    sendEmbedToWebhooks(embed);
+    return embed;
 }
+//#endregion
