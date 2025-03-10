@@ -113,7 +113,8 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return {isEditObj: true, newEdit: true, edit: edit};
     }
 
-    public async setStatus(status:Status, user: User) {
+    public async setStatus(status:Status, user: User, shouldSendEmbed: boolean = true) {
+        let prevStatus = this.status;
         this.status = status;
         try {
             await this.save();
@@ -121,17 +122,27 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             Logger.error(`Error setting status: ${error}`);
             throw error;
         }
+        sendModVersionLog(this, user, WebhookLogType.Text_StatusChanged);
         Logger.log(`Mod ${this.id} approved by ${user.username}`);
         switch (status) {
             case Status.Unverified:
-                sendModVersionLog(this, user, `New`);
+                if (prevStatus == Status.Verified) {
+                    this.lastApprovedById = user.id;
+                    shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked) : undefined;
+                } else {
+                    sendModVersionLog(this, user, WebhookLogType.RejectedUnverified);
+                }
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
-                sendModVersionLog(this, user, `Approved`);
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Verified) : undefined;
                 break;
             case Status.Removed:
-                sendModVersionLog(this, user, `Rejected`);
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Removed) : undefined;
+                this.lastApprovedById = user.id;
+                break;
+            case Status.Pending:
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.SetToPending) : undefined;
                 break;
         }
         return this;
