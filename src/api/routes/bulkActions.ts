@@ -4,7 +4,6 @@ import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { Op } from 'sequelize';
 import { Logger } from '../../shared/Logger.ts';
-import { SemVer } from 'semver';
 
 export class BulkActionsRoutes {
     private router: Router;

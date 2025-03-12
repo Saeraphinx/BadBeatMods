@@ -1,4 +1,4 @@
-import { Model, InferAttributes, InferCreationAttributes, CreationOptional, Sequelize, DataTypes, ModelStatic } from "sequelize";
+import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { SupportedGames } from "../../Database.ts";
 import { Mod } from "./Mod.ts";
 import { ModVersion } from "./ModVersion.ts";

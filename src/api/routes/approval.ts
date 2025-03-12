@@ -5,7 +5,6 @@ import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
 import { Validator } from '../../shared/Validator.ts';
-import { sendModVersionLog } from '../../shared/ModWebhooks.ts';
 
 enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified

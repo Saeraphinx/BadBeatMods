@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, UserRoles, User, SupportedGames, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
-import { Config } from '../../shared/Config.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 

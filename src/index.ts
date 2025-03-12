@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
 import express from 'express';
 import session, { SessionOptions } from 'express-session';
 import MemoryStore from 'memorystore';
@@ -12,7 +14,6 @@ import { ActivityType } from 'discord.js';
 import passport from 'passport';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { Octokit } from '@octokit/rest';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 import { DatabaseHelper, DatabaseManager } from './shared/Database.ts';
 import { Logger } from './shared/Logger.ts';
@@ -39,7 +40,6 @@ import fullApi from './api/swagger_full.json' with { type: "json" };
 // eslint-disable-next-line quotes
 import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
-// eslint-disable-next-line no-console
 console.log(`Starting setup...`);
 if (process.env.NODE_ENV === `test`) {
     console.log(`Running in test mode.`);

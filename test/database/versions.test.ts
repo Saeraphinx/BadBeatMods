@@ -78,7 +78,6 @@ describe.sequential(`Versions - Hooks`, async () => {
             };
         } catch (e) {
             if (e instanceof UniqueConstraintError) {
-                // eslint-disable-next-line no-console
                 console.log(e);
             }
             throw e;

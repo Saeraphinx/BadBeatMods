@@ -29,8 +29,7 @@ describe.sequential(`API`, () => {
         }));
 
         vi.mock(`../../src/shared/Config.ts`, async (importOriginal) => {
-            // eslint-disable-next-line quotes
-            const originalModule = await importOriginal() as typeof import('../../src/shared/Config.ts');
+            const originalModule = await importOriginal() as typeof import('../../src/shared/Config');
             process.env.NODE_ENV = `test`;
             return {
                 Config: {

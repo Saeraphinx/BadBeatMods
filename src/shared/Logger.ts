@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */ // disabled for the whole file because the functions almost all have unused parameters
 import { Config } from "../shared/Config.ts";
 import * as Winston from "winston";
 import { DiscordTransport } from "winston-transport-discord";
