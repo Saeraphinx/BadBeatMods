@@ -88,12 +88,13 @@ export interface UserRolesObject {
     }
 }
 
+// if you remove or change these, you must update Value
 export enum UserRoles {
     AllPermissions = `allpermissions`,
     Admin = `admin`,
     Poster = `poster`,
+    GameManager = `gamemanager`,
     Approver = `approver`,
-    Moderator = `moderator`,
     LargeFiles = `largefiles`,
     Banned = `banned`,
 }

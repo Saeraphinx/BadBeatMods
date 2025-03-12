@@ -36,7 +36,6 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         
         if (
             user.roles.sitewide.includes(UserRoles.Admin) ||
-            user.roles.sitewide.includes(UserRoles.Moderator) ||
             user.roles.sitewide.includes(UserRoles.AllPermissions) ||
             user.roles.sitewide.includes(UserRoles.Approver) ||
             this.authorIds.includes(user.id)
@@ -51,7 +50,6 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                     return false;
                 }
                 if (roles.includes(UserRoles.Admin) ||
-                    roles.includes(UserRoles.Moderator) ||
                     roles.includes(UserRoles.Approver) ||
                     roles.includes(UserRoles.AllPermissions)) {
                     return true;

@@ -6,6 +6,7 @@ import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhook
 import { User, UserRoles } from "./User.ts";
 import { Mod } from "./Mod.ts";
 import { EditQueue } from "./EditQueue.ts";
+import { ValidationOptions } from "sequelize/types/instance-validator";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
 export type ModVersionApproval = InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>
@@ -59,7 +60,6 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
 
         if (
             user.roles.sitewide.includes(UserRoles.Admin) ||
-            user.roles.sitewide.includes(UserRoles.Moderator) ||
             user.roles.sitewide.includes(UserRoles.AllPermissions) ||
             user.roles.sitewide.includes(UserRoles.Approver) ||
             this.authorId == user.id
@@ -74,13 +74,16 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                     return false;
                 }
                 if (roles.includes(UserRoles.Admin) ||
-                    roles.includes(UserRoles.Moderator) ||
                     roles.includes(UserRoles.Approver) ||
                     roles.includes(UserRoles.AllPermissions)) {
                     return true;
                 }
             }
         }
+    }
+
+    public async validateObject(): Promise<{success: true} | {success: false, isInternal:boolean, reason: string}> {
+        return {success: false, isInternal:true, reason: `Not implemented`};
     }
 
     public async edit(object: ModVersionApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: ModVersion}> {
@@ -148,23 +151,25 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return this;
     }
 
-    public async addGameVersionId(gameVersionId: number, submitterId: number) {
+    public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<ModVersion | EditQueue | null> {
         if (this.supportedGameVersionIds.includes(gameVersionId)) {
             return Promise.resolve(null);
         }
 
         if (this.status !== Status.Verified) {
             this.supportedGameVersionIds = [...this.supportedGameVersionIds, gameVersionId];
-            return this.save();
+            let res = this.save();
+            shouldSendLog ? sendModVersionLog(this, submitter, WebhookLogType.Text_Updated) : null;
+            return res;
         } else {
-            let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitterId, approved: null } });
+            let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitter.id, approved: null } });
 
             if (existingEdit) {
                 throw new Error(`Edit already exists for this mod version.`);
             }
 
-            return DatabaseHelper.database.EditApprovalQueue.create({
-                submitterId: submitterId,
+            let res = await DatabaseHelper.database.EditApprovalQueue.create({
+                submitterId: submitter.id,
                 objectId: this.id,
                 objectTableName: `modVersions`,
                 object: {
@@ -174,6 +179,8 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                     supportedGameVersionIds: [...this.supportedGameVersionIds, gameVersionId],
                 },
             });
+            shouldSendLog ? sendEditLog(res, submitter, WebhookLogType.EditSubmitted, this) : null;
+            return res;
         }
     }
 

@@ -1,5 +1,5 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { sendEditLog } from "../../ModWebhooks.ts";
+import { sendEditLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { Logger } from "../../Logger.ts";
 import { DatabaseHelper, Status } from "../DBHelper.ts";
 import { User } from "./User.ts";
@@ -75,7 +75,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         this.approverId = approver.id;
         this.save().then(() => {
             Logger.log(`Edit ${this.id} approved by ${approver.username}`);
-            sendEditLog(this, approver, `Approved`, original);
+            sendEditLog(this, approver, WebhookLogType.EditApproved, original);
         }).catch((error) => {
             Logger.error(`Error approving edit ${this.id}: ${error}`);
         });
@@ -92,7 +92,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         this.approverId = approver.id;
         this.save().then(() => {
             Logger.log(`Edit ${this.id} denied by ${approver.username}`);
-            sendEditLog(this, approver, `Rejected`);
+            sendEditLog(this, approver, WebhookLogType.EditRejected);
         }).catch((error) => {
             Logger.error(`Error denying edit ${this.id}: ${error}`);
         });

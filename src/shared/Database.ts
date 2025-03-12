@@ -12,6 +12,7 @@ import { Mod } from "./database/models/Mod.ts";
 import { ModVersion } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User, UserRoles } from "./database/models/User.ts";
+import { updateRoles } from "./database/ValueUpdater.ts";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -83,21 +84,6 @@ export class DatabaseManager {
             await this.migrate();
         }
         this.loadTables();
-
-        /*if (Config.database.dialect === `postgres`) {
-            const client = new Client({
-                user: Config.database.username,
-                password: Config.database.password,
-                host: Config.database.url,
-                port: 5432,
-            });
-            client.connect();
-            client.query(`CREATE DATABASE IF NOT EXISTS bbm_database;`).catch((error) => {
-                Logger.error(`Error creating database: ${error}`);
-                client.end();
-                exit(-1);
-            });
-        }*/
 
         if (Config.database.dialect === `postgres`) {
             if (Config.database.alter === true) {
@@ -654,6 +640,16 @@ export class DatabaseManager {
         // #endregion
 
         // #region Hooks
+        this.Users.afterSync(async () => {
+            let users = await this.Users.findAll();
+            let promises = [];
+            for (let user of users) {
+                promises.push(updateRoles(user));
+            }
+            await Promise.all(promises);
+        });
+
+
         this.Mods.afterValidate(async (mod) => {
             await Mod.checkForExistingMod(mod.name).then((existingMod) => {
                 if (existingMod) {
