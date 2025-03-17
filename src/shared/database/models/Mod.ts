@@ -7,7 +7,7 @@ import { ModVersion } from "./ModVersion.ts";
 import { User, UserRoles } from "./User.ts";
 
 export type ModInfer = InferAttributes<Mod>;
-export type ModApproval = InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>
+export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>>
 export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod>> {
     declare readonly id: CreationOptional<number>;
     declare name: string;
@@ -58,6 +58,29 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         }
     }
 
+    public isAllowedToEdit(user: User|null) {
+        if (!this.isAllowedToView(user)) {
+            return false;
+        }
+
+        if (!user) {
+            return false;
+        }
+
+        if (user.roles && user.roles.sitewide && (user.roles.sitewide.includes(UserRoles.AllPermissions) || user.roles.sitewide.includes(UserRoles.Approver))) {
+            return true;
+        }
+
+        if (user && user.roles && user.roles.perGame && user.roles.perGame[this.gameName] && (user.roles.perGame[this.gameName]?.includes(UserRoles.Admin) || user.roles.perGame[this.gameName]?.includes(UserRoles.Approver))) {
+            return true;
+        }
+
+        if (this.authorIds.includes(user.id)) {
+            return true;
+        }
+
+        return false;
+    }
 
     public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
         let versions = DatabaseHelper.cache.modVersions.filter((version) => {
@@ -96,7 +119,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
 
     public async edit(object: ModApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Mod}> {
         if (this.status !== Status.Verified) {
-            this.update(object);
+            await this.update({ ...object, lastUpdatedById: submitter.id });
             sendModLog(this, submitter, WebhookLogType.Text_Updated);
             return {isEditObj: false, mod: this};
         }
@@ -105,11 +128,22 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `mods`, approved: { [Op.eq]: null } } });
         if (existingEdit) {
             // if an edit already exists, update it
-            existingEdit.object = object;
+            existingEdit.object = {
+                ...existingEdit.object,
+                ...object,
+            };
             existingEdit.submitterId = submitter.id;
             let newEdit = await existingEdit.save();
             sendEditLog(newEdit, submitter, WebhookLogType.Text_Updated, this);
             return {isEditObj: true, newEdit: false, edit: newEdit};
+        }
+
+        // check if the edit is just the description - this is intentionall after the existing edit check. existing edits will block all edits until it is approved
+        if (Object.keys(object).length === 1 && object.description && object.description !== this.description) {
+            // if the only edit is the description, just update the mod
+            await this.update({ description: object.description, lastUpdatedById: submitter.id });
+            sendModLog(this, submitter, WebhookLogType.Text_Updated);
+            return {isEditObj: false, mod: this};
         }
 
         // create a new edit

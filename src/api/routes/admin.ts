@@ -304,13 +304,6 @@ export class AdminRoutes {
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.addPerGameRole(gameName.data, UserRoles.Moderator);
-                        break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
                         if (!session.user) {
@@ -361,13 +354,6 @@ export class AdminRoutes {
                             return;
                         }
                         user.addSiteWideRole(UserRoles.Admin);
-                        break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.addSiteWideRole(UserRoles.Moderator);
                         break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
@@ -454,13 +440,6 @@ export class AdminRoutes {
                         }
                         user.removePerGameRole(gameName.data, UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.removePerGameRole(gameName.data, UserRoles.Moderator);
-                        break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
                         if (!session.user) {
@@ -501,13 +480,6 @@ export class AdminRoutes {
                             return;
                         }
                         user.removeSiteWideRole(UserRoles.Admin);
-                        break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.removeSiteWideRole(UserRoles.Moderator);
                         break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);

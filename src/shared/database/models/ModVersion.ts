@@ -9,7 +9,7 @@ import { EditQueue } from "./EditQueue.ts";
 import { ValidationOptions } from "sequelize/types/instance-validator";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
-export type ModVersionApproval = InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>
+export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>>
 export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreationAttributes<ModVersion>> {
     declare readonly id: CreationOptional<number>;
     declare modId: number;
@@ -82,8 +82,27 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         }
     }
 
-    public async validateObject(): Promise<{success: true} | {success: false, isInternal:boolean, reason: string}> {
-        return {success: false, isInternal:true, reason: `Not implemented`};
+    public async isAllowedToEdit(user: User|null, useCache:Mod|boolean = true) {
+        let parentMod: Mod | null | undefined;
+        if (useCache instanceof Mod) {
+            parentMod = useCache; // if a mod is passed in, use that as the parent mod
+        } else if (useCache) {
+            parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == this.modId);
+        } else {
+            parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+        }
+
+        if (!parentMod) {
+            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.modId}).`);
+            return false;
+        }
+
+        if (await this.isAllowedToView(user, parentMod)) {
+            if (parentMod.isAllowedToEdit(user)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public async edit(object: ModVersionApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: ModVersion}> {

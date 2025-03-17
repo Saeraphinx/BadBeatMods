@@ -90,7 +90,7 @@ export class BulkActionsRoutes {
             };
 
             for (let modVersion of modVersions) {
-                let outObj = await modVersion.addGameVersionId(gameVersion.id, session.user.id).catch((err) => {
+                let outObj = await modVersion.addGameVersionId(gameVersion.id, session.user).catch((err) => {
                     Logger.error(`Error adding game version ${gameVersion.id} to mod version ${modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.id);
                     return null;
@@ -215,7 +215,7 @@ export class BulkActionsRoutes {
             };
 
             for (let modVersion of modVersionFiltered) {
-                let outObj = await modVersion.modVersion.addGameVersionId(gameVersion2.id, session.user.id).catch((err) => {
+                let outObj = await modVersion.modVersion.addGameVersionId(gameVersion2.id, session.user).catch((err) => {
                     Logger.error(`Error adding game version ${gameVersion2.id} to mod version ${modVersion.modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.modVersion.id);
                     return null;

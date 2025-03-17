@@ -7,6 +7,7 @@ import { SemVer } from 'semver';
 import path from 'node:path';
 import { Config } from '../../shared/Config.ts';
 import { sendEditLog } from '../../shared/ModWebhooks.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export class UpdateModRoutes {
     private router: Router;
@@ -60,9 +61,6 @@ export class UpdateModRoutes {
 
             // check permissions
             let allowedToEdit = false;
-            if (session.user.roles.sitewide.includes(UserRoles.AllPermissions) || session.user.roles.sitewide.includes(UserRoles.Approver) || mod.authorIds.includes(session.user.id)) {
-                allowedToEdit = true;
-            }
 
             if (reqBody.data.gameName && reqBody.data.gameName !== mod.gameName) {
                 // if changing game, check if user has permissions for the new game
@@ -72,11 +70,10 @@ export class UpdateModRoutes {
                         allowedToEdit = true;
                     }
                 }
-            } else {
-                // if not changing game, check if user has permissions for the current game
-                if (session.user.roles.perGame[mod.gameName]?.includes(UserRoles.AllPermissions) || session.user.roles.perGame[mod.gameName]?.includes(UserRoles.Approver)) {
-                    allowedToEdit = true;
-                }
+            }
+
+            if (mod.isAllowedToEdit(session.user)) {
+                allowedToEdit = true;
             }
 
             if (!allowedToEdit) {
@@ -90,55 +87,31 @@ export class UpdateModRoutes {
                 }
             }
 
-            if (mod.status == Status.Verified) {
-                let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: mod.id, objectTableName: `mods`, submitterId: session.user.id, approved: null } });
-
-                if (existingEdit) {
-                    return res.status(400).send({ message: `You already have a pending edit for this mod.` }); // todo: allow updating the edit
-                }
-
-                await DatabaseHelper.database.EditApprovalQueue.create({
-                    submitterId: session.user.id,
-                    objectTableName: `mods`,
-                    objectId: mod.id,
-                    object: {
-                        name: reqBody.data.name || mod.name,
-                        summary: reqBody.data.summary || mod.summary,
-                        description: reqBody.data.description || mod.description,
-                        gameName: reqBody.data.gameName || mod.gameName,
-                        gitUrl: reqBody.data.gitUrl || mod.gitUrl,
-                        authorIds: reqBody.data.authorIds || mod.authorIds,
-                        category: reqBody.data.category || mod.category,
+            mod.edit({
+                name: reqBody.data.name || mod.name,
+                summary: reqBody.data.summary || mod.summary,
+                description: reqBody.data.description || mod.description,
+                gameName: reqBody.data.gameName || mod.gameName,
+                gitUrl: reqBody.data.gitUrl || mod.gitUrl,
+                authorIds: reqBody.data.authorIds || mod.authorIds,
+                category: reqBody.data.category || mod.category,
+            }, session.user).then((mod) => {
+                if (mod.isEditObj) {
+                    if (mod.newEdit) {
+                        res.status(200).send({ message: `Edit ${mod.edit.id} (for ${mod.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: mod.edit });
+                    } else {
+                        res.status(200).send({ message: `Edit ${mod.edit.id} (for ${mod.edit.objectId}) updated by ${session.user.id}.`, edit: mod.edit });
                     }
-                }).then((edit) => {
-                    Logger.log(`Edit ${edit.id} (for ${edit.objectId}) submitted by ${session.user.id} for approval.`);
-                    res.status(200).send({ message: `Edit ${edit.id} (for ${edit.objectId}) submitted by ${session.user.id} for approval.`, edit: edit });
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
-                    sendEditLog(edit, session.user, `New`);
-                }).catch((error) => {
-                    Logger.error(`Error submitting edit: ${error}`);
-                    res.status(500).send({ message: `Error creating edit submitted by ${session.user.id}.` });
-                });
-            } else {
-                await mod.update({
-                    name: reqBody.data.name || mod.name,
-                    summary: reqBody.data.summary || mod.summary,
-                    description: reqBody.data.description || mod.description,
-                    gameName: reqBody.data.gameName || mod.gameName,
-                    gitUrl: reqBody.data.gitUrl || mod.gitUrl,
-                    authorIds: reqBody.data.authorIds || mod.authorIds,
-                    category: reqBody.data.category || mod.category,
-                    lastUpdatedById: session.user.id,
-                }).then((mod) => {
-                    res.status(200).send({ message: `Mod ${mod.id} updated by ${session.user.id}.`, edit: mod });
-                }).catch((error) => {
-                    let message = `Error updating mod.`;
-                    if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
-                        message = error.errors.map((e: any) => e.message).join(`, `);
-                    }
-                    res.status(500).send({ message: `Error updating mod: ${error} ${message} ${error?.name}` });
-                });
-            }
+                    return;
+                } else {
+                    res.status(200).send({ message: `Mod updated.`, mod });
+                    DatabaseHelper.refreshCache(`mods`);
+                }
+            }).catch((error) => {
+                let errorMessage = Utils.parseErrorMessage(error);
+                res.status(500).send({ message: `Error updating mod: ${errorMessage}` });
+            });
         });
 
         this.router.post(`/mods/:modIdParam/icon`, async (req, res) => {
@@ -261,16 +234,7 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            let allowedToEdit = false;
-            if (session.user.roles.sitewide.includes(UserRoles.AllPermissions) || session.user.roles.sitewide.includes(UserRoles.Approver) || mod.authorIds.includes(session.user.id)) {
-                allowedToEdit = true;
-            }
-
-            if (session.user.roles.perGame[mod.gameName]?.includes(UserRoles.AllPermissions) || session.user.roles.perGame[mod.gameName]?.includes(UserRoles.Approver)) {
-                allowedToEdit = true;
-            }
-
-            if (!allowedToEdit) {
+            if (await modVersion.isAllowedToEdit(session.user, mod) == false) {
                 return res.status(401).send({ message: `You cannot edit this mod.` });
             }
 
@@ -286,48 +250,28 @@ export class UpdateModRoutes {
                 }
             }
 
-            if (modVersion.status == Status.Verified) {
-                let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: modVersion.id, objectTableName: `modVersions`, submitterId: session.user.id, approved: null } });
-
-                if (existingEdit) {
-                    return res.status(400).send({ message: `You already have a pending edit for this mod version.` }); // todo: allow updating the edit
-                }
-
-                await DatabaseHelper.database.EditApprovalQueue.create({
-                    submitterId: session.user.id,
-                    objectTableName: `modVersions`,
-                    objectId: modVersion.id,
-                    object: {
-                        supportedGameVersionIds: reqBody.data.supportedGameVersionIds || modVersion.supportedGameVersionIds,
-                        modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : modVersion.modVersion,
-                        dependencies: reqBody.data.dependencies || modVersion.dependencies,
-                        platform: reqBody.data.platform || modVersion.platform,
+            modVersion.edit({
+                supportedGameVersionIds: reqBody.data.supportedGameVersionIds || modVersion.supportedGameVersionIds,
+                modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : modVersion.modVersion,
+                dependencies: reqBody.data.dependencies || modVersion.dependencies,
+                platform: reqBody.data.platform || modVersion.platform,
+            }, session.user).then((modVersion) => {
+                if (modVersion.isEditObj) {
+                    if (modVersion.newEdit) {
+                        res.status(200).send({ message: `Edit ${modVersion.edit.id} (for ${modVersion.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: modVersion.edit });
+                    } else {
+                        res.status(200).send({ message: `Edit ${modVersion.edit.id} (for ${modVersion.edit.objectId}) updated by ${session.user.id}.`, edit: modVersion.edit });
                     }
-                }).then((edit) => {
-                    res.status(200).send({ message: `Edit ${edit.id} (for ${edit.objectId}) submitted by ${session.user.id} for approval.`, edit: edit });
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
-                    sendEditLog(edit, session.user, `New`);
-                }).catch((error) => {
-                    Logger.error(`Error submitting edit: ${error}`);
-                    res.status(500).send({ message: `Error submitting edit.` });
-                });
-            } else {
-                await modVersion.update({
-                    supportedGameVersionIds: reqBody.data.supportedGameVersionIds || modVersion.supportedGameVersionIds,
-                    modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : modVersion.modVersion,
-                    dependencies: reqBody.data.dependencies || modVersion.dependencies,
-                    platform: reqBody.data.platform || modVersion.platform,
-                }).then((modVersion) => {
-                    DatabaseHelper.refreshCache(`modVersions`);
+                    return;
+                } else {
                     res.status(200).send({ message: `Mod version updated.`, modVersion });
-                }).catch((error) => {
-                    let message = `Error updating version.`;
-                    if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
-                        message = error.errors.map((e: any) => e.message).join(`, `);
-                    }
-                    res.status(500).send({ message: `Error updating version: ${error} ${message} ${error?.name}` });
-                });
-            }
+                    DatabaseHelper.refreshCache(`modVersions`);
+                }
+            }).catch((error) => {
+                let errorMessage = Utils.parseErrorMessage(error);
+                res.status(500).send({ message: `Error updating mod version: ${errorMessage}` });
+            });
         });
         // #endregion Update Mod Version
         // #region Submit to Approval
@@ -356,7 +300,7 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `Mod is already submitted.` });
             }
 
-            mod.setStatus(Status.Unverified, session.user).then((mod) => {
+            mod.setStatus(Status.Pending, session.user).then((mod) => {
                 res.status(200).send({ message: `Mod submitted.`, mod });
                 DatabaseHelper.refreshCache(`mods`);
             }).catch((error) => {
@@ -398,15 +342,16 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `Mod version is already submitted.` });
             }
 
-            modVersion.setStatus(Status.Unverified, session.user).then((modVersion) => {
+            modVersion.setStatus(Status.Pending, session.user).then((modVersion) => {
                 res.status(200).send({ message: `Mod version submitted.`, modVersion });
                 DatabaseHelper.refreshCache(`modVersions`);
             }).catch((error) => {
                 res.status(500).send({ message: `Error submitting mod version: ${error}` });
             });
-            // #endregion Submit
+            
         });
-
+        // #endregion Submit
+        // #region Edits
         this.router.get(`/edits`, async (req, res) => {
             // #swagger.tags = ['Mods']
             /* #swagger.security = [{

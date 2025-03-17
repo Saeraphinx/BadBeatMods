@@ -117,25 +117,14 @@ export class ApprovalRoutes {
                     }
 
                     // filter out edits that don't support the game specified
-                    response.edits = editQueue.filter((edit) => {
-                        if (`name` in edit.object) {
-                            return edit.object.gameName === gameName.data;
-                        } else {
-                            return edit.object.supportedGameVersionIds.filter((gameVersionId) => {
-                                let gV = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.id === gameVersionId);
-                                if (!gV) {
-                                    return false;
-                                }
-                                return gV.gameName === gameName.data;
-                            }).length > 0;
-                        }
-                    }).map((edit) => {
+                    response.edits = editQueue.map((edit) => {
                         let isMod = edit.objectTableName === `mods`;
                         if (isMod) {
                             let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === edit.objectId);
-                            if (!mod) {
+                            if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
+
                             return { mod: mod.toAPIResponse(), original: mod, edit: edit };
                         } else {
                             let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
@@ -143,7 +132,8 @@ export class ApprovalRoutes {
                                 return null;
                             }
                             let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
-                            if (!mod) {
+                            
+                            if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
                             return { mod: mod.toAPIResponse(), original: modVersion, edit: edit };

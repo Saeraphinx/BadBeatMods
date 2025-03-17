@@ -32,7 +32,7 @@ import { BeatModsRoutes } from './api/routes/beatmods.ts';
 import { CDNRoutes } from './api/routes/cdn.ts';
 import { MOTDRoutes } from './api/routes/motd.ts';
 import { UserRoutes } from './api/routes/users.ts';
-import { StatusRoutes } from './api/routes/status.ts';
+import { StatusRoutes } from './api/routes/apistatus.ts';
 import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
 
 // eslint-disable-next-line quotes

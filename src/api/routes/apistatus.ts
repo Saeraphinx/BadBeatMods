@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import * as fs from 'fs';
 import { validateSession } from '../../shared/AuthHelper.ts';
-import { User } from '../../shared/Database';
+import { User } from '../../shared/Database.ts';
 import { Config } from '../../shared/Config.ts';
 
 export class StatusRoutes {

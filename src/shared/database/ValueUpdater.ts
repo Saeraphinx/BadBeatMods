@@ -1,6 +1,5 @@
-import { DatabaseManager } from "../Database";
-import { Logger } from "../Logger";
-import { User, UserRoles } from "./models/User";
+import { Logger } from "../Logger.ts";
+import { User, UserRoles } from "./models/User.ts";
 
 export async function updateRoles(user: User) {
     let shouldSync = false;

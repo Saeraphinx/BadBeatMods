@@ -78,6 +78,4 @@ describe.sequential(`API`, () => {
         expect(response.status).toBe(200);
         shouldAuthenticate = false;
     });
-
-
 });
