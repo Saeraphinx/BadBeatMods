@@ -119,7 +119,7 @@ export class Validator {
     public static readonly zGetMods = z.object({
         gameName: ZodGameName.default(SupportedGames.BeatSaber),
         gameVersion: z.string().optional(),
-        status: ZodStatus.default(Status.Verified),
+        status: z.enum([`all`, Status.Verified, Status.Unverified]).default(Status.Verified),
         platform: ZodPlatform.default(Platform.UniversalPC),
     });
 

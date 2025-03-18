@@ -353,14 +353,16 @@ process.on(`SIGQUIT`, () => {
     process.exit(0);
 });
 
-process.on(`unhandledRejection`, (reason: Error | any, promise: Promise<any>) => {
-    if (reason instanceof Error) {
-        Logger.error(`Unhandled promise rejection:${reason.name}\n${reason.message}\n${reason.stack}`);
-    } else {
-        Logger.error(`Unhandled promise rejection:${reason}\n`);
-    }
-    process.exit(1);
-});
+if (process.env.NODE_ENV !== `test`) {
+    process.on(`unhandledRejection`, (reason: Error | any, promise: Promise<any>) => {
+        if (reason instanceof Error) {
+            Logger.error(`Unhandled promise rejection:${reason.name}\n${reason.message}\n${reason.stack}`);
+        } else {
+            Logger.error(`Unhandled promise rejection:${reason}\n`);
+        }
+        process.exit(1);
+    });
+}
 
 Logger.debug(`Setup complete.`);
 

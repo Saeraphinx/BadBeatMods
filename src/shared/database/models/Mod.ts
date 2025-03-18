@@ -25,7 +25,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public isAllowedToView(user: User|null) {
+    public isAllowedToView(user: User|null):boolean {
         if (this.status == Status.Verified || this.status == Status.Unverified) {
             return true;
         }
@@ -56,9 +56,10 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 }
             }
         }
+        return false;
     }
 
-    public isAllowedToEdit(user: User|null) {
+    public isAllowedToEdit(user: User|null, isGameChange: boolean = false) {
         if (!this.isAllowedToView(user)) {
             return false;
         }
@@ -75,8 +76,10 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             return true;
         }
 
-        if (this.authorIds.includes(user.id)) {
-            return true;
+        if (!isGameChange) {
+            if (this.authorIds.includes(user.id)) {
+                return true;
+            }
         }
 
         return false;

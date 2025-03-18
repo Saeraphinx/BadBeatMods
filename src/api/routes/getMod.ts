@@ -40,19 +40,23 @@ export class GetModRoutes {
                 });
             }
 
-            // only show approved or unverified mods
-            if (reqQuery.data.status !== Status.Verified && reqQuery.data.status !== Status.Unverified) {
-                return res.status(400).send({ message: `Invalid status.` });
-            }
-
             let gameVersion = reqQuery.data.gameVersion ? DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === reqQuery.data.gameVersion && gameVersion.gameName === reqQuery.data.gameName) : null;
 
             if (gameVersion === undefined) {
                 return res.status(400).send({ message: `Invalid game version.` });
             }
 
-            let showUnverified = reqQuery.data.status !== `verified`;
-            let statuses = showUnverified ? [Status.Verified, Status.Unverified] : [Status.Verified];
+            let statuses: Status[] = [Status.Verified];
+            switch (reqQuery.data.status) {
+                case `all`:
+                case Status.Unverified:
+                    statuses = [Status.Verified, Status.Unverified, Status.Pending];
+                    break;
+                case Status.Verified:
+                    statuses = [Status.Verified];
+                    break;
+            }
+                
             let mods: {mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse | null}[] = [];
             if (gameVersion === null) {
                 let modDb = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));

@@ -198,6 +198,7 @@ describe.sequential(`API`, () => {
     test(`/mods - gv, universal platform, unverified and verified statuses`, async () => {
         let hasSeenVerified = false;
         let hasSeenUnverified = false;
+        let haveSeenPending = false;
         const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${Status.Unverified}`);
         expect(response.status).toBe(200);
         expect(response.body).toBeDefined();
@@ -213,15 +214,50 @@ describe.sequential(`API`, () => {
             expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
             expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
             expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
-            expect([Status.Verified, Status.Unverified].includes(currentMod.mod.status)).toBeTruthy();
-            expect([Status.Verified, Status.Unverified].includes(currentMod.latest.status)).toBeTruthy();
+            expect([Status.Verified, Status.Unverified, Status.Pending].includes(currentMod.mod.status)).toBeTruthy();
+            expect([Status.Verified, Status.Unverified, Status.Pending].includes(currentMod.latest.status)).toBeTruthy();
             if (currentMod.mod.status === Status.Verified) {
                 hasSeenVerified = true;
             } else if (currentMod.mod.status === Status.Unverified) {
                 hasSeenUnverified = true;
+            } else if (currentMod.mod.status === Status.Pending) {
+                haveSeenPending = true;
             }
         }
         expect(hasSeenVerified).toBeTruthy();
         expect(hasSeenUnverified).toBeTruthy();
+        expect(haveSeenPending).toBeTruthy();
+    });
+
+    test.skip(`/hashlookup - contentHash`, async () => {
+        let modVersion = DatabaseHelper.cache.modVersions[0];
+        let contentHash = modVersion.contentHashes[0].hash;
+        const response = await api.get(`/hashlookup?hash=${contentHash}`);
+        expect(response.status).toBe(200);
+        expect(response.body).toBeDefined();
+        expect(response.body).toHaveProperty(`modVersions`);
+        expect(response.body.modVersions).toBeInstanceOf(Array);
+        expect(response.body.modVersions.length).toBe(1);
+        let apimv = response.body.modVersions[0];
+        expect(apimv).toHaveProperty(`id`);
+        expect(apimv).toHaveProperty(`modId`);
+        expect(apimv.id).toBe(modVersion.id);
+        expect(apimv.modId).toBe(modVersion.modId);
+    });
+
+    test.skip(`/hashlookup - ziphash`, async () => {
+        let modVersion = DatabaseHelper.cache.modVersions[0];
+        let zipHash = modVersion.zipHash;
+        const response = await api.get(`/hashlookup?hash=${zipHash}`);
+        expect(response.status).toBe(200);
+        expect(response.body).toBeDefined();
+        expect(response.body).toHaveProperty(`modVersions`);
+        expect(response.body.modVersions).toBeInstanceOf(Array);
+        expect(response.body.modVersions.length).toBe(1);
+        let apimv = response.body.modVersions[0];
+        expect(apimv).toHaveProperty(`id`);
+        expect(apimv).toHaveProperty(`modId`);
+        expect(apimv.id).toBe(modVersion.id);
+        expect(apimv.modId).toBe(modVersion.modId);
     });
 });

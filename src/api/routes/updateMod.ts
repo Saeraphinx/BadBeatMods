@@ -6,7 +6,6 @@ import { Validator } from '../../shared/Validator.ts';
 import { SemVer } from 'semver';
 import path from 'node:path';
 import { Config } from '../../shared/Config.ts';
-import { sendEditLog } from '../../shared/ModWebhooks.ts';
 import { Utils } from '../../shared/Utils.ts';
 
 export class UpdateModRoutes {
@@ -59,24 +58,8 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            // check permissions
-            let allowedToEdit = false;
-
-            if (reqBody.data.gameName && reqBody.data.gameName !== mod.gameName) {
-                // if changing game, check if user has permissions for the new game
-                if (session.user.roles.perGame[reqBody.data.gameName]?.includes(UserRoles.AllPermissions) || session. user.roles.perGame[reqBody.data.gameName]?.includes(UserRoles.Approver)) {
-                    // and if they have permissions for the current game
-                    if (session.user.roles.perGame[mod.gameName]?.includes(UserRoles.AllPermissions) || session.user.roles.perGame[mod.gameName]?.includes(UserRoles.Approver)) {
-                        allowedToEdit = true;
-                    }
-                }
-            }
-
-            if (mod.isAllowedToEdit(session.user)) {
-                allowedToEdit = true;
-            }
-
-            if (!allowedToEdit) {
+            let isGameChange = reqBody.data.gameName && reqBody.data.gameName !== mod.gameName;
+            if (mod.isAllowedToEdit(session.user, isGameChange) == false) {
                 return res.status(401).send({ message: `You cannot edit this mod.` });
             }
 
@@ -105,7 +88,7 @@ export class UpdateModRoutes {
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return;
                 } else {
-                    res.status(200).send({ message: `Mod updated.`, mod });
+                    res.status(200).send({ message: `Mod updated.`, mod: mod.mod });
                     DatabaseHelper.refreshCache(`mods`);
                 }
             }).catch((error) => {
