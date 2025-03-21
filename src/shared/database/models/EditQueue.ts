@@ -20,11 +20,22 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
     declare readonly deletedAt: CreationOptional<Date> | null;
 
     public isModVersion(): this is EditQueue & { objectTableName: `modVersions`, object: ModVersionApproval } {
-        return this.objectTableName === `modVersions` && `modVersion` in this.object;
+        let hasModVersionKeys = `modVersion` in this.object ||
+            `platform` in this.object ||
+            `supportedGameVersionIds` in this.object ||
+            `dependencies` in this.object;
+        return this.objectTableName === `modVersions` && hasModVersionKeys;
     }
 
     public isMod(): this is EditQueue & { objTableName: `mods`, object: ModApproval } {
-        return this.objectTableName === `mods` && `name` in this.object;
+        let hasModKeys = `name` in this.object ||
+            `summary` in this.object ||
+            `description` in this.object ||
+            `category` in this.object ||
+            `gitUrl` in this.object ||
+            `authorIds` in this.object ||
+            `gameName` in this.object;
+        return this.objectTableName === `mods` && hasModKeys;
     }
 
     public async approve(approver: User) {

@@ -69,6 +69,13 @@ let j = 1;
 for (let project of fakeProjectData) {
     for (let platform of getEnumValues(Platform)) {
         let availableGameVersions = fakeGameVersionData.filter((version) => version.gameName == project.gameName);
+        let contentHashes: ContentHash[] = [];
+        for (let i = 0; i < faker.number.int({min: 1, max: 5}); i++) {
+            contentHashes.push({
+                path: faker.system.filePath(),
+                hash: faker.string.hexadecimal({length: 64, casing: `lower`, prefix: ``}),
+            });
+        }
 
         fakeVersionData.push({
             id: j++,
@@ -76,7 +83,7 @@ for (let project of fakeProjectData) {
             modVersion: new SemVer(`1.0.0`),
             platform: platform as Platform,
             status: project.status,
-            contentHashes: [],
+            contentHashes: contentHashes,
             supportedGameVersionIds: availableGameVersions.map((version) => version.id),
             authorId: 1,
             dependencies: [],

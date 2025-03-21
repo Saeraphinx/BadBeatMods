@@ -71,6 +71,7 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
 
 describe.sequential(`API`, async () => {
     let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
+    let defaultModData: Omit<ModInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         // Do not mock these files for a full server run.
@@ -139,9 +140,23 @@ describe.sequential(`API`, async () => {
         await server.database.ModVersions.bulkCreate(versions, { individualHooks: true });
         await DatabaseHelper.refreshAllCaches();
         //console.log(JSON.stringify(server.database.serverAdmin));
+        defaultModData = {
+            authorIds: [1],
+            category: Categories.Core,
+            description: `Test Description`,
+            gameName: SupportedGames.BeatSaber,
+            gitUrl: ``,
+            iconFileName: `default.png`,
+            lastApprovedById: null,
+            lastUpdatedById: 1,
+            status: Status.Private,
+            summary: `Test Summary`,
+        };
     });
 
     afterAll(async () => {
+        // wait a few seconds for the server to finish processing requests that request a cache refresh
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         await server.stopServer(false);
     });
 
@@ -277,7 +292,7 @@ describe.sequential(`API`, async () => {
             expect(haveSeenPending).toBeTruthy();
         });
 
-        test.skip(`/hashlookup - contentHash`, async () => {
+        test(`/hashlookup - contentHash`, async () => {
             let modVersion = DatabaseHelper.cache.modVersions[0];
             let contentHash = modVersion.contentHashes[0].hash;
             const response = await api.get(`/hashlookup?hash=${contentHash}`);
@@ -293,7 +308,7 @@ describe.sequential(`API`, async () => {
             expect(apimv.modId).toBe(modVersion.modId);
         });
 
-        test.skip(`/hashlookup - ziphash`, async () => {
+        test(`/hashlookup - ziphash`, async () => {
             let modVersion = DatabaseHelper.cache.modVersions[0];
             let zipHash = modVersion.zipHash;
             const response = await api.get(`/hashlookup?hash=${zipHash}`);
@@ -311,25 +326,6 @@ describe.sequential(`API`, async () => {
     });
 
     describe.sequential(`Edit Mods`, () => {
-        let defaultModData: Omit<ModInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
-
-        beforeAll(async () => {
-            defaultModData = {
-                authorIds: [1],
-                category: Categories.Core,
-                description: `Test Description`,
-                gameName: SupportedGames.BeatSaber,
-                gitUrl: ``,
-                iconFileName: `default.png`,
-                lastApprovedById: null,
-                lastUpdatedById: 1,
-                status: Status.Private,
-                summary: `Test Summary`,
-            };
-
-
-        });
-
         beforeEach(() => {
             shouldAuthenticateWithRole = false;
         });
@@ -387,6 +383,88 @@ describe.sequential(`API`, async () => {
             expect(mod.mod.name).toBe(`Test Mod private approver`);
         });
     });
+
+    describe.sequential(`Approval`, () => {
+        let defaultMod: Mod;
+        let defaultVersion: ModVersion;
+        let modEdit: EditQueue;
+        let versionEdit: EditQueue;
+        let gnToCheck = gameVersions[0].gameName;
+        beforeAll(async () => {
+            defaultMod = await server.database.Mods.create({
+                ...defaultModData,
+                name: stuff.fakeName,
+                authorIds: [1],
+                gameName: gameVersions[0].gameName, // surely this will be the same gamename
+                status: Status.Verified
+            });
+            defaultVersion = await server.database.ModVersions.create({
+                ...versions[0],
+                supportedGameVersionIds: [gameVersions[0].id],
+                id: undefined,
+                modId: defaultMod.id,
+                zipHash: `123456789`,
+                status: Status.Verified,
+            });
+            modEdit = await defaultMod.edit({
+                category: Categories.Core,
+            }, server.database.serverAdmin).then((edit) => {
+                if (edit.isEditObj) {
+                    return edit.edit;
+                } else {
+                    throw new Error(`Failed to create edit.`);
+                }
+            });
+            versionEdit = await defaultVersion.edit({
+                modVersion: new SemVer(`1.0.1879`),
+            }, server.database.serverAdmin).then((edit) => {
+                if (edit.isEditObj) {
+                    return edit.edit;
+                } else {
+                    throw new Error(`Failed to create edit.`);
+                }
+            });
+        });
+
+        test(`/approval/:queuetype - edits`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            const response = await api.get(`/approval/edits?gameName=${gnToCheck}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`edits`);
+            expect(response.body.edits).toBeInstanceOf(Array);
+            expect(response.body.edits.length).toBeGreaterThan(0);
+            let edits = response.body.edits;
+            for (let edit of edits) {
+                expect(edit).toHaveProperty(`edit`);
+                expect(edit).toHaveProperty(`mod`);
+                expect(edit).toHaveProperty(`original`);
+                expect(edit.edit).toHaveProperty(`id`);
+                expect(edit.mod).toHaveProperty(`id`);
+                expect(edit.original).toHaveProperty(`id`);
+            }
+        });
+
+        test(`/approval/:queuetype - versions`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            const response = await api.get(`/approval/modVersions?gameName=${gnToCheck}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`modVersions`);
+            expect(response.body.modVersions).toBeInstanceOf(Array);
+            expect(response.body.modVersions.length).toBeGreaterThan(0);
+            let modVersions = response.body.modVersions;
+            for (let version of modVersions) {
+                expect(version).toHaveProperty(`version`);
+                expect(version).toHaveProperty(`mod`);
+                expect(version.mod).toHaveProperty(`id`);
+                expect(version.version).toHaveProperty(`modId`);
+                expect(version.version.modId).toBe(version.mod.id);
+            }
+        });
+
+    });
+
 });
 
 const stuff = {
