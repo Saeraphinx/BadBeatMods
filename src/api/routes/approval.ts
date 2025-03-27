@@ -6,7 +6,7 @@ import { SemVer } from 'semver';
 import { Op } from 'sequelize';
 import { Validator } from '../../shared/Validator.ts';
 
-enum ApprovalAction {
+export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
     Deny = `deny`, // Reject the mod/modVersion, set its status to unverified, but do not remove it
     Remove = `remove`, // Remove the mod/modVersion from the database

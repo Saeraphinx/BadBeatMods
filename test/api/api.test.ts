@@ -13,6 +13,7 @@ let shouldAuthenticateWithRole: UserRoles | false | true = false;
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
+import { ApprovalAction } from '../../src/api/routes/approval.ts';
 
 let gameVersions: GameVersionInfer[] = [];
 for (let gv of fakeData.gameVersions) {
@@ -424,6 +425,7 @@ describe.sequential(`API`, async () => {
                     throw new Error(`Failed to create edit.`);
                 }
             });
+            DatabaseHelper.refreshAllCaches();
         });
 
         test(`/approval/:queuetype - edits`, async () => {
@@ -460,12 +462,197 @@ describe.sequential(`API`, async () => {
                 expect(version.mod).toHaveProperty(`id`);
                 expect(version.version).toHaveProperty(`modId`);
                 expect(version.version.modId).toBe(version.mod.id);
+                expect(version.version).toHaveProperty(`status`);
+                expect(version.version.status).toBe(Status.Pending);
             }
         });
 
-    });
+        test(`/approval/:queuetype - versions (w/ unverified)`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            const response = await api.get(`/approval/modVersions?gameName=${gnToCheck}&includeUnverified=true`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`modVersions`);
+            expect(response.body.modVersions).toBeInstanceOf(Array);
+            expect(response.body.modVersions.length).toBeGreaterThan(0);
+            let modVersions = response.body.modVersions;
+            let hasSeenUnverified = false;
+            let hasSeenPending = false;
+            for (let version of modVersions) {
+                expect(version).toHaveProperty(`version`);
+                expect(version).toHaveProperty(`mod`);
+                expect(version.mod).toHaveProperty(`id`);
+                expect(version.version).toHaveProperty(`modId`);
+                expect(version.version.modId).toBe(version.mod.id);
+                expect(version.version).toHaveProperty(`status`);
+                expect(version.version.status).toBeOneOf([Status.Pending, Status.Unverified]);
+                if (version.version.status === Status.Unverified) {
+                    hasSeenUnverified = true;
+                } else if (version.version.status === Status.Pending) {
+                    hasSeenPending = true;
+                }
+            }
+            expect(hasSeenUnverified).toBeTruthy();
+            expect(hasSeenPending).toBeTruthy();
+        });
 
+        test(`/approval/:queuetype - projects`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            const response = await api.get(`/approval/mods?gameName=${gnToCheck}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`mods`);
+            expect(response.body.mods).toBeInstanceOf(Array);
+            expect(response.body.mods.length).toBeGreaterThan(0);
+            let mods = response.body.mods;
+            for (let mod of mods) {
+                expect(mod).toHaveProperty(`name`);
+                expect(mod.name).toBeDefined();
+                expect(mod).toHaveProperty(`status`);
+                expect(mod.status).toBe(Status.Pending);
+            }
+        });
+
+        test(`/approval/:queuetype - projects (w/ unverified)`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            const response = await api.get(`/approval/mods?gameName=${gnToCheck}&includeUnverified=true`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`mods`);
+            expect(response.body.mods).toBeInstanceOf(Array);
+            expect(response.body.mods.length).toBeGreaterThan(0);
+            let mods = response.body.mods;
+            let hasSeenUnverified = false;
+            let hasSeenPending = false;
+            for (let mod of mods) {
+                expect(mod).toHaveProperty(`name`);
+                expect(mod.name).toBeDefined();
+                expect(mod).toHaveProperty(`status`);
+                expect(mod.status).toBeOneOf([Status.Pending, Status.Unverified]);
+                if (mod.status === Status.Unverified) {
+                    hasSeenUnverified = true;
+                } else if (mod.status === Status.Pending) {
+                    hasSeenPending = true;
+                }
+            }
+            expect(hasSeenUnverified).toBeTruthy();
+            expect(hasSeenPending).toBeTruthy();
+        });
+
+        describe.sequential(`Mod Status Changes`, () => {
+            let testMod: Mod;
+            let testModVersion: ModVersion;
+            beforeAll(async () => {
+                testMod = await server.database.Mods.create({
+                    ...defaultModData,
+                    name: stuff.fakeName,
+                    authorIds: [1],
+                    gameName: gameVersions[0].gameName, // surely this will be the same gamename
+                    status: Status.Pending
+                });
+                testModVersion = await server.database.ModVersions.create({
+                    ...versions[0],
+                    supportedGameVersionIds: [gameVersions[0].id],
+                    id: undefined,
+                    modId: testMod.id,
+                    zipHash: `123456789`,
+                    status: Status.Pending,
+                });
+            });
+
+            test(`/approval/mod/:modIdParam/approve - approve pending mod`, async () => {
+                await testStatusChange(testMod, Status.Pending, ApprovalAction.Accept, Status.Verified, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - approve unverified mod`, async () => {
+                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Accept, Status.Verified, sendModLog)();
+            });
+
+            // yes, this is redundant. however, it is something that can technically happen so we should make sure it doesn't break
+            test(`/approval/mod/:modIdParam/approve - approve verified mod`, async () => {
+                await testStatusChange(testMod, Status.Verified, ApprovalAction.Accept, Status.Verified, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - deny pending mod`, async () => {
+                await testStatusChange(testMod, Status.Pending, ApprovalAction.Deny, Status.Unverified, sendModLog)();
+            });
+
+            // once again redundant, but still a good check
+            test(`/approval/mod/:modIdParam/approve - deny unverified mod`, async () => {
+                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Deny, Status.Unverified, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - deny verified mod`, async () => {
+                await testStatusChange(testMod, Status.Verified, ApprovalAction.Deny, Status.Unverified, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - remove pending mod`, async () => {
+                await testStatusChange(testMod, Status.Pending, ApprovalAction.Remove, Status.Removed, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - remove unverified mod`, async () => {
+                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Remove, Status.Removed, sendModLog)();
+            });
+
+            test(`/approval/mod/:modIdParam/approve - remove verified mod`, async () => {
+                await testStatusChange(testMod, Status.Verified, ApprovalAction.Remove, Status.Removed, sendModLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - approve pending mod`, async () => {
+                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - approve unverified mod`, async () => {
+                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
+            });
+
+            // yes, this is redundant. however, it is something that can technically happen so we should make sure it doesn't break
+            test(`/approval/modversion/:modIdParam/approve - approve verified mod`, async () => {
+                await testStatusChange(testModVersion, Status.Verified, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - deny pending mod`, async () => {
+                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
+            });
+
+            // once again redundant, but still a good check
+            test(`/approval/modversion/:modIdParam/approve - deny unverified mod`, async () => {
+                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - deny verified mod`, async () => {
+                await testStatusChange(testModVersion, Status.Verified, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - remove pending mod`, async () => {
+                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Remove, Status.Removed, sendModVersionLog)();
+            });
+
+            test(`/approval/modversion/:modIdParam/approve - remove unverified mod`, async () => {
+                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Remove, Status.Removed, sendModVersionLog)();
+            });
+        });
+    });
 });
+
+function testStatusChange(testMod:Mod|ModVersion, fromStatus:Status, action:ApprovalAction, toStatus:Status, logAction:Function) {
+    return async () => {
+        shouldAuthenticateWithRole = UserRoles.Approver;
+        testMod.status = fromStatus;
+        await testMod.save();
+        let type = testMod instanceof Mod ? `mod` : `modversion`;
+        const response = await api.post(`/approval/${type}/${testMod.id}/approve`).send({
+            action: action,
+        });
+        expect(response.status).toBe(200);
+        expect(response.body).toBeDefined();
+        expect(response.body).toHaveProperty(`message`);
+        expect(response.body.message).toBe(`Mod ${toStatus}.`);
+        expect(logAction).toHaveBeenCalled();
+        await testMod.reload();
+        expect(testMod.status).toBe(toStatus);
+    }
+}
 
 const stuff = {
     get fakeName() {
