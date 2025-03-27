@@ -425,7 +425,7 @@ describe.sequential(`API`, async () => {
                     throw new Error(`Failed to create edit.`);
                 }
             });
-            DatabaseHelper.refreshAllCaches();
+            await DatabaseHelper.refreshAllCaches();
         });
 
         test(`/approval/:queuetype - edits`, async () => {
