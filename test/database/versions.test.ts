@@ -216,6 +216,16 @@ describe.sequential(`Versions - Hooks`, async () => {
             });
         }).rejects.toThrow();
     });
+
+    test(`removes "v" from version string`, async () => {
+        let modVersion = await db.ModVersions.create({
+            ...defaultVersionData,
+            modVersion: new SemVer(`v1.0.0`),
+            supportedGameVersionIds: [testModGV[0].id],
+        });
+
+        expect(modVersion.modVersion.raw).toBe(`1.0.0`);
+    });
 });
 
 describe.sequential(`Versions - Visibility`, async () => {

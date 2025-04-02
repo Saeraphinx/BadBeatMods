@@ -748,6 +748,11 @@ export class DatabaseManager {
                     }*/
                 }
             }
+
+            // do not allow modVersion to be created with a version that starts with v
+            if (modVersion.modVersion.raw.startsWith(`v`)) {
+                modVersion.modVersion = new SemVer(modVersion.modVersion.raw.slice(1));
+            }
         });
 
         // this is just to make sure that there is always a default version for a game, as otherwise a bunch of endpoints won't know what to do.
