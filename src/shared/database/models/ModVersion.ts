@@ -8,7 +8,7 @@ import { User, UserRoles } from "./User.ts";
 import { Mod } from "./Mod.ts";
 import { EditQueue } from "./EditQueue.ts";
 import path from "path";
-import { Config } from "src/shared/Config.ts";
+import { Config } from "../../Config.ts";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
 export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>>
