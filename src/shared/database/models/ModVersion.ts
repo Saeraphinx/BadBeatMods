@@ -1,12 +1,14 @@
 import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger.ts";
+import * as fs from "fs";
 import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper.ts";
 import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User, UserRoles } from "./User.ts";
 import { Mod } from "./Mod.ts";
 import { EditQueue } from "./EditQueue.ts";
-import { ValidationOptions } from "sequelize/types/instance-validator";
+import path from "path";
+import { Config } from "src/shared/Config.ts";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
 export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>>
@@ -168,6 +170,23 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                 break;
         }
         return this;
+    }
+
+    public async isRestorable(): Promise<boolean> {
+        if (this.status == Status.Removed) {
+            let mod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+            if (!mod) {
+                Logger.error(`Mod ${this.modId} not found for mod version ${this.id}`);
+                return false;
+            }
+            if (mod.status == Status.Removed) {
+                if (!mod.isRestorable()) {
+                    return false;
+                }
+            }
+            return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
+        }
+        return false;
     }
 
     public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<ModVersion | EditQueue | null> {

@@ -5,6 +5,9 @@ import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper.ts";
 import { ModVersion } from "./ModVersion.ts";
 import { User, UserRoles } from "./User.ts";
+import path from "path";
+import fs from "fs";
+import { Config } from "../../Config.ts";
 
 export type ModInfer = InferAttributes<Mod>;
 export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>>
@@ -193,6 +196,13 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 break;
         }
         return this;
+    }
+
+    public async isRestorable(): Promise<boolean> {
+        if (this.status == Status.Removed) {
+            return fs.existsSync(`${path.resolve(Config.storage.iconsDir)}/${this.iconFileName}`);
+        }
+        return false; 
     }
 
     public static async checkForExistingMod(name: string) {

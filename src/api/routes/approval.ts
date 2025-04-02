@@ -10,6 +10,7 @@ export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
     Deny = `deny`, // Reject the mod/modVersion, set its status to unverified, but do not remove it
     Remove = `remove`, // Remove the mod/modVersion from the database
+    Restore = `restore`, // Restore the mod/modVersion if it was previously removed
 }
 
 export class ApprovalRoutes {
@@ -198,8 +199,8 @@ export class ApprovalRoutes {
                 return;
             }
 
-            if (mod.status === Status.Removed) {
-                return res.status(400).send({ message: `Mod is removed.` });
+            if (mod.status === Status.Removed && action.data !== ApprovalAction.Restore) {
+                return res.status(400).send({ message: `Mod is removed. Please restore it first.` });
             }
 
             let promise: Promise<Mod>;
@@ -215,6 +216,13 @@ export class ApprovalRoutes {
                     break;
                 case ApprovalAction.Remove:
                     status = Status.Removed;
+                    promise = mod.setStatus(status, session.user);
+                    break;
+                case ApprovalAction.Restore:
+                    if (await mod.isRestorable() === false) {
+                        return res.status(400).send({ message: `Mod is not restorable.` });
+                    }
+                    status = Status.Pending;
                     promise = mod.setStatus(status, session.user);
                     break;
                 default:
@@ -282,7 +290,7 @@ export class ApprovalRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            if (modVersion.status === Status.Removed) {
+            if (modVersion.status === Status.Removed && action.data !== ApprovalAction.Restore) {
                 return res.status(400).send({ message: `Version is removed.` });
             }
 
@@ -299,6 +307,18 @@ export class ApprovalRoutes {
                     break;
                 case ApprovalAction.Remove:
                     status = Status.Removed;
+                    promise = modVersion.setStatus(status, session.user);
+                    break;
+                case ApprovalAction.Restore:
+                    if (await modVersion.isRestorable() === false) {
+                        return res.status(400).send({ message: `Mod version is not restorable.` });
+                    }
+
+                    if (mod.status === Status.Removed) { // above checks if the mod is restorable
+                        mod.setStatus(Status.Pending, session.user);
+                    }
+
+                    status = Status.Pending;
                     promise = modVersion.setStatus(status, session.user);
                     break;
                 default:
