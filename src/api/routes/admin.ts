@@ -7,7 +7,7 @@ import * as path from 'path';
 import { Validator } from '../../shared/Validator.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendModVersionLog } from '../../shared/ModWebhooks';
+import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks';
 
 export class AdminRoutes {
     private router: Router;
@@ -569,7 +569,7 @@ export class AdminRoutes {
             modVersion.modId = newMod.id;
             await modVersion.save().then(() => {
                 DatabaseHelper.refreshCache(`modVersions`);
-                sendModVersionLog(modVersion, session.user, `Approved`, newMod);
+                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
                 return res.status(200).send({ message: `Version ${modVersionId.data} moved to mod ${newModId.data}.` });
             }).catch((err) => {
                 Logger.error(`Error moving mod version ${modVersionId.data}: ${err}`);
