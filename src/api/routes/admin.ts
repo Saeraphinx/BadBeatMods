@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Validator } from '../../shared/Validator.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
+import { sendModVersionLog } from '../../shared/ModWebhooks';
 
 export class AdminRoutes {
     private router: Router;
@@ -516,6 +517,64 @@ export class AdminRoutes {
             }
             Logger.log(`User ${session.user.username} removed role ${role.data} from user ${user.username} for game ${gameName.data} by ${session.user?.id}.`);
             return res.status(200).send({ message: gameName.data ? `Role ${role.data} removed from user ${user.username} for game ${gameName.data}.` : `Role ${role.data} removed from user ${user.username}`, user });
+        });
+
+        this.router.post(`/admin/versions/moveVersion`, async (req, res) => {
+            // #swagger.tags = ['Admin']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
+            // #swagger.summary = 'Move a version to another game.'
+            // #swagger.description = 'Move a version to another game.'
+            /* #swagger.requestBody = {
+                    description: 'The version to move.',
+                    required: true,
+                    schema: {
+                      versionId: 1,
+                      newModId: 2
+                  }
+            }
+            */
+            let modVersionId = Validator.zDBID.safeParse(req.body.versionId);
+            let newModId = Validator.zDBID.safeParse(req.body.newModId);
+            if (!modVersionId.success || !newModId.success) {
+                return res.status(400).send({ message: `Invalid parameters.` });
+            }
+
+            let modVersion = await DatabaseHelper.database.ModVersions.findByPk(modVersionId.data);
+            if (!modVersion) {
+                return res.status(404).send({ message: `Version not found.` });
+            }
+
+            let originalMod = await DatabaseHelper.database.Mods.findByPk(modVersion.modId);
+            if (!originalMod) {
+                return res.status(404).send({ message: `Mod not found.` });
+            }
+
+            let session = await validateSession(req, res, UserRoles.Approver, originalMod.gameName);
+            if (!session.user) {
+                return;
+            }
+
+            let newMod = await DatabaseHelper.database.Mods.findByPk(newModId.data);
+            if (!newMod) {
+                return res.status(404).send({ message: `New mod not found.` });
+            }
+
+            if (originalMod.gameName !== newMod.gameName) {
+                return res.status(400).send({ message: `Mods must be for the same game.` });
+            }
+
+            modVersion.modId = newMod.id;
+            await modVersion.save().then(() => {
+                DatabaseHelper.refreshCache(`modVersions`);
+                sendModVersionLog(modVersion, session.user, `Approved`, newMod);
+                return res.status(200).send({ message: `Version ${modVersionId.data} moved to mod ${newModId.data}.` });
+            }).catch((err) => {
+                Logger.error(`Error moving mod version ${modVersionId.data}: ${err}`);
+                return res.status(500).send({ message: `Error moving mod version ${modVersionId.data}: ${err}` });
+            });
         });
     }
 }
