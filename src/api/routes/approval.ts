@@ -232,6 +232,7 @@ export class ApprovalRoutes {
             promise.then(() => {
                 Logger.log(`Mod ${modId.data} set to status ${status} by ${session.user!.username}.`);
                 DatabaseHelper.refreshCache(`mods`);
+                // logs sent out in the setStatus method
                 return res.status(200).send({ message: `Mod ${status}.` });
             }).catch((error) => {
                 Logger.error(`Error ${status} mod: ${error}`);
@@ -328,6 +329,7 @@ export class ApprovalRoutes {
             promise.then(() => {
                 Logger.log(`ModVersion ${modVersion.id} set to status ${status} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`modVersions`);
+                // logs sent out by the modVersion.setStatus method
                 return res.status(200).send({ message: `Mod ${status}.` });
             }).catch((error) => {
                 Logger.error(`Error ${status} mod: ${error}`);

@@ -180,6 +180,8 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 this.lastApprovedById = user.id;
                 if (prevStatus == Status.Verified) {
                     sendModLog(this, user, WebhookLogType.VerificationRevoked);
+                } else if (prevStatus == Status.Removed) {
+                    sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
                     sendModLog(this, user, WebhookLogType.RejectedUnverified);
                 }

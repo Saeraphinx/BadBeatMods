@@ -153,6 +153,8 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                 if (prevStatus == Status.Verified) {
                     this.lastApprovedById = user.id;
                     shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked) : undefined;
+                } else if (prevStatus == Status.Removed) {
+                    sendModVersionLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
                     sendModVersionLog(this, user, WebhookLogType.RejectedUnverified);
                 }
