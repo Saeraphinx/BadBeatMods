@@ -560,77 +560,33 @@ describe.sequential(`API`, async () => {
                 });
             });
 
-            test(`/approval/mod/:modIdParam/approve - approve pending mod`, async () => {
-                await testStatusChange(testMod, Status.Pending, ApprovalAction.Accept, Status.Verified, sendModLog)();
-            });
+            test.each([
+                [Status.Pending, ApprovalAction.Accept, Status.Verified],
+                [Status.Unverified, ApprovalAction.Accept, Status.Verified],
+                [Status.Verified, ApprovalAction.Accept, Status.Verified],
+                [Status.Pending, ApprovalAction.Deny, Status.Unverified],
+                [Status.Unverified, ApprovalAction.Deny, Status.Unverified],
+                [Status.Verified, ApprovalAction.Deny, Status.Unverified],
+                [Status.Pending, ApprovalAction.Remove, Status.Removed],
+                [Status.Unverified, ApprovalAction.Remove, Status.Removed],
+                [Status.Verified, ApprovalAction.Remove, Status.Removed],
+            ])('/approval/mod/:modIdParam/approve - %s %s -> %s', async (init, action, expected) => {
+                await testStatusChange(testMod, init, action, expected, sendModLog)();
+            })
 
-            test(`/approval/mod/:modIdParam/approve - approve unverified mod`, async () => {
-                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Accept, Status.Verified, sendModLog)();
-            });
-
-            // yes, this is redundant. however, it is something that can technically happen so we should make sure it doesn't break
-            test(`/approval/mod/:modIdParam/approve - approve verified mod`, async () => {
-                await testStatusChange(testMod, Status.Verified, ApprovalAction.Accept, Status.Verified, sendModLog)();
-            });
-
-            test(`/approval/mod/:modIdParam/approve - deny pending mod`, async () => {
-                await testStatusChange(testMod, Status.Pending, ApprovalAction.Deny, Status.Unverified, sendModLog)();
-            });
-
-            // once again redundant, but still a good check
-            test(`/approval/mod/:modIdParam/approve - deny unverified mod`, async () => {
-                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Deny, Status.Unverified, sendModLog)();
-            });
-
-            test(`/approval/mod/:modIdParam/approve - deny verified mod`, async () => {
-                await testStatusChange(testMod, Status.Verified, ApprovalAction.Deny, Status.Unverified, sendModLog)();
-            });
-
-            test(`/approval/mod/:modIdParam/approve - remove pending mod`, async () => {
-                await testStatusChange(testMod, Status.Pending, ApprovalAction.Remove, Status.Removed, sendModLog)();
-            });
-
-            test(`/approval/mod/:modIdParam/approve - remove unverified mod`, async () => {
-                await testStatusChange(testMod, Status.Unverified, ApprovalAction.Remove, Status.Removed, sendModLog)();
-            });
-
-            test(`/approval/mod/:modIdParam/approve - remove verified mod`, async () => {
-                await testStatusChange(testMod, Status.Verified, ApprovalAction.Remove, Status.Removed, sendModLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - approve pending mod`, async () => {
-                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - approve unverified mod`, async () => {
-                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
-            });
-
-            // yes, this is redundant. however, it is something that can technically happen so we should make sure it doesn't break
-            test(`/approval/modversion/:modIdParam/approve - approve verified mod`, async () => {
-                await testStatusChange(testModVersion, Status.Verified, ApprovalAction.Accept, Status.Verified, sendModVersionLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - deny pending mod`, async () => {
-                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
-            });
-
-            // once again redundant, but still a good check
-            test(`/approval/modversion/:modIdParam/approve - deny unverified mod`, async () => {
-                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - deny verified mod`, async () => {
-                await testStatusChange(testModVersion, Status.Verified, ApprovalAction.Deny, Status.Unverified, sendModVersionLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - remove pending mod`, async () => {
-                await testStatusChange(testModVersion, Status.Pending, ApprovalAction.Remove, Status.Removed, sendModVersionLog)();
-            });
-
-            test(`/approval/modversion/:modIdParam/approve - remove unverified mod`, async () => {
-                await testStatusChange(testModVersion, Status.Unverified, ApprovalAction.Remove, Status.Removed, sendModVersionLog)();
-            });
+            test.each([
+                [Status.Pending, ApprovalAction.Accept, Status.Verified],
+                [Status.Unverified, ApprovalAction.Accept, Status.Verified],
+                [Status.Verified, ApprovalAction.Accept, Status.Verified],
+                [Status.Pending, ApprovalAction.Deny, Status.Unverified],
+                [Status.Unverified, ApprovalAction.Deny, Status.Unverified],
+                [Status.Verified, ApprovalAction.Deny, Status.Unverified],
+                [Status.Pending, ApprovalAction.Remove, Status.Removed],
+                [Status.Unverified, ApprovalAction.Remove, Status.Removed],
+                [Status.Verified, ApprovalAction.Remove, Status.Removed],
+            ])('/approval/modversion/:modIdParam/approve - %s %s -> %s', async (init, action, expected) => {
+                await testStatusChange(testModVersion, init, action, expected, sendModVersionLog)();
+            })
         });
     });
 });
