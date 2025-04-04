@@ -410,3 +410,7 @@ export async function startServer() {
 
     return {app, server, database, stopServer};
 }
+
+if (process.env.NODE_ENV !== `test`) {
+    startServer();
+}

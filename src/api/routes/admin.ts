@@ -7,7 +7,7 @@ import * as path from 'path';
 import { Validator } from '../../shared/Validator.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks';
+import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
 
 export class AdminRoutes {
     private router: Router;

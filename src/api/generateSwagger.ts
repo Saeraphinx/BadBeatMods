@@ -488,7 +488,7 @@ const routes = [
     `./routes/approval.ts`,
     `./routes/motd.ts`,
     `./routes/users.ts`,
-    `./routes/status.ts`,
+    `./routes/apistatus.ts`,
     `./routes/bulkActions.ts`,
 ];
 
