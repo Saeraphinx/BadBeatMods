@@ -129,72 +129,6 @@ const cdnRateLimiter = rateLimit({
 
 cdnRouter.use(cdnRateLimiter);
 
-//app.use(`/api`, Validator.runValidator);
-if (Config.flags.enableBeatModsCompatibility) {
-    new BeatModsRoutes(app, apiRouter);
-}
-new CreateModRoutes(apiRouter);
-new GetModRoutes(apiRouter);
-new UpdateModRoutes(apiRouter);
-new ApprovalRoutes(apiRouter);
-new AuthRoutes(apiRouter);
-new ImportRoutes(apiRouter);
-new AdminRoutes(apiRouter);
-new VersionsRoutes(apiRouter);
-new MOTDRoutes(apiRouter);
-new UserRoutes(apiRouter);
-new StatusRoutes(apiRouter);
-new BulkActionsRoutes(apiRouter);
-
-if (Config.flags.enableSwagger) {
-    swaggerDocument.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
-    if (!Config.flags.enableGithubPAT) {
-        // @ts-expect-error it complains about it not being undefineable. this just in! i dont care.
-        swaggerDocument.components.securitySchemes.bearerAuth = undefined;
-    }
-    apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-        swaggerOptions: {
-            docExpansion: `list`,
-            defaultModelExpandDepth: 2,
-            defaultModelsExpandDepth: 2,
-        }
-    }));
-}
-
-if (Config.flags.enableFavicon) {
-    app.get(`/favicon.ico`, cdnRateLimiter, (req, res) => {
-        // #swagger.ignore = true;
-        res.sendFile(path.resolve(`./assets/favicon.png`), {
-            maxAge: 1000 * 60 * 60 * 24 * 1,
-            //immutable: true,
-            lastModified: true,
-        });
-    });
-}
-        
-if (Config.flags.enableBanner) {
-    // #swagger.ignore = true;
-    app.get(`/banner.png`, cdnRateLimiter, (req, res) => {
-        res.sendFile(path.resolve(`./assets/banner.png`), {
-            maxAge: 1000 * 60 * 60 * 24 * 1,
-            //immutable: true,
-            lastModified: true,
-        });
-    });
-}
-
-if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
-    app.use(`/`, cdnRateLimiter, express.static(path.resolve(`./storage/frontend`), {
-        dotfiles: `ignore`,
-        immutable: false,
-        index: true,
-        maxAge: 1000 * 60 * 60 * 1,
-        fallthrough: true,
-    }));
-}
-
-new CDNRoutes(cdnRouter);
-
 app.use(session(sessionConfigData));
 import(`@octokit/rest`).then((Octokit) => {
     passport.use(`bearer`, new BearerStrategy(
@@ -262,6 +196,73 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+//app.use(`/api`, Validator.runValidator);
+if (Config.flags.enableBeatModsCompatibility) {
+    new BeatModsRoutes(app, apiRouter);
+}
+new CreateModRoutes(apiRouter);
+new GetModRoutes(apiRouter);
+new UpdateModRoutes(apiRouter);
+new ApprovalRoutes(apiRouter);
+new AuthRoutes(apiRouter);
+new ImportRoutes(apiRouter);
+new AdminRoutes(apiRouter);
+new VersionsRoutes(apiRouter);
+new MOTDRoutes(apiRouter);
+new UserRoutes(apiRouter);
+new StatusRoutes(apiRouter);
+new BulkActionsRoutes(apiRouter);
+
+if (Config.flags.enableSwagger) {
+    swaggerDocument.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];
+    if (!Config.flags.enableGithubPAT) {
+        // @ts-expect-error it complains about it not being undefineable. this just in! i dont care.
+        swaggerDocument.components.securitySchemes.bearerAuth = undefined;
+    }
+    apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+        swaggerOptions: {
+            docExpansion: `list`,
+            defaultModelExpandDepth: 2,
+            defaultModelsExpandDepth: 2,
+        }
+    }));
+}
+
+if (Config.flags.enableFavicon) {
+    app.get(`/favicon.ico`, cdnRateLimiter, (req, res) => {
+        // #swagger.ignore = true;
+        res.sendFile(path.resolve(`./assets/favicon.png`), {
+            maxAge: 1000 * 60 * 60 * 24 * 1,
+            //immutable: true,
+            lastModified: true,
+        });
+    });
+}
+        
+if (Config.flags.enableBanner) {
+    // #swagger.ignore = true;
+    app.get(`/banner.png`, cdnRateLimiter, (req, res) => {
+        res.sendFile(path.resolve(`./assets/banner.png`), {
+            maxAge: 1000 * 60 * 60 * 24 * 1,
+            //immutable: true,
+            lastModified: true,
+        });
+    });
+}
+
+if (Config.devmode && fs.existsSync(path.resolve(`./storage/frontend`))) {
+    app.use(`/`, cdnRateLimiter, express.static(path.resolve(`./storage/frontend`), {
+        dotfiles: `ignore`,
+        immutable: false,
+        index: true,
+        maxAge: 1000 * 60 * 60 * 1,
+        fallthrough: true,
+    }));
+}
+
+new CDNRoutes(cdnRouter);
+
 
 app.use(Config.server.apiRoute, apiRouter);
 app.use(Config.server.cdnRoute, cdnRouter);
