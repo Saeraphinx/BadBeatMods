@@ -23,9 +23,12 @@
     Text_Updated = `updated`,
 }
 ```
+
 - Version detection has been moved to the `Utils` class
 - Reworked Approval Endpoints
   - **All approvals now use `ApprovalAction`.**
+  - `status` from mods/modVersions and `accepted` from edit reqest bodies has been replaced with `action`.
+  - add `includeUnverified` query param to `/approval/:queueType`
 ```typescript
 export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
@@ -34,8 +37,8 @@ export enum ApprovalAction {
     Restore = `restore`, // Restore the mod/modVersion if it was previously removed
 }
 ```
- - `status` from mods/modVersions and `accepted` from edit reqest bodies has been replaced with `action`.
- - add `includeUnverified` query param to `/approval/:queueType`
+
+
 - Added `pending` status. `unverified` is now for mods that either will not be verified due to being for an outdated version of the game or do not fully meet the requirements for verification. For the time being, these both can be considered  `unverified`.
 - Removed various bits of unused code and files
 - removed `PATCH /approval/mod/:modIdParam`
@@ -50,7 +53,7 @@ export enum ApprovalAction {
 - `index.ts` can now start and stop the server.
 - Server now properly supports using sqlite in memory (for testing)
 - added `linkedVersionIds` to gameVersions
- - For all intents and purposes, this is bascialy "aliases". BBM still considers each game version to be a unique version, but this will automatically add all linked versions to a modversion when it is created.
+  - For all intents and purposes, this is bascialy "aliases". BBM still considers each game version to be a unique version, but this will automatically add all linked versions to a modversion when it is created.
 - run role migrator to users table after db sync.
 - the charecter `v` is now stripped from the start of version numbers when saving to the database. 
 - the error `Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.` has been removed
