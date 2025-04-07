@@ -141,6 +141,72 @@ function init() {
 
     cdnRouter.use(cdnRateLimiter);
 
+    app.use(session(sessionConfigData));
+    passport.use(`bearer`, new BearerStrategy(
+        function(token, done) {
+            const octokit = new Octokit({ auth: token });
+            if (invalidAttempts.filter((t) => token === t).length > 2) {
+                return done(null, false);
+            }
+            // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+            octokit.rest.users.getAuthenticated().then((response) => {
+                if (response.status !== 200 || response.data === undefined) {
+                    invalidAttempts.push(token ? token : `unknown`);
+                    return done(null, false);
+                }
+                let profile = response.data;
+                DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
+                    if (!user) {
+                        return done(null, false);
+                    } else {
+                        return done(null, user);
+                    }
+                }).catch((err) => {
+                    Logger.error(`Error finding user: ${err}`);
+                    return done(err, null);
+                });
+            }).catch((err) => {
+                if (err.status === 401) {
+                    invalidAttempts.push(token ? token : `unknown`);
+                    return done(null, false);
+                }
+                Logger.warn(`Error getting user: ${err}`);
+                return done(err, null);
+            });
+        }
+    ));
+
+    let invalidAttempts: string[] = [];
+    apiRouter.use(async (req, res, next) => {
+        if (req.session.userId || Config.flags.enableGithubPAT == false) {
+            next();
+        } else {
+            passport.authenticate(`bearer`, { session: false }, (err:any, user:any) => {
+                if (err) {
+                    return res.status(401).send({ message: `Unauthorized` });
+                }
+                if (user && user.id) {
+                    req.session.userId = user.id;
+                    req.session.goodMorning47YourTargetIsThisSession = true;
+                }
+                next();
+            })(req, res, next);
+        }
+    });
+
+    app.use((req, res, next) => {
+        if (Config.devmode) {
+            if (Config.authBypass) {
+                req.session.userId = 1;
+                req.session.goodMorning47YourTargetIsThisSession = true;
+            }
+            if (!req.url.includes(`hashlookup`)) {
+                Logger.winston.log(`http`, `${req.method} ${req.url}`);
+            }
+        }
+        next();
+    });
+
     //app.use(`/api`, Validator.runValidator);
     if (Config.flags.enableBeatModsCompatibility) {
         new BeatModsRoutes(app, apiRouter);
@@ -229,72 +295,6 @@ function init() {
     }
 
     new CDNRoutes(cdnRouter);
-
-    app.use(session(sessionConfigData));
-    passport.use(`bearer`, new BearerStrategy(
-        function(token, done) {
-            const octokit = new Octokit({ auth: token });
-            if (invalidAttempts.filter((t) => token === t).length > 2) {
-                return done(null, false);
-            }
-            // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-            octokit.rest.users.getAuthenticated().then((response) => {
-                if (response.status !== 200 || response.data === undefined) {
-                    invalidAttempts.push(token ? token : `unknown`);
-                    return done(null, false);
-                }
-                let profile = response.data;
-                DatabaseHelper.database.Users.findOne({ where: { githubId: profile.id.toString() } }).then((user) => {
-                    if (!user) {
-                        return done(null, false);
-                    } else {
-                        return done(null, user);
-                    }
-                }).catch((err) => {
-                    Logger.error(`Error finding user: ${err}`);
-                    return done(err, null);
-                });
-            }).catch((err) => {
-                if (err.status === 401) {
-                    invalidAttempts.push(token ? token : `unknown`);
-                    return done(null, false);
-                }
-                Logger.warn(`Error getting user: ${err}`);
-                return done(err, null);
-            });
-        }
-    ));
-
-    let invalidAttempts: string[] = [];
-    apiRouter.use(async (req, res, next) => {
-        if (req.session.userId || Config.flags.enableGithubPAT == false) {
-            next();
-        } else {
-            passport.authenticate(`bearer`, { session: false }, (err:any, user:any) => {
-                if (err) {
-                    return res.status(401).send({ message: `Unauthorized` });
-                }
-                if (user && user.id) {
-                    req.session.userId = user.id;
-                    req.session.goodMorning47YourTargetIsThisSession = true;
-                }
-                next();
-            })(req, res, next);
-        }
-    });
-
-    app.use((req, res, next) => {
-        if (Config.devmode) {
-            if (Config.authBypass) {
-                req.session.userId = 1;
-                req.session.goodMorning47YourTargetIsThisSession = true;
-            }
-            if (!req.url.includes(`hashlookup`)) {
-                Logger.winston.log(`http`, `${req.method} ${req.url}`);
-            }
-        }
-        next();
-    });
 
     app.use(Config.server.apiRoute, apiRouter);
     app.use(Config.server.cdnRoute, cdnRouter);
