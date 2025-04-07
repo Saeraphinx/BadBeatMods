@@ -60,3 +60,4 @@ export enum ApprovalAction {
 - disable logging and config loading if `NODE_ENV` is set to `test`.
 - allow `all` as a value for `status` in `/mods`
 - added tests
+- edits to mod descriptions only bypass edit queue
