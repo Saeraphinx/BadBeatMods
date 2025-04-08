@@ -61,3 +61,7 @@ export enum ApprovalAction {
 - allow `all` as a value for `status` in `/mods`
 - added tests
 - edits to mod descriptions only bypass edit queue
+### 4-8
+- move to using a map for id lookups (these apperently boast a subliniar (they say o(1) iirc?) lookup time, should hopefully speed some of the bigger requests up)
+- add `reason` to approvals
+- add `statusHistory` to mods & modversions. these store time, status, reason, and user id.

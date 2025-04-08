@@ -83,6 +83,13 @@ export interface ContentHash {
     hash: string;
 }
 
+export interface StatusHistory {
+    status: Status;
+    reason: string;
+    userId: number;
+    setAt: Date;
+}
+
 export enum Platform {
     SteamPC = `steampc`,
     OculusPC = `oculuspc`,
@@ -142,6 +149,17 @@ export class DatabaseHelper {
             editApprovalQueue: [],
             motd: [],
         };
+    public static mapCache: {
+        gameVersions: Map<number, GameVersion>,
+        mods: Map<number, Mod>,
+        modVersions: Map<number, ModVersion>,
+        users: Map<number, User>,
+    } = {
+            gameVersions: new Map(),
+            mods: new Map(),
+            modVersions: new Map(),
+            users: new Map(),
+        };
 
     constructor(database: DatabaseManager, loadCache = true) {
         DatabaseHelper.database = database;
@@ -160,6 +178,10 @@ export class DatabaseHelper {
         DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
+        DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
+        DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
+        DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
+        DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
         Logger.debug(`Finished refreshing all caches`);
     }
 
@@ -168,15 +190,19 @@ export class DatabaseHelper {
         switch (tableName) {
             case `gameVersions`:
                 DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
+                DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
                 break;
             case `modVersions`:
                 DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
+                DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
                 break;
             case `mods`:
                 DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
+                DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
                 break;
             case `users`:
                 DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
+                DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
                 break;
             case `editApprovalQueue`:
                 DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
@@ -186,7 +212,7 @@ export class DatabaseHelper {
     }
 
     public static getGameNameFromModId(id: number): SupportedGames | null {
-        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id == id);
+        let mod = DatabaseHelper.mapCache.mods.get(id);
         if (!mod) {
             return null;
         }
@@ -194,11 +220,11 @@ export class DatabaseHelper {
     }
 
     public static getGameNameFromModVersionId(id: number): SupportedGames | null {
-        let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id == id);
+        let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
         if (!modVersion) {
             return null;
         }
-        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id == modVersion.modId);
+        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
         if (!mod) {
             return null;
         }

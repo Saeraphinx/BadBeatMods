@@ -136,7 +136,7 @@ export class GetModRoutes {
                 raw = false;
             }
 
-            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modId.data);
+            let mod = DatabaseHelper.mapCache.mods.get(modId.data);
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -194,16 +194,16 @@ export class GetModRoutes {
             let session = await validateSession(req, res, false, null, false);
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
             let raw = req.query.raw;
-            if (!modVersionId) {
+            if (!modVersionId.success) {
                 return res.status(400).send({ message: `Invalid mod version id.` });
             }
 
-            let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === modVersionId.data);
+            let modVersion = DatabaseHelper.mapCache.modVersions.get(modVersionId.data);
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
             
             if (!await modVersion.isAllowedToView(session.user, mod)) {
                 return res.status(404).send({ message: `Mod version not found.` });
@@ -238,12 +238,12 @@ export class GetModRoutes {
 
             let retVal: {mod: ModAPIPublicResponse, modVersion: any}[] = [];
             for (const id of modVersionIds.data) {
-                let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === id);
+                let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
                 if (!modVersion) {
                     return res.status(404).send({ message: `Mod version not found.` });
                 }
 
-                let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                 if (!mod) {
                     return res.status(404).send({ message: `Mod ID ${modVersion.modId} not found.` });
                 }

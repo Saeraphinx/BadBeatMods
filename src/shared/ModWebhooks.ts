@@ -186,14 +186,14 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
 
     let modId = edit.objectTableName === `mods` ? edit.objectId : null;
     if (!modId) {
-        let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
+        let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
         if (!modVersion) {
             return Logger.error(`Mod version not found for edit ${edit.id}`);
         }
         modId = modVersion.modId;
     }
 
-    let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modId);
+    let mod = DatabaseHelper.mapCache.mods.get(modId);
     if (!mod) {
         return Logger.error(`Mod not found for edit ${edit.id}`);
     }
@@ -431,7 +431,7 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
     if (originalObj) {
         original = originalObj;
     } else {
-        original = edit.objectTableName === `mods` ? mod : DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
+        original = edit.objectTableName === `mods` ? mod : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
     }
     if (!original) {
         return Logger.error(`Original not found for edit ${edit.id}`);

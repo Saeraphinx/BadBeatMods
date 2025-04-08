@@ -359,6 +359,19 @@ export class DatabaseManager {
                 allowNull: false,
                 defaultValue: `private`,
             },
+            statusHistory: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`statusHistory`));
+                },
+                set(value: string[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`statusHistory`, JSON.stringify(value));
+                },
+            },
             lastApprovedById: {
                 type: DataTypes.INTEGER,
                 allowNull: true,
@@ -476,6 +489,19 @@ export class DatabaseManager {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 defaultValue: 0
+            },
+            statusHistory: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`statusHistory`));
+                },
+                set(value: string[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`statusHistory`, JSON.stringify(value));
+                },
             },
             createdAt: DataTypes.DATE, // just so that typescript isn't angy
             updatedAt: DataTypes.DATE,
@@ -637,7 +663,6 @@ export class DatabaseManager {
             paranoid: true,
 
         });
-        // #endregion
 
         // #region Hooks
         this.Users.afterSync(async () => {

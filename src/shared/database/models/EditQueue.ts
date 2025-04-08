@@ -39,7 +39,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
     }
 
     public async approve(approver: User) {
-        if (this.approved) {
+        if (typeof this.approved == `boolean`) {
             return;
         }
         
@@ -94,7 +94,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
     }
 
     public async deny(approver: User) {
-        if (this.approved) {
+        if (typeof this.approved == `boolean`) {
             return;
         }
 

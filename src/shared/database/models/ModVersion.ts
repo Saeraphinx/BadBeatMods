@@ -2,7 +2,7 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status } from "../DBHelper.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory } from "../DBHelper.ts";
 import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User, UserRoles } from "./User.ts";
 import { Mod } from "./Mod.ts";
@@ -11,7 +11,7 @@ import path from "path";
 import { Config } from "../../Config.ts";
 
 export type ModVersionInfer = InferAttributes<ModVersion>;
-export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>>
+export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` | `statusHistory` }>>
 export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreationAttributes<ModVersion>> {
     declare readonly id: CreationOptional<number>;
     declare modId: number;
@@ -27,16 +27,26 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     declare lastApprovedById: CreationOptional<number> | null;
     declare lastUpdatedById: number;
     declare fileSize: number;
+    declare statusHistory: StatusHistory[];
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
+
+    public get mod(): Mod | undefined {
+        let mod = DatabaseHelper.mapCache.mods.get(this.modId);
+        if (!mod) {
+            Logger.error(`Failed to find mod ${this.modId} for mod version ${this.id}`);
+            return undefined;
+        }
+        return mod;
+    }
 
     public async isAllowedToView(user: User|null, useCache:Mod|boolean = true) {
         let parentMod: Mod | null | undefined;
         if (typeof useCache === `object`) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
         } else if (useCache) {
-            parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == this.modId);
+            parentMod = DatabaseHelper.mapCache.mods.get(this.modId);
         } else {
             parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
         }
@@ -89,7 +99,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         if (useCache instanceof Mod) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
         } else if (useCache) {
-            parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == this.modId);
+            parentMod = DatabaseHelper.mapCache.mods.get(this.modId);
         } else {
             parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
         }
@@ -109,7 +119,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
 
     public async edit(object: ModVersionApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: ModVersion}> {
         if (this.status !== Status.Verified) {
-            this.update(object);
+            this.update({...object, lastUpdatedById: submitter.id});
             sendModVersionLog(this, submitter, WebhookLogType.Text_Updated);
             return {isEditObj: false, modVersion: this};
         }
@@ -137,9 +147,19 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return {isEditObj: true, newEdit: true, edit: edit};
     }
 
-    public async setStatus(status:Status, user: User, shouldSendEmbed: boolean = true) {
+    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true) {
         let prevStatus = this.status;
         this.status = status;
+        this.lastUpdatedById = user.id;
+        if (reason.trim().length <= 1) {
+            reason = `No reason provided.`;
+        }
+        this.statusHistory.push({
+            status: status,
+            reason: reason,
+            userId: user.id,
+            setAt: new Date(),
+        });
         try {
             await this.save();
         } catch (error) {
@@ -268,7 +288,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         let dependencies = [];
 
         for (let dependencyId of this.dependencies) {
-            let dependency = DatabaseHelper.cache.modVersions.find((version) => version.id == dependencyId);
+            let dependency = DatabaseHelper.mapCache.modVersions.get(dependencyId);
             if (!dependency) {
                 let dbDep = await DatabaseHelper.database.ModVersions.findByPk(dependencyId);
                 if (dbDep) {
@@ -279,7 +299,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                 }
             }
 
-            let parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == dependency.modId);
+            let parentMod = DatabaseHelper.mapCache.mods.get(dependency.modId);
             if (!parentMod) {
                 let dbMod = await DatabaseHelper.database.Mods.findByPk(dependency.modId);
                 if (dbMod) {
@@ -315,7 +335,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     public async checkDependencies(gameVersionId: number, statusesToSearchFor: Status[]): Promise<DependencyCheckResults[]> {
         let results: DependencyCheckResults[] = [];
         let deps = this.dependencies.map((dependencyId) => {
-            return {id: dependencyId, depObj: DatabaseHelper.cache.modVersions.find((version) => version.id == dependencyId)};
+            return {id: dependencyId, depObj: DatabaseHelper.mapCache.modVersions.get(dependencyId)};
         });
         let updatedDeps = await this.getLiveDependencies(gameVersionId, statusesToSearchFor);
         for (let dep of deps) {

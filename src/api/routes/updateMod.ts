@@ -283,7 +283,7 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `Mod is already submitted.` });
             }
 
-            mod.setStatus(Status.Pending, session.user).then((mod) => {
+            mod.setStatus(Status.Pending, session.user, `Mod submitted for verification by ${session.user.username}`).then((mod) => {
                 res.status(200).send({ message: `Mod submitted.`, mod });
                 DatabaseHelper.refreshCache(`mods`);
             }).catch((error) => {
@@ -325,7 +325,7 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `Mod version is already submitted.` });
             }
 
-            modVersion.setStatus(Status.Pending, session.user).then((modVersion) => {
+            modVersion.setStatus(Status.Pending, session.user, `Version submitted for approval by ${session.user.username}`).then((modVersion) => {
                 res.status(200).send({ message: `Mod version submitted.`, modVersion });
                 DatabaseHelper.refreshCache(`modVersions`);
             }).catch((error) => {
@@ -355,7 +355,7 @@ export class UpdateModRoutes {
                 if (edit.isMod()) {
                     return edit.submitterId == session.user.id || usersMods.some((mod) => edit.objectId == mod.id);
                 } else {
-                    let modVersion = DatabaseHelper.cache.modVersions.find((mod) => mod.id == edit.objectId);
+                    let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
                     if (!modVersion) {
                         return false;
                     }
@@ -389,7 +389,7 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Edit not found.` });
             }
 
-            let parentObj = edit.isMod() ? DatabaseHelper.cache.mods.find((mod) => mod.id == edit.objectId) : DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id == edit.objectId);
+            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
             if (!parentObj) {
                 return res.status(404).send({ message: `Parent object not found.` });
             }

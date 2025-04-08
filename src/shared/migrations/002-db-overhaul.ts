@@ -1,4 +1,4 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 import { Migration } from "../Database.ts";
 
 /*
@@ -13,8 +13,22 @@ export const up: Migration = async ({ context: sequelize }) => {
         allowNull: false,
         defaultValue: `[]`,
     });
+
+    await sequelize.addColumn(`mods`, `statusHistory`, {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: `[]`,
+    });
+    await sequelize.addColumn(`modVersions`, `statusHistory`, {
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: `[]`,
+    });
 };
 
 export const down: Migration = async ({ context: sequelize }) => {
     await sequelize.removeColumn(`gameVersions`, `linkedVersionIds`);
+
+    await sequelize.removeColumn(`mods`, `statusHistory`);
+    await sequelize.removeColumn(`modVersions`, `statusHistory`);
 };

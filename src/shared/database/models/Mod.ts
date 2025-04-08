@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse } from "../DBHelper.ts";
+import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse, StatusHistory } from "../DBHelper.ts";
 import { ModVersion } from "./ModVersion.ts";
 import { User, UserRoles } from "./User.ts";
 import path from "path";
@@ -10,7 +10,7 @@ import fs from "fs";
 import { Config } from "../../Config.ts";
 
 export type ModInfer = InferAttributes<Mod>;
-export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>>
+export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` | `statusHistory` }>>
 export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod>> {
     declare readonly id: CreationOptional<number>;
     declare name: string;
@@ -24,6 +24,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare gitUrl: string;
     declare lastApprovedById: CreationOptional<number> | null;
     declare lastUpdatedById: number;
+    declare statusHistory: StatusHistory[];
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
@@ -164,9 +165,19 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return {isEditObj: true, newEdit: true, edit: edit};
     }
 
-    public async setStatus(status:Status, user: User, shouldSendEmbed: boolean = true): Promise<Mod> {
+    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true): Promise<Mod> {
         let prevStatus = this.status;
         this.status = status;
+        this.lastUpdatedById = user.id;
+        if (reason.trim().length <= 1) {
+            reason = `No reason provided.`;
+        }
+        this.statusHistory.push({
+            status: status,
+            reason: reason,
+            userId: user.id,
+            setAt: new Date(),
+        });
         try {
             await this.save();
         } catch (error) {
@@ -181,7 +192,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 if (prevStatus == Status.Verified) {
                     sendModLog(this, user, WebhookLogType.VerificationRevoked);
                 } else if (prevStatus == Status.Removed) {
-                    sendModLog(this, user, WebhookLogType.Text_StatusChanged);
+                    //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
                     sendModLog(this, user, WebhookLogType.RejectedUnverified);
                 }

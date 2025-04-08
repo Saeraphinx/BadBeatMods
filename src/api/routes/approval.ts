@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse, User } from '../../shared/Database.ts';
+import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse } from '../../shared/Database.ts';
 import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
@@ -104,7 +104,7 @@ export class ApprovalRoutes {
                     break;
                 case `modVersions`:
                     response.modVersions = (await DatabaseHelper.database.ModVersions.findAll({ where: { [Op.or]: statusQuery } })).map((modVersion) => {
-                        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                         if (!mod || mod.gameName !== gameName.data) {
                             return null;
                         }
@@ -121,18 +121,18 @@ export class ApprovalRoutes {
                     response.edits = editQueue.map((edit) => {
                         let isMod = edit.objectTableName === `mods`;
                         if (isMod) {
-                            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === edit.objectId);
+                            let mod = DatabaseHelper.mapCache.mods.get(edit.objectId);
                             if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
 
                             return { mod: mod.toAPIResponse(), original: mod, edit: edit };
                         } else {
-                            let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
+                            let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
                             if (!modVersion) {
                                 return null;
                             }
-                            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                             
                             if (!mod || mod.gameName !== gameName.data) {
                                 return null;
@@ -171,7 +171,10 @@ export class ApprovalRoutes {
                             action: {
                                 type: 'string',
                                 description: 'The status to set the mod to.',
-                                example: 'verified'
+                            },
+                            reason: {
+                                type: 'string',
+                                description: 'The reason for the status change.',
                             }
                         }
                     }
@@ -185,8 +188,9 @@ export class ApprovalRoutes {
             */
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
             let action = Validator.z.nativeEnum(ApprovalAction).safeParse(req.body.action);
-            if (!modId.success || !action.success) {
-                return res.status(400).send({ message: `Invalid Mod ID or Status.` });
+            let reason = Validator.z.string().optional().safeParse(req.body.reason);
+            if (!modId.success || !action.success || !reason.success) {
+                return res.status(400).send({ message: `Invalid parameters.` });
             }
 
             let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
@@ -208,22 +212,22 @@ export class ApprovalRoutes {
             switch (action.data) {
                 case ApprovalAction.Accept:
                     status = Status.Verified;
-                    promise = mod.setStatus(status, session.user);
+                    promise = mod.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Deny:
                     status = Status.Unverified;
-                    promise = mod.setStatus(status, session.user);
+                    promise = mod.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Remove:
                     status = Status.Removed;
-                    promise = mod.setStatus(status, session.user);
+                    promise = mod.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Restore:
                     if (await mod.isRestorable() === false) {
                         return res.status(400).send({ message: `Mod is not restorable.` });
                     }
                     status = Status.Pending;
-                    promise = mod.setStatus(status, session.user);
+                    promise = mod.setStatus(status, session.user, reason.data);
                     break;
                 default:
                     return res.status(400).send({ message: `Invalid action.` });
@@ -272,7 +276,8 @@ export class ApprovalRoutes {
             */
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
             let action = Validator.z.nativeEnum(ApprovalAction).safeParse(req.body.action);
-            if (!modVersionId.success || !action.success) {
+            let reason = Validator.z.string().optional().safeParse(req.body.reason);
+            if (!modVersionId.success || !action.success || !reason.success) {
                 return res.status(400).send({ message: `Invalid ModVersion ID or Status.` });
             }
             let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModVersionId(modVersionId.data));

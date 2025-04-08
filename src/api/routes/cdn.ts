@@ -34,7 +34,7 @@ export class CDNRoutes {
                 let hash = path.basename(file).replace(path.extname(file), ``);
                 let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
                 if (modVersion) {
-                    let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                    let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                     if (mod) {
                         res.set(`Content-Disposition`, `attachment; filename="${mod.name} v${modVersion.modVersion}.zip"`);
                     } else {

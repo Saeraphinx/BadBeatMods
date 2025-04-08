@@ -180,7 +180,7 @@ export class BeatModsRoutes {
         } else {
             let modVersions = DatabaseHelper.cache.modVersions.filter((mV) => statuses.includes(mV.status));
             for (let modVersion of modVersions) {
-                let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                 if (!mod) {
                     continue;
                 }
@@ -223,7 +223,7 @@ export class BeatModsRoutes {
                     if (!dependency) {
                         return null;
                     }
-                    let dependencyMod = DatabaseHelper.cache.mods.find((mod) => mod.id === dependency?.modId);
+                    let dependencyMod = DatabaseHelper.mapCache.mods.get(dependency?.modId);
                     if (!dependencyMod) {
                         return null;
                     }
