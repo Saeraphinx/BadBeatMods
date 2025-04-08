@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
-import express from 'express';
+import express, { Request } from 'express';
 import session, { SessionOptions } from 'express-session';
 import MemoryStore from 'memorystore';
 import connectSqlite3 from 'connect-sqlite3';
@@ -179,6 +179,10 @@ function init() {
     let invalidAttempts: string[] = [];
     apiRouter.use(async (req, res, next) => {
         if (req.session.userId || Config.flags.enableGithubPAT == false) {
+            req.bbmAuth = {
+                userId: req.session.userId,
+                isApiAuth: false,
+            };
             next();
         } else {
             passport.authenticate(`bearer`, { session: false }, (err:any, user:any) => {
@@ -186,8 +190,12 @@ function init() {
                     return res.status(401).send({ message: `Unauthorized` });
                 }
                 if (user && user.id) {
-                    req.session.userId = user.id;
-                    req.session.goodMorning47YourTargetIsThisSession = true;
+                    req.bbmAuth = {
+                        userId: user.id,
+                        isApiAuth: true,
+                    };
+                    //req.session.userId = user.id;
+                    //req.session.goodMorning47YourTargetIsThisSession = true;
                 }
                 next();
             })(req, res, next);
@@ -196,10 +204,6 @@ function init() {
 
     app.use((req, res, next) => {
         if (Config.devmode) {
-            if (Config.authBypass) {
-                req.session.userId = 1;
-                req.session.goodMorning47YourTargetIsThisSession = true;
-            }
             if (!req.url.includes(`hashlookup`)) {
                 Logger.winston.log(`http`, `${req.method} ${req.url}`);
             }
@@ -320,17 +324,6 @@ function init() {
         return res.status(500).send({message: `Server error`});
     });
 
-    // destroy the auth session if its marked to be destoryed
-    app.use((req, res, next) => {
-        if (req.session.goodMorning47YourTargetIsThisSession) {
-            req.session.destroy((err) => {
-                if (err) {
-                    Logger.error(`Error destroying session: ${err}`);
-                }
-            });
-        }
-        next();
-    });
 
     process.on(`exit`, (code) => {
         Logger.log(`Process exiting with code ${code}`);

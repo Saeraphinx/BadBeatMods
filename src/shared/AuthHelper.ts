@@ -1,11 +1,21 @@
 import { Config } from "./Config.ts";
 import { DatabaseHelper, SupportedGames, User, UserRoles } from "./Database.ts";
+import { Request, Response } from "express";
 
 // eslint-disable-next-line quotes
 declare module 'express-session' {
     export interface Session {
         userId: number;
-        goodMorning47YourTargetIsThisSession: boolean;
+    }
+}
+
+// eslint-disable-next-line quotes
+declare module 'express-serve-static-core' {
+    interface Request {
+      bbmAuth?: {
+            userId: number;
+            isApiAuth: boolean;
+        }
     }
 }
 
@@ -14,9 +24,9 @@ declare module 'express-session' {
  * @param {(SupportedGames|null|true)} [gameName=null] if null or false, the user must have the role sitewide. If true, the user must have the role in any game. If a SupportedGames, the user must have the role in that game.
  */
 // setting the type in this way is stupid but it works for callbacks
-export async function validateSession(req: any, res: any, role: UserRoles|boolean = UserRoles.Admin, gameName:SupportedGames|null|boolean = null, handleRequest:boolean = true): Promise<{ user: User } | { user: null }> {
+export async function validateSession(req: Request, res: Response, role: UserRoles|boolean = UserRoles.Admin, gameName:SupportedGames|null|boolean = null, handleRequest:boolean = true): Promise<{ user: User } | { user: null }> {
     
-    let sessionId = req?.session?.userId as number | undefined;
+    let sessionId = req?.bbmAuth?.userId as number|undefined | undefined;
     // check for devmode options
     if (Config.devmode && Config.authBypass) {
         let user = await DatabaseHelper.database.Users.findOne({ where: { id: 1 } });
