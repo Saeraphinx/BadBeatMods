@@ -109,7 +109,6 @@ export class AuthRoutes {
 
             // @ts-expect-error 2339 its there bro trust me i promise bro its there bro
             req.session.userId = req.user.id;
-            req.session.goodMorning47YourTargetIsThisSession = false;
             req.session.save();
 
             Logger.log(`User ${req.session.userId} logged in.`, `Auth`);
