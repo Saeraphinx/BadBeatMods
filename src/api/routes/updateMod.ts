@@ -402,5 +402,48 @@ export class UpdateModRoutes {
 
             return res.status(200).send({ message: `Edit found.`, edit });
         });
+
+        this.router.delete(`/edits/:editIdParam`, async (req, res) => {
+            // #swagger.tags = ['Mods']
+            /* #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }] */
+            // #swagger.description = `Delete an edit.`
+            // #swagger.parameters['editIdParam'] = { description: 'Edit ID', type: 'integer' }
+            let editId = Validator.zDBID.safeParse(req.params.editIdParam);
+            if (!editId.success) {
+                return res.status(400).send({ message: `Invalid editId.` });
+            }
+
+            let session = await validateSession(req, res, true);
+            if (!session.user) {
+                return;
+            }
+
+            let edit = DatabaseHelper.cache.editApprovalQueue.find((edit) => edit.id == editId.data);
+            if (!edit) {
+                return res.status(404).send({ message: `Edit not found.` });
+            }
+
+            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+            if (!parentObj) {
+                return res.status(404).send({ message: `Parent object not found.` });
+            }
+
+            let isAllowedToDelete = parentObj?.isAllowedToEdit(session.user);
+
+            if (!isAllowedToDelete) {
+                return res.status(401).send({ message: `You cannot delete this edit.` });
+            }
+
+            await edit.deny(session.user).then(() => {
+                res.status(200).send({ message: `Edit deleted.` });
+                DatabaseHelper.refreshCache(`editApprovalQueue`);
+            }).catch((error) => {
+                let errorMessage = Utils.parseErrorMessage(error);
+                res.status(500).send({ message: `Error deleting edit: ${errorMessage}` });
+            });
+        });
     }
 }

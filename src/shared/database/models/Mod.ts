@@ -125,7 +125,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     }
 
     public async edit(object: ModApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Mod}> {
-        if (this.status !== Status.Verified) {
+        if (this.status !== Status.Verified && this.status !== Status.Unverified) {
             await this.update({ ...object, lastUpdatedById: submitter.id });
             sendModLog(this, submitter, WebhookLogType.Text_Updated);
             return {isEditObj: false, mod: this};
@@ -145,14 +145,6 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             return {isEditObj: true, newEdit: false, edit: newEdit};
         }
 
-        // check if the edit is just the description - this is intentionall after the existing edit check. existing edits will block all edits until it is approved
-        if (Object.keys(object).length === 1 && object.description && object.description !== this.description) {
-            // if the only edit is the description, just update the mod
-            await this.update({ description: object.description, lastUpdatedById: submitter.id });
-            sendModLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, mod: this};
-        }
-
         // create a new edit
         let edit = await DatabaseHelper.database.EditApprovalQueue.create({
             objectId: this.id,
@@ -160,6 +152,15 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             object: object,
             submitterId: submitter.id,
         });
+
+        // check if the edit is just the description - this is intentionally after the existing edit check. existing edits will block all edits until it is approved
+        if (Object.keys(object).length === 1 && object.description && object.description !== this.description) {
+            // if the only edit is the description, just update the mod
+            await edit.approve(submitter, true);
+            await this.reload();
+            // no need to send log, as it is already sent in the approve method
+            return {isEditObj: false, mod: this};
+        }
         
         sendEditLog(edit, submitter, WebhookLogType.EditSubmitted, this);
         return {isEditObj: true, newEdit: true, edit: edit};
@@ -215,7 +216,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         if (this.status == Status.Removed) {
             return fs.existsSync(`${path.resolve(Config.storage.iconsDir)}/${this.iconFileName}`);
         }
-        return false; 
+        return false;
     }
 
     public static async checkForExistingMod(name: string) {

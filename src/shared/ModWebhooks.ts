@@ -19,6 +19,7 @@ export enum WebhookLogType {
 
     Text_Created = `created`,
     Text_StatusChanged = `statusChanged`,
+    Text_EditBypassed = `editBypassed`,
     Text_Updated = `updated`,
 }
 
@@ -185,8 +186,9 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
     let color = 0x00FF00;
 
     let modId = edit.objectTableName === `mods` ? edit.objectId : null;
+    let modVersion;
     if (!modId) {
-        let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+        modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
         if (!modVersion) {
             return Logger.error(`Mod version not found for edit ${edit.id}`);
         }
@@ -196,6 +198,14 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
     let mod = DatabaseHelper.mapCache.mods.get(modId);
     if (!mod) {
         return Logger.error(`Mod not found for edit ${edit.id}`);
+    }
+
+    let versionString = ``;
+    if (edit.objectTableName === `modVersions`) {
+        if (!modVersion) {
+            return Logger.error(`Mod version not found for edit ${edit.id}`);
+        }
+        versionString = ` ${modVersion.modVersion.raw}`;
     }
 
     let embed;
@@ -216,7 +226,14 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Edit Updated by ${userMakingChanges.username}`,
+                content: `**[${mod.name}${versionString}](<${Config.server.url}/mods/${mod.id}>)** - Edit ${edit.id} updated by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>).`,
+            }, logType);
+            break;
+        case WebhookLogType.Text_EditBypassed:
+            return sendToWebhooks({
+                username: `BadBeatMods`,
+                avatarURL: faviconUrl,
+                content: `**[${mod.name}${versionString}](<${Config.server.url}/mods/${mod.id}>)** - Edit ${edit.id} ${edit.approved ? `approved` : `rejected`} (bypassed by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>)).`,
             }, logType);
             break;
         default:

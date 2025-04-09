@@ -44,7 +44,8 @@ export const DEFAULT_CONFIG = {
         cdnRoute: `/cdn`, // the base route for the cdn. no trailing slash
         trustProxy: true, // if useing the env variable, will attempt to check for bool strings. if that doesn't work, it will check if the value is a number. otherwise, it will interpret it as a string and pass it directly to the trust proxy setting https://expressjs.com/en/guide/behind-proxies.html
         fileUploadLimitMB: 50, // the file size limit for mod uploads
-        fileUploadMultiplierMB: 3.0 // the multiplier for the file size limit for the largefiles role. the resulting equation is Math.floor(Config.server.fileUploadLimitMB * Config.server.fileUploadMultiplierMB * 1024 * 1024) to get the value in bytes
+        fileUploadMultiplierMB: 3.0, // the multiplier for the file size limit for the largefiles role. the resulting equation is Math.floor(Config.server.fileUploadLimitMB * Config.server.fileUploadMultiplierMB * 1024 * 1024) to get the value in bytes
+        cfwSecret: ``, // secret for the Cloudflare Worker. used for the CDN. if you are not using a Cloudflare Worker, leave this blank.
     },
     webhooks: {
         // If you don't want to use the webhook, just leave it blank. if a urls is under 8 characters, it will be ignored.
@@ -109,6 +110,7 @@ export class Config {
         trustProxy: boolean | number | string;
         fileUploadLimitMB: number;
         fileUploadMultiplierMB: number;
+        cfwSecret: string;
     };
     private static _devmode: boolean = DEFAULT_CONFIG.devmode;
     private static _authBypass: boolean = DEFAULT_CONFIG.authBypass;
@@ -525,6 +527,12 @@ export class Config {
                 Config._server.fileUploadMultiplierMB = parseFloat(process.env.SERVER_FILE_UPLOAD_MULTIPLIER_MB);
             } else {
                 failedToLoad.push(`server.fileUploadLimitMB`);
+            }
+
+            if (process.env.SERVER_CFWSECRET) {
+                Config._server.cfwSecret = process.env.SERVER_CFWSECRET;
+            } else {
+                failedToLoad.push(`server.cfwSecret`);
             }
             // #endregion
             // #region Webhooks

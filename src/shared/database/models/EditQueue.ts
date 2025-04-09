@@ -38,7 +38,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         return this.objectTableName === `mods` && hasModKeys;
     }
 
-    public async approve(approver: User) {
+    public async approve(approver: User, bypassApproval: boolean = false): Promise<Mod | ModVersion | undefined> {
         if (typeof this.approved == `boolean`) {
             return;
         }
@@ -86,14 +86,18 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         this.approverId = approver.id;
         this.save().then(() => {
             Logger.log(`Edit ${this.id} approved by ${approver.username}`);
+            if (bypassApproval) {
+                sendEditLog(this, approver, WebhookLogType.Text_EditBypassed, original);
+            }
             sendEditLog(this, approver, WebhookLogType.EditApproved, original);
+            
         }).catch((error) => {
             Logger.error(`Error approving edit ${this.id}: ${error}`);
         });
         return record;
     }
 
-    public async deny(approver: User) {
+    public async deny(approver: User, bypassApproval: boolean = false): Promise<void> {
         if (typeof this.approved == `boolean`) {
             return;
         }
@@ -103,7 +107,11 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         this.approverId = approver.id;
         this.save().then(() => {
             Logger.log(`Edit ${this.id} denied by ${approver.username}`);
-            sendEditLog(this, approver, WebhookLogType.EditRejected);
+            if (bypassApproval) {
+                sendEditLog(this, approver, WebhookLogType.Text_EditBypassed);
+            } else {
+                sendEditLog(this, approver, WebhookLogType.EditRejected);
+            }
         }).catch((error) => {
             Logger.error(`Error denying edit ${this.id}: ${error}`);
         });

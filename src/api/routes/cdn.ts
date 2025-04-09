@@ -49,5 +49,40 @@ export class CDNRoutes {
             },
             fallthrough: true,
         }));
+
+        this.router.get(`/inc/mod/:hash`, async (req, res) => {
+            // #swagger.ignore = true
+            if (!Config.server.cfwSecret || Config.server.cfwSecret === ``) {
+                return res.status(401).json({
+                    message: `Unauthorized request`,
+                });
+            }
+            if (!req.headers[`CF-Worker`]) {
+                return res.status(403).json({
+                    message: `Request is not from Cloudflare Worker`,
+                });
+            }
+            if (req.headers[`x-cfw-secret`] !== Config.server.cfwSecret) {
+                return res.status(403).json({
+                    message: `Invalid CFW secret`,
+                });
+            }
+            let hash = req.params.hash;
+            let fileName = `${hash}.zip`;
+            let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
+            if (modVersion) {
+                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                if (mod) {
+                    fileName = `${mod.name} v${modVersion.modVersion}.zip"`;
+                }
+                modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
+                    Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                });
+            }
+
+            res.status(200).json({
+                fileName: fileName,
+            });
+        });
     }
 }
