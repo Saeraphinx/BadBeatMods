@@ -1,4 +1,4 @@
-name: ESLint
+name: Lint & Test
 
 on:
   push:
@@ -13,6 +13,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Packages
       run: npm i
+    - name: Run TypeScript Compiler
+      run: npm run build
     - name: Run ESLint
       run: npm run lint
     - name: Run Vitest
