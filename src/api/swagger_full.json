@@ -443,6 +443,13 @@
         "description": "Get multiple mod versions by ID.",
         "parameters": [
           {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "modVersionIds",
             "in": "query",
             "description": "The mod version IDs.",
@@ -927,6 +934,46 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Mods"
+        ],
+        "description": "Delete an edit.",
+        "parameters": [
+          {
+            "name": "editIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Edit ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "security": [
@@ -1732,10 +1779,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "status": {
+                  "action": {
                     "type": "string",
-                    "description": "The status to set the mod to.",
-                    "example": "verified"
+                    "description": "The status to set the mod to."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "The reason for the status change."
                   }
                 }
               }
@@ -1744,10 +1794,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "status": {
+                  "action": {
                     "type": "string",
-                    "description": "The status to set the mod to.",
-                    "example": "verified"
+                    "description": "The status to set the mod to."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "The reason for the status change."
                   }
                 }
               }

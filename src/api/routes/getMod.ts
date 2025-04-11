@@ -230,14 +230,16 @@ export class GetModRoutes {
             // #swagger.parameters['modVersionIds'] = { in: 'query', description: 'The mod version IDs.', type: 'array', required: true }
             // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
             let session = await validateSession(req, res, false, null, false);
-            let modVersionIds = Validator.zDBIDArray.safeParse(req.query.modVersionIds);
+            let modVersionIds = Validator.zDBIDArray.safeParse(req.query.id);
             let raw = req.query.raw;
             if (!modVersionIds.success) {
                 return res.status(400).send({ message: `Invalid mod version id.` });
             }
 
+            let dedupedIds = Array.from(new Set(modVersionIds.data));
+
             let retVal: {mod: ModAPIPublicResponse, modVersion: any}[] = [];
-            for (const id of modVersionIds.data) {
+            for (const id of dedupedIds) {
                 let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
                 if (!modVersion) {
                     return res.status(404).send({ message: `Mod version not found.` });
