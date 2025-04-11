@@ -1,11 +1,12 @@
 import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionContextType, MessageFlags } from "discord.js";
-import { Command } from "../../classes/Command";
-import { Luma } from "../../classes/Luma";
-import swaggerDocument from '../../../api/swagger.json';
+import { Command } from "../../classes/Command.ts";
+import { Luma } from "../../classes/Luma.ts";
+// eslint-disable-next-line quotes
 import * as os from "os";
 import * as fs from "fs";
+import { Config } from "../../../shared/Config.ts";
 
-module.exports = {
+export default {
     command: new Command({
         data: new SlashCommandBuilder()
             .setName(`status`)
@@ -27,9 +28,7 @@ module.exports = {
                 }
             }
 
-            if (swaggerDocument?.info?.version) {
-                version += ` • Running on API version: ${swaggerDocument.info.version}`;
-            }
+            version += ` • Running on API version: ${Config.API_VERSION}`;
 
             let lastConnectionAt = `Last connection not found.`;
             if (luma.readyAt) {

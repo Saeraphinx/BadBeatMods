@@ -1,10 +1,11 @@
 import * as Discord from "discord.js";
 import { REST } from '@discordjs/rest';
-import { Logger } from "../../shared/Logger";
-import { Command, loadCommands } from "./Command";
-import { Config } from "../../shared/Config";
-import { ContextMenu } from "./ContextMenu";
+import { Logger } from "../../shared/Logger.ts";
+import { Command, loadCommands } from "./Command.ts";
+import { Config } from "../../shared/Config.ts";
+import { ContextMenu } from "./ContextMenu.ts";
 import path from "path";
+import { fileURLToPath } from "url";
 
 export class Luma extends Discord.Client {
     public commands = new Discord.Collection<string, Command>();
@@ -18,7 +19,7 @@ export class Luma extends Discord.Client {
     constructor(options: Discord.ClientOptions) {
         super(options);
 
-        loadCommands(this, path.resolve(__dirname, `../commands/commands`));
+        loadCommands(this, path.resolve(path.dirname(fileURLToPath(import.meta.url)), `../commands/commands`));
         //loadContextMenus(this, path.resolve(__dirname, `../commands/contextmenus`));
         this.pushCommands();
         this.once(`ready`, () => {

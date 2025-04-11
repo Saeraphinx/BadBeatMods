@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database";
+import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.ts";
 import { valid } from "semver";
-import { Config } from "./Config";
+import { Config } from "./Config.ts";
 
 //generic types that I use a lot
 const ZodDBID = z.number({coerce: true}).int().positive();
@@ -119,7 +119,7 @@ export class Validator {
     public static readonly zGetMods = z.object({
         gameName: ZodGameName.default(SupportedGames.BeatSaber),
         gameVersion: z.string().optional(),
-        status: ZodStatus.default(Status.Verified),
+        status: z.enum([`all`, Status.Verified, Status.Unverified]).default(Status.Verified),
         platform: ZodPlatform.default(Platform.UniversalPC),
     });
 

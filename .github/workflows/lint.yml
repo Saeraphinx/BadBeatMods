@@ -1,0 +1,21 @@
+name: Lint & Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Packages
+      run: npm i
+    - name: Run TypeScript Compiler
+      run: npm run build
+    - name: Run ESLint
+      run: npm run lint
+    - name: Run Vitest
+      run: npm run test

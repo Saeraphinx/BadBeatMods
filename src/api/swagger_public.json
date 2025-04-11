@@ -1,0 +1,1233 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BadBeatMods API",
+    "description": "This isn't really fully complete, but its better than absolutely nothing.\n\nThis API documentation is automatically generated and therefor may not be 100% accurate and may be missing a few fields. For example, request bodies are not fully fleshed out, and may not be accurate. Full documentation is still currently a work in progress.",
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "https://bbm.saera.gay/api"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Status",
+      "description": "Status related endpoints"
+    },
+    {
+      "name": "Mods",
+      "description": "Mod related endpoints"
+    }
+  ],
+  "paths": {
+    "/mods": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get all mods for a specified version.",
+        "description": "This is the main endpoint that mod managers such as BSManager should use. When the `gameVersion` query is specified, the server will return the latest version (determined by SemVer's `compare` function) that supports that game version. Versions that are unable to find one of their dependencies will not be returned using the following check. \n```javascript\nfor (let dependency of mod.latest.dependencies) {\n  if (!mods.find((mod) => mod?.latest?.id === dependency)) {\n    return false;\n  }\n}\n```\nBecause this check is done, it is garunteed that all dependancies are listed elsewhere in the response. This is done to reduce the number of calls to the server. You will be able to find them by doing the following:\n```javascript\nlet currentMod; // The mod you are looking for\nlet dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));\n```",
+        "parameters": [
+          {
+            "name": "gameName",
+            "description": "The game name.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameVersion",
+            "description": "The game version (ex. '1.29.1', '1.40.0'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "description": "The status of the mod. Available status are: 'verified'. Typing anything other than that will show you unverified mods too.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platform",
+            "description": "The platform of the mod. Available platforms are: 'oculuspc', 'universalpc', 'steampc'",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns all mods.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mods": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mod": {
+                            "$ref": "#/components/schemas/ModAPIPublicResponse"
+                          },
+                          "latest": {
+                            "$ref": "#/components/schemas/ModVersionAPIPublicResponse"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid gameVersion."
+          }
+        }
+      }
+    },
+    "/hashlookup": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get a specific mod version that has a file with the specified hash.",
+        "description": "Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.",
+        "parameters": [
+          {
+            "name": "hash",
+            "description": "The hash to look up.",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "raw",
+            "description": "Return the raw mod depedendcies without attempting to resolve them.",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the mod version."
+          },
+          "400": {
+            "description": "Missing hash."
+          },
+          "404": {
+            "description": "Hash not found."
+          }
+        }
+      }
+    },
+    "/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay": {
+      "get": {
+        "tags": [
+          "Status"
+        ],
+        "summary": "Get API status.",
+        "description": "Get API status.",
+        "responses": {
+          "200": {
+            "description": "Returns API status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStatus"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStatus"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Internal server error."
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Internal server error."
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bbm_session"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ModAPIPublicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the mod.",
+            "example": "Example Mod"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The summary of the mod.",
+            "example": "This is an example mod."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the mod. Supports markdown.",
+            "example": "This is an example mod."
+          },
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this mod is for. This is used to identify the game.",
+            "example": "BeatSaber",
+            "default": "BeatSaber"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "core",
+              "essential",
+              "library",
+              "cosmetic",
+              "practice",
+              "gameplay",
+              "streamtools",
+              "ui",
+              "lighting",
+              "tweaks",
+              "multiplayer",
+              "text",
+              "editor",
+              "other"
+            ]
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/UserAPIPublicResponse"
+                }
+              ]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "private",
+              "removed",
+              "unverified",
+              "pending",
+              "verified"
+            ]
+          },
+          "iconFileName": {
+            "type": "string",
+            "default": "default.png"
+          },
+          "gitUrl": {
+            "type": "string"
+          },
+          "lastApprovedById": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "default": null
+          },
+          "lastUpdatedById": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "ModVersionAPIPublicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "modId": {
+            "type": "integer",
+            "description": "The parent mod's internal ID.",
+            "example": 1
+          },
+          "modVersion": {
+            "type": "string",
+            "description": "The version string. This is used to identify the version of the mod. This must be SemVer compliant.",
+            "example": "1.0.0"
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserAPIPublicResponse"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "steampc",
+              "oculuspc",
+              "universalpc",
+              "universalquest"
+            ]
+          },
+          "zipHash": {
+            "type": "string",
+            "description": "The hash of the zip file. This is used to find and download the zip file. Will be a MD5 hash.",
+            "example": "34e6985de8fbf7b525fc841c2cb45786"
+          },
+          "contentHashes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "hash": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "private",
+              "removed",
+              "unverified",
+              "pending",
+              "verified"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "description": "The ID of the mod version this version depends on."
+            }
+          },
+          "supportedGameVersions": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+                }
+              ]
+            }
+          },
+          "downloadCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "UserAPIPublicResponse": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The user's username from GitHub.",
+            "example": "saeraphinx"
+          },
+          "githubId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The user's GitHub ID.",
+            "example": 123456789
+          },
+          "sponsorUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The URL to support the user's works financially.",
+            "example": "https://www.patreon.com/c/beatsabermods",
+            "default": null
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The user's display name from GitHub. Is editable after registration, and can be different from the GitHub username/display name.",
+            "example": "Saeraphinx"
+          },
+          "roles": {
+            "type": "object",
+            "properties": {
+              "siteide": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "allpermissions",
+                    "admin",
+                    "poster",
+                    "approver",
+                    "moderator",
+                    "largefiles",
+                    "banned"
+                  ]
+                },
+                "default": [],
+                "example": [
+                  "admin"
+                ],
+                "description": "Site-wide roles. Takes precedence over per-game roles."
+              },
+              "perGame": {
+                "type": "object",
+                "example": {
+                  "BeatSaber": [
+                    "approver"
+                  ]
+                }
+              }
+            },
+            "default": {
+              "siteide": [],
+              "perGame": {}
+            },
+            "example": {
+              "siteide": [
+                "admin"
+              ],
+              "perGame": {
+                "BeatSaber": [
+                  "approver"
+                ]
+              }
+            }
+          },
+          "bio": {
+            "type": "string",
+            "description": "The user's bio from GitHub. Is editable after registration. Supports markdown.",
+            "example": "j"
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "GameVersionAPIPublicResponse": {
+        "type": "object",
+        "properties": {
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this version is for. This is used to identify the game.",
+            "example": "BeatSaber"
+          },
+          "version": {
+            "type": "string",
+            "description": "The version string. This is used to identify the version of the game.",
+            "example": "1.0.0"
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "CreateEditModVersion": {
+        "type": "object",
+        "properties": {
+          "modVersion": {
+            "type": "string",
+            "description": "The version string. This is used to identify the version of the mod. This must be SemVer compliant.",
+            "example": "1.0.0"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "steampc",
+              "oculuspc",
+              "universalpc",
+              "universalquest"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "description": "The ID of the mod version this version depends on."
+            }
+          },
+          "supportedGameVersionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "description": "The ID of the game version this version supports."
+            }
+          }
+        }
+      },
+      "CreateMod": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the mod.",
+            "example": "Example Mod"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The summary of the mod.",
+            "example": "This is an example mod."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the mod. Supports markdown.",
+            "example": "This is an example mod."
+          },
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this mod is for. This is used to identify the game.",
+            "example": "BeatSaber",
+            "default": "BeatSaber"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "core",
+              "essential",
+              "library",
+              "cosmetic",
+              "practice",
+              "gameplay",
+              "streamtools",
+              "ui",
+              "lighting",
+              "tweaks",
+              "multiplayer",
+              "text",
+              "editor",
+              "other"
+            ]
+          },
+          "gitUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "EditMod": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the mod.",
+            "example": "Example Mod"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The summary of the mod.",
+            "example": "This is an example mod."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the mod. Supports markdown.",
+            "example": "This is an example mod."
+          },
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this mod is for. This is used to identify the game.",
+            "example": "BeatSaber",
+            "default": "BeatSaber"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "core",
+              "essential",
+              "library",
+              "cosmetic",
+              "practice",
+              "gameplay",
+              "streamtools",
+              "ui",
+              "lighting",
+              "tweaks",
+              "multiplayer",
+              "text",
+              "editor",
+              "other"
+            ]
+          },
+          "gitUrl": {
+            "type": "string"
+          },
+          "authorIds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "APIStatus": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Status message.",
+            "example": "API is running.",
+            "default": "API is running."
+          },
+          "veryImportantMessage": {
+            "type": "string",
+            "description": "Very important message.",
+            "example": "pink cute, era cute, lillie cute, william gay",
+            "default": "pink cute, era cute, lillie cute, william gay"
+          },
+          "apiVersion": {
+            "type": "string",
+            "description": "API version (as seen in documentation).",
+            "example": "0.0.1",
+            "default": "Version not found."
+          },
+          "gitVersion": {
+            "type": "string",
+            "description": "Git commit hash.",
+            "example": "3d94a00",
+            "default": "Version not found."
+          },
+          "isDocker": {
+            "type": "boolean",
+            "description": "Whether the API is running in Docker or not.",
+            "example": true,
+            "default": false
+          }
+        }
+      },
+      "ModDBObject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the mod.",
+            "example": "Example Mod"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The summary of the mod.",
+            "example": "This is an example mod."
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the mod. Supports markdown.",
+            "example": "This is an example mod."
+          },
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this mod is for. This is used to identify the game.",
+            "example": "BeatSaber",
+            "default": "BeatSaber"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "core",
+              "essential",
+              "library",
+              "cosmetic",
+              "practice",
+              "gameplay",
+              "streamtools",
+              "ui",
+              "lighting",
+              "tweaks",
+              "multiplayer",
+              "text",
+              "editor",
+              "other"
+            ]
+          },
+          "authorIds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "private",
+              "removed",
+              "unverified",
+              "pending",
+              "verified"
+            ]
+          },
+          "iconFileName": {
+            "type": "string",
+            "default": "default.png"
+          },
+          "gitUrl": {
+            "type": "string"
+          },
+          "lastApprovedById": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "default": null
+          },
+          "lastUpdatedById": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "ModVersionDBObject": {
+        "type": "object",
+        "properties": {
+          "modId": {
+            "type": "integer",
+            "description": "The parent mod's internal ID.",
+            "example": 1
+          },
+          "modVersion": {
+            "type": "string",
+            "description": "The version string. This is used to identify the version of the mod. This must be SemVer compliant.",
+            "example": "1.0.0"
+          },
+          "authorId": {
+            "type": "integer",
+            "description": "The ID of the user who authored this version."
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "steampc",
+              "oculuspc",
+              "universalpc",
+              "universalquest"
+            ]
+          },
+          "zipHash": {
+            "type": "string",
+            "description": "The hash of the zip file. This is used to find and download the zip file. Will be a MD5 hash.",
+            "example": "34e6985de8fbf7b525fc841c2cb45786"
+          },
+          "contentHashes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "hash": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "private",
+              "removed",
+              "unverified",
+              "pending",
+              "verified"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "description": "The ID of the mod version this version depends on."
+            }
+          },
+          "supportedGameVersionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "description": "The ID of the game version this version supports."
+            }
+          },
+          "downloadCount": {
+            "type": "integer"
+          },
+          "fileSize": {
+            "type": "integer",
+            "description": "The size of the file in bytes.",
+            "example": 12345678,
+            "default": 0
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "UserDBObject": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The user's username from GitHub.",
+            "example": "saeraphinx"
+          },
+          "githubId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The user's GitHub ID.",
+            "example": 123456789
+          },
+          "sponsorUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The URL to support the user's works financially.",
+            "example": "https://www.patreon.com/c/beatsabermods",
+            "default": null
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The user's display name from GitHub. Is editable after registration, and can be different from the GitHub username/display name.",
+            "example": "Saeraphinx"
+          },
+          "roles": {
+            "type": "object",
+            "properties": {
+              "siteide": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "allpermissions",
+                    "admin",
+                    "poster",
+                    "approver",
+                    "moderator",
+                    "largefiles",
+                    "banned"
+                  ]
+                },
+                "default": [],
+                "example": [
+                  "admin"
+                ],
+                "description": "Site-wide roles. Takes precedence over per-game roles."
+              },
+              "perGame": {
+                "type": "object",
+                "example": {
+                  "BeatSaber": [
+                    "approver"
+                  ]
+                }
+              }
+            },
+            "default": {
+              "siteide": [],
+              "perGame": {}
+            },
+            "example": {
+              "siteide": [
+                "admin"
+              ],
+              "perGame": {
+                "BeatSaber": [
+                  "approver"
+                ]
+              }
+            }
+          },
+          "bio": {
+            "type": "string",
+            "description": "The user's bio from GitHub. Is editable after registration. Supports markdown.",
+            "example": "j"
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "GameVersionDBObject": {
+        "type": "object",
+        "properties": {
+          "gameName": {
+            "type": "string",
+            "description": "The name of the game this version is for. This is used to identify the game.",
+            "example": "BeatSaber"
+          },
+          "version": {
+            "type": "string",
+            "description": "The version string. This is used to identify the version of the game.",
+            "example": "1.0.0"
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "EditApprovalQueueDBObject": {
+        "type": "object",
+        "properties": {
+          "submitterId": {
+            "type": "integer",
+            "description": "The ID of the user who submitted this edit."
+          },
+          "objectId": {
+            "type": "integer",
+            "description": "The ID of the object being edited."
+          },
+          "objectTableName": {
+            "type": "string",
+            "description": "The name of the table that objectId belongs to."
+          },
+          "object": {
+            "type": "object",
+            "properties": {
+              "modVersion": {
+                "type": "string",
+                "description": "The version string. This is used to identify the version of the mod. This must be SemVer compliant.",
+                "example": "1.0.0"
+              },
+              "platform": {
+                "type": "string",
+                "enum": [
+                  "steampc",
+                  "oculuspc",
+                  "universalpc",
+                  "universalquest"
+                ]
+              },
+              "dependnecies": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "description": "The ID of the mod version this version depends on."
+                }
+              },
+              "supportedGameVersionIds": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "description": "The ID of the game version this version supports."
+                }
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the mod.",
+                "example": "Example Mod"
+              },
+              "summary": {
+                "type": "string",
+                "description": "The summary of the mod.",
+                "example": "This is an example mod."
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the mod. Supports markdown.",
+                "example": "This is an example mod."
+              },
+              "gameName": {
+                "type": "string",
+                "description": "The name of the game this mod is for. This is used to identify the game.",
+                "example": "BeatSaber",
+                "default": "BeatSaber"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "core",
+                  "essential",
+                  "library",
+                  "cosmetic",
+                  "practice",
+                  "gameplay",
+                  "streamtools",
+                  "ui",
+                  "lighting",
+                  "tweaks",
+                  "multiplayer",
+                  "text",
+                  "editor",
+                  "other"
+                ]
+              },
+              "authorIds": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "gitUrl": {
+                "type": "string"
+              }
+            }
+          },
+          "approverId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The ID of the user who approved this edit.",
+            "default": null,
+            "example": 1
+          },
+          "approved": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether the edit has been approved or not.",
+            "example": false,
+            "default": null
+          },
+          "id": {
+            "type": "integer",
+            "description": "The object's internal ID.",
+            "example": 1,
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "The date the object was added to the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The date the object was last updated.",
+            "example": "2023-10-01T00:00:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date the object was deleted from the database.",
+            "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "ServerMessage": {
+        "type": "object",
+        "description": "A simple message from the server. Indicates anything from a successful operation to an error message. Most, if not all, endpoints will return this in the event of an error.",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The message to be displayed."
+          }
+        },
+        "additionalProperties": true,
+        "example": {
+          "message": "string"
+        }
+      }
+    }
+  }
+}

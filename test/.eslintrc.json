@@ -1,5 +1,4 @@
 {
-	"ignorePatterns": ["node_modules/", "build/", "storage/"],
     "env": {
         "browser": true,
         "es2024": true
@@ -11,13 +10,13 @@
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 2024,
-        "sourceType": "module"
+        "sourceType": "module",
     },
     "plugins": [
         "@typescript-eslint"
     ],
     "rules": {
-        "no-console": "error",
+        "no-console": "off",
         "semi": ["warn", "always"],
         "quotes": ["warn", "backtick"],
         "arrow-spacing": ["warn", { "before": true, "after": true }],
