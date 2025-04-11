@@ -24,7 +24,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare gitUrl: string;
     declare lastApprovedById: CreationOptional<number> | null;
     declare lastUpdatedById: number;
-    declare statusHistory: StatusHistory[];
+    declare statusHistory: CreationOptional<StatusHistory[]>;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;

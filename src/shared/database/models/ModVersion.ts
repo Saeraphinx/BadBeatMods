@@ -1,5 +1,5 @@
 import { SemVer, satisfies } from "semver";
-import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
+import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
 import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory } from "../DBHelper.ts";
@@ -27,12 +27,12 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     declare lastApprovedById: CreationOptional<number> | null;
     declare lastUpdatedById: number;
     declare fileSize: number;
-    declare statusHistory: StatusHistory[];
+    declare statusHistory: CreationOptional<StatusHistory[]>;
     declare readonly createdAt: CreationOptional<Date>;
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public get mod(): Mod | undefined {
+    public get mod(): NonAttribute<Mod | undefined> {
         let mod = DatabaseHelper.mapCache.mods.get(this.modId);
         if (!mod) {
             Logger.error(`Failed to find mod ${this.modId} for mod version ${this.id}`);
