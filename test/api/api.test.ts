@@ -149,6 +149,7 @@ describe.sequential(`API`, async () => {
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
+            statusHistory: [],
             lastUpdatedById: 1,
             status: Status.Private,
             summary: `Test Summary`,

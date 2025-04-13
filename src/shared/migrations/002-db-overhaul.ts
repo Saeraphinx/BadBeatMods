@@ -9,18 +9,18 @@ import { Migration } from "../Database.ts";
 
 export const up: Migration = async ({ context: sequelize }) => {
     await sequelize.addColumn(`gameVersions`, `linkedVersionIds`, {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
     });
 
     await sequelize.addColumn(`mods`, `statusHistory`, {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
     });
     await sequelize.addColumn(`modVersions`, `statusHistory`, {
-        type: DataTypes.JSON,
+        type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
     });

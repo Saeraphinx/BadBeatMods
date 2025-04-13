@@ -173,12 +173,12 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         if (reason.trim().length <= 1) {
             reason = `No reason provided.`;
         }
-        this.statusHistory.push({
+        this.statusHistory = [...this.statusHistory, {
             status: status,
             reason: reason,
             userId: user.id,
             setAt: new Date(),
-        });
+        }];
         try {
             await this.save();
         } catch (error) {

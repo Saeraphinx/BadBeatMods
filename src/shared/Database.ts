@@ -5,7 +5,7 @@ import { Logger } from "./Logger.ts";
 import { SemVer } from "semver";
 import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash, SupportedGames } from "./database/DBHelper.ts";
+import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory } from "./database/DBHelper.ts";
 import { EditQueue } from "./database/models/EditQueue.ts";
 import { GameVersion } from "./database/models/GameVersion.ts";
 import { Mod } from "./database/models/Mod.ts";
@@ -13,6 +13,7 @@ import { ModVersion } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User, UserRoles } from "./database/models/User.ts";
 import { updateRoles } from "./database/ValueUpdater.ts";
+import { Status } from "discord.js";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -367,7 +368,7 @@ export class DatabaseManager {
                     // @ts-expect-error s(2345)
                     return JSON.parse(this.getDataValue(`statusHistory`));
                 },
-                set(value: string[]) {
+                set(value: StatusHistory[]) {
                     // @ts-expect-error s(2345)
                     this.setDataValue(`statusHistory`, JSON.stringify(value));
                 },
@@ -498,7 +499,7 @@ export class DatabaseManager {
                     // @ts-expect-error s(2345)
                     return JSON.parse(this.getDataValue(`statusHistory`));
                 },
-                set(value: string[]) {
+                set(value: StatusHistory[]) {
                     // @ts-expect-error s(2345)
                     this.setDataValue(`statusHistory`, JSON.stringify(value));
                 },
