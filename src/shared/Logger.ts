@@ -24,10 +24,17 @@ export class Logger {
             }));
         }
 
+        let consoleLevel = `consoleInfo`;
+        if (process.env.NODE_ENV == `test`) {
+            consoleLevel = `warn`;
+        } else if (Config.devmode) {
+            consoleLevel = `debug`;
+        }
+
         transports.push(new Winston.transports.Console({
             forceConsole: true,
-            level: Config.devmode ? `http` : `consoleInfo`,
-            silent: process.env.NODE_ENV == `test`,
+            level: consoleLevel,
+            //silent: process.env.NODE_ENV == `test`,
             consoleWarnLevels: [`consoleWarn`, `warn`, `error`, `debugWarn`],
             format: Winston.format.combine(
                 Winston.format.timestamp({ format: `MM/DD/YY HH:mm:ss` }),
