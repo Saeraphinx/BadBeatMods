@@ -58,6 +58,7 @@ for (let i = 1; i < 5; i++) {
                 iconFileName: `default.png`,
                 lastApprovedById: status == Status.Verified ? 1 : null,
                 lastUpdatedById: 2,
+                statusHistory: [],
                 createdAt: faker.date.recent(),
                 updatedAt: faker.date.recent(),
                 deletedAt: null
@@ -91,6 +92,7 @@ for (let project of fakeProjectData) {
             fileSize: 0,
             lastApprovedById: null,
             lastUpdatedById: 1,
+            statusHistory: [],
             zipHash: faker.string.alphanumeric(24),
             createdAt: faker.date.recent(),
             updatedAt: faker.date.recent(),
