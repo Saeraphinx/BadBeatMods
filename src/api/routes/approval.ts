@@ -720,11 +720,11 @@ export class ApprovalRoutes {
             }
 
             //get db objects
-            //let status = Validator.zStatus.safeParse(req.body.status);
-            let allowDependants = Validator.z.boolean().safeParse(req.body.allowDependants);
-            if (!allowDependants.success) {
-                return res.status(400).send({ message: `Missing allowDependants.` });
-            }
+            let status = Validator.zStatus.safeParse(req.body.status);
+            //let allowDependants = Validator.z.boolean().safeParse(req.body.allowDependants);
+            //if (!allowDependants.success) {
+            //    return res.status(400).send({ message: `Missing allowDependants.` });
+            //}
 
             let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
             if (!modVersion) {
@@ -732,26 +732,32 @@ export class ApprovalRoutes {
             }
 
             // i have to filter twice since in the database, the dependants are stored as a string.
-            let dependants = (await DatabaseHelper.database.ModVersions.findAll()).filter((modVersion) => modVersion.dependencies.includes(modVersionId.data));
+            //let dependants = (await DatabaseHelper.database.ModVersions.findAll()).filter((modVersion) => modVersion.dependencies.includes(modVersionId.data));
             
             // for each dependant, revoke their verification status
-            let revokedIds:number[] = [];
-            if (dependants.length > 0) {
-                if (allowDependants.data == false) {
-                    return res.status(400).send({ message: `Mod version has ${dependants.length} dependants. Set "allowDependants" to true to revoke this mod's approved status.` });
-                }
-                for (let dependant of dependants) {
-                    let ids = await unverifyModVersionId(session.user, dependant.id, dependant);
-                    revokedIds = [...revokedIds, ...ids];
-                }
-            } else {
-                let ids = await unverifyModVersionId(session.user, modVersionId.data, modVersion);
-                revokedIds = [...revokedIds, ...ids];
-            }
-            Logger.log(`ModVersion ${modVersionId.data} & its ${dependants.length} have been revoked by ${session.user.username}. This totals to ${revokedIds.length} revoked modVersions.`);
-            Logger.log(`Revoked IDs: ${revokedIds.join(`, `)}`);
-            DatabaseHelper.refreshCache(`modVersions`);
-            return res.status(200).send({ message: `Mod version revoked.`, revokedIds: revokedIds });
+            //let revokedIds:number[] = [];
+            //if (dependants.length > 0) {
+            //    if (allowDependants.data == false) {
+            //        return res.status(400).send({ message: `Mod version has ${dependants.length} dependants. Set "allowDependants" to true to revoke this mod's approved status.` });
+            //    }
+            //    for (let dependant of dependants) {
+            //        let ids = await unverifyModVersionId(session.user, dependant.id, dependant);
+            //        revokedIds = [...revokedIds, ...ids];
+            //    }
+            //} else {
+            //    let ids = await unverifyModVersionId(session.user, modVersionId.data, modVersion);
+            //    revokedIds = [...revokedIds, ...ids];
+            //}
+            modVersion.setStatus(Status.Unverified, session.user).then(() => {
+                Logger.log(`ModVersion ${modVersionId.data} has been revoked by ${session.user.username}.`);
+                sendModVersionLog(modVersion, session.user, `Revoked`);
+                //Logger.log(`Revoked IDs: ${revokedIds.join(`, `)}`);
+                DatabaseHelper.refreshCache(`modVersions`);
+                return res.status(200).send({ message: `Mod version revoked.`, revokedIds: [modVersionId.data] });
+            }).catch((error) => {
+                Logger.error(`Error revoking modVersion ${modVersionId.data}: ${error}`);
+                return res.status(500).send({ message: `Error revoking modVersion:  ${error}` });
+            });
         });
         // #endregion
     }
