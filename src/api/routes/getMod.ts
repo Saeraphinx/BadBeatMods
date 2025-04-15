@@ -158,7 +158,8 @@ export class GetModRoutes {
                 if (raw) {
                     returnVal.push(version.toRawAPIResonse());
                 } else {
-                    let resolvedVersion = await version.toAPIResonse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
+                    // resort to default behavior, which does return no matter what iirc.
+                    let resolvedVersion = await version.toAPIResonse(undefined, [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
@@ -369,7 +370,7 @@ export class GetModRoutes {
                     retObj[key] = value;
                 });
 
-                return res.status(200).send({ modVersions: retObj });
+                return res.status(200).send({ hashes: retObj });
             } else {
                 return res.status(404).send({ message: `Hash not found.` });
             }

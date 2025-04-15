@@ -157,7 +157,7 @@ describe.sequential(`Game Versions - GV`, () => {
     });
 
     // this test doesn't test properly
-    test.todo(`should only have one default version per game`, async () => {
+    test.skip(`should only have one default version per game`, async () => {
         let games = GameVersion.getGames();
         for (let game of games) {
             let defaultVersion = await GameVersion.getDefaultVersionObject(game);

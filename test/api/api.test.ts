@@ -63,8 +63,8 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) => {}),
+        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?:string) => {}),
         sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
     };
 });
@@ -324,6 +324,32 @@ describe.sequential(`API`, async () => {
             expect(apimv).toHaveProperty(`modId`);
             expect(apimv.id).toBe(modVersion.id);
             expect(apimv.modId).toBe(modVersion.modId);
+        });
+
+        test(`/multi/hashlookup - contentHash`, async () => {
+            let contentHash1 = DatabaseHelper.cache.modVersions[0].contentHashes[0].hash;
+            let contentHash2 = DatabaseHelper.cache.modVersions[1].contentHashes[0].hash;
+            const response = await api.get(`/multi/hashlookup?hash=${contentHash1}&hash=${contentHash2}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`hashes`);
+            expect(response.body.hashes).toBeInstanceOf(Object);
+            expect(Object.keys(response.body.hashes).length).toBe(2);
+            expect(response.body.hashes[contentHash1]).toBeDefined();
+            expect(response.body.hashes[contentHash2]).toBeDefined();
+        });
+
+        test(`/multi/hashlookup - zipHash`, async () => {
+            let zipHash1 = DatabaseHelper.cache.modVersions[0].zipHash;
+            let zipHash2 = DatabaseHelper.cache.modVersions[1].zipHash;
+            const response = await api.get(`/multi/hashlookup?hash=${zipHash1}&hash=${zipHash2}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`hashes`);
+            expect(response.body.hashes).toBeInstanceOf(Object);
+            expect(Object.keys(response.body.hashes).length).toBe(2);
+            expect(response.body.hashes[zipHash1]).toBeDefined();
+            expect(response.body.hashes[zipHash2]).toBeDefined();
         });
     });
 

@@ -12,8 +12,8 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) => {}),
+        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?:string) => {}),
         sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
     };
 });
@@ -73,6 +73,7 @@ describe.sequential(`Versions - Hooks`, async () => {
                 zipHash: faker.git.commitSha(),
                 dependencies: [],
                 fileSize: 0,
+                statusHistory: [],
                 downloadCount: 0,
                 lastApprovedById: null
             };
@@ -249,6 +250,7 @@ describe.sequential(`Versions - Visibility`, async () => {
         dependencies: [],
         fileSize: 0,
         downloadCount: 0,
+        statusHistory: [],
         lastApprovedById: null
     };
 
@@ -484,6 +486,7 @@ describe.sequential(`Versions - Editing`, async () => {
             dependencies: [],
             fileSize: 0,
             downloadCount: 0,
+            statusHistory: [],
             lastApprovedById: null
         };
         await DatabaseHelper.refreshAllCaches();
@@ -499,37 +502,30 @@ describe.sequential(`Versions - Editing`, async () => {
         testUser2 = await testUser2.reload();
     });
 
-    test(`should send log on status update unverified`, async () => {
+    test.each([
+        //expected status switches
+        [Status.Private, Status.Pending, WebhookLogType.SetToPending],
+        [Status.Pending, Status.Verified, WebhookLogType.Verified],
+        [Status.Pending, Status.Unverified, WebhookLogType.RejectedUnverified],
+        [Status.Pending, Status.Removed, WebhookLogType.Removed],
+        [Status.Unverified, Status.Verified, WebhookLogType.Verified],
+        [Status.Unverified, Status.Removed, WebhookLogType.Removed],
+
+        //less expected status switches, but still supported
+        [Status.Verified, Status.Pending, WebhookLogType.VerificationRevoked],
+        [Status.Verified, Status.Unverified, WebhookLogType.VerificationRevoked],
+        [Status.Verified, Status.Removed, WebhookLogType.VerificationRevoked],
+    ])(`status %s -> %s should send %s log`, async (currStatus, newStatus, expectedLogType) => {
         let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
+            status: currStatus,
         });
 
-        await modVersion.setStatus(Status.Unverified, testUser1);
-        expect(modVersion.status).toBe(Status.Unverified);
-        expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.RejectedUnverified);
-    });
-
-    test(`should send log on status update verified`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-        });
-
-        await modVersion.setStatus(Status.Verified, testUser1);
-        expect(modVersion.status).toBe(Status.Verified);
-        expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.Verified);
-    });
-
-    test(`should send log on status update removed`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-        });
-
-        await modVersion.setStatus(Status.Removed, testUser1);
-        expect(modVersion.status).toBe(Status.Removed);
-        expect(sendModVersionLog).toHaveBeenCalled();
-        expect(sendModVersionLog).toHaveBeenCalledWith(modVersion, testUser1, WebhookLogType.Removed);
+        await modVersion.setStatus(newStatus, testUser1, `test`);
+        expect(modVersion.status).toBe(newStatus);
+        expect(sendModVersionLog).toHaveBeenCalledTimes(2);
+        expect(sendModVersionLog).toHaveBeenNthCalledWith(1, modVersion, testUser1, WebhookLogType.Text_StatusChanged);
+        expect(sendModVersionLog).toHaveBeenNthCalledWith(2, modVersion, testUser1, expectedLogType, undefined, `test`);
     });
 });
 /*
