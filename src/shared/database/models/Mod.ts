@@ -191,22 +191,22 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             case Status.Unverified:
                 this.lastApprovedById = user.id;
                 if (prevStatus == Status.Verified) {
-                    sendModLog(this, user, WebhookLogType.VerificationRevoked);
+                    sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
                 } else if (prevStatus == Status.Removed) {
                     //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
-                    sendModLog(this, user, WebhookLogType.RejectedUnverified);
+                    sendModLog(this, user, WebhookLogType.RejectedUnverified, reason);
                 }
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Verified) : null;
+                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Verified, reason) : null;
                 break;
             case Status.Removed:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Removed) : null;
+                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Removed, reason) : null;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.SetToPending) : null;
+                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.SetToPending, reason) : null;
                 break;
         }
         return this;

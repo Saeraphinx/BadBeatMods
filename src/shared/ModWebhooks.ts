@@ -58,7 +58,7 @@ async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, lo
     }, logType);
 }
 
-export async function sendModLog(mod: Mod, userMakingChanges: User, logType: WebhookLogType) {
+export async function sendModLog(mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let color = 0x00FF00;
 
@@ -117,7 +117,7 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
     sendEmbedToWebhooks(embed, logType);
 }
 
-export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) {
+export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
     let color = 0x00FF00;
@@ -252,6 +252,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
     title?: string,
     useSummary?: boolean,
     minimal?: boolean,
+    reason?: string,
 } = {}): Promise<APIEmbed | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
 
@@ -286,7 +287,32 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
                 icon_url: faviconUrl,
             },
         };
-    } else {
+    } else { 
+        let fields = [
+            {
+                name: `Authors`,
+                value: `${authors.map(author => { return author.username; }).join(`, `)} `,
+                inline: true,
+            },
+            {
+                name: `Category`,
+                value: `${mod.category} `,
+                inline: true,
+            },
+            {
+                name: `Git URL`,
+                value: `${mod.gitUrl} `,
+                inline: false,
+            },
+        ];
+        if (options?.reason) {
+            fields.push({
+                name: `Reason`,
+                value: `${options.reason} `,
+                inline: false,
+            });
+        }
+
         return {
             title: options?.title ? options.title : `Mod: ${mod.name}`,
             url: `${Config.server.url}/mods/${mod.id}`,
@@ -295,24 +321,6 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
-            fields: [
-                {
-                    name: `Authors`,
-                    value: `${authors.map(author => { return author.username; }).join(`, `)} `,
-                    inline: true,
-                },
-                {
-                    name: `Category`,
-                    value: `${mod.category} `,
-                    inline: true,
-                },
-                {
-                    name: `Git URL`,
-                    value: `${mod.gitUrl} `,
-                    inline: false,
-                },
-
-            ],
             thumbnail: {
                 url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
             },
@@ -329,6 +337,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
 async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMakingChanges: User, color: number, options: {
     title?: string,
     minimal?: boolean,
+    reason?: string,
 } = {}): Promise<APIEmbed | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let author = await DatabaseHelper.database.Users.findOne({ where: { id: modVersion.authorId } });
@@ -376,6 +385,40 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
             },
         };
     } else {
+        let fields = [
+            {
+                name: `Author`,
+                value: `${author.username} `,
+                inline: true,
+            },
+            {
+                name: `Platform`,
+                value: `${modVersion.platform} `,
+                inline: true,
+            },
+            {
+                name: `# of Files`,
+                value: `${modVersion.contentHashes.length} `,
+                inline: true,
+            },
+            {
+                name: `Game Versions`,
+                value: `${gameVersions.map((v) => v.version).join(`, `)} `,
+                inline: true,
+            },
+            {
+                name: `Dependencies`,
+                value: `${dependancies.join(`, `)} `,
+                inline: true,
+            },
+        ];
+        if (options.reason) {
+            fields.push({
+                name: `Reason`,
+                value: `${options.reason} `,
+                inline: false,
+            });
+        }
         return {
             title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
             url: `${Config.server.url}/mods/${mod.id}`,
@@ -384,33 +427,7 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
-            fields: [
-                {
-                    name: `Author`,
-                    value: `${author.username} `,
-                    inline: true,
-                },
-                {
-                    name: `Platform`,
-                    value: `${modVersion.platform} `,
-                    inline: true,
-                },
-                {
-                    name: `# of Files`,
-                    value: `${modVersion.contentHashes.length} `,
-                    inline: true,
-                },
-                {
-                    name: `Game Versions`,
-                    value: `${gameVersions.map((v) => v.version).join(`, `)} `,
-                    inline: true,
-                },
-                {
-                    name: `Dependencies`,
-                    value: `${dependancies.join(`, `)} `,
-                    inline: true,
-                },
-            ],
+            fields: fields,
             thumbnail: {
                 url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
             },

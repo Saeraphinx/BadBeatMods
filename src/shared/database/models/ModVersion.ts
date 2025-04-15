@@ -172,23 +172,23 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             case Status.Unverified:
                 if (prevStatus == Status.Verified) {
                     this.lastApprovedById = user.id;
-                    shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked) : undefined;
+                    shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked, undefined, reason) : undefined;
                 } else if (prevStatus == Status.Removed) {
                     sendModVersionLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
-                    sendModVersionLog(this, user, WebhookLogType.RejectedUnverified);
+                    sendModVersionLog(this, user, WebhookLogType.RejectedUnverified, undefined, reason);
                 }
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Verified) : undefined;
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Verified, undefined, reason) : undefined;
                 break;
             case Status.Removed:
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Removed) : undefined;
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Removed, undefined, reason) : undefined;
                 this.lastApprovedById = user.id;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.SetToPending) : undefined;
+                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.SetToPending, undefined, reason) : undefined;
                 break;
         }
         return this;
