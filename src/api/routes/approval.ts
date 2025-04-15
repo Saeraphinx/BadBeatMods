@@ -335,7 +335,7 @@ export class ApprovalRoutes {
                 Logger.log(`ModVersion ${modVersion.id} set to status ${status} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`modVersions`);
                 // logs sent out by the modVersion.setStatus method
-                return res.status(200).send({ message: `Mod ${status}.` });
+                return res.status(200).send({ message: `ModVersion ${status}.` });
             }).catch((error) => {
                 Logger.error(`Error ${status} mod: ${error}`);
                 return res.status(500).send({ message: `Error ${status} mod:  ${error}` });
