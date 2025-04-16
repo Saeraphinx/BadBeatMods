@@ -1,6 +1,8 @@
 # db-overhaul (Backend refactor & addition of tests)
 
 ## Server Changes
+- **Preparation for the renaming of Mods & ModVersions to Projects & Versions**
+  - This is to hopefully reduce confusion between the two as having "mod" in both names is confusing.
 - Reworked Approval Endpoints
   - **All approvals now use `ApprovalAction`.**
   - `status` from mods/modVersions and `accepted` from edit request bodies has been replaced with `action`.
