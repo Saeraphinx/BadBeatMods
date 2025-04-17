@@ -286,7 +286,7 @@ export class AdminRoutes {
                 return res.status(404).send({ message: `User not found.` });
             }
 
-            let sessionId = req.session.userId;
+            let sessionId = req.bbmAuth?.userId;
             if (!sessionId) {
                 return res.status(400).send({ message: `You cannot modify your own roles.` });
             } else {
