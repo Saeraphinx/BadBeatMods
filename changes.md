@@ -6,9 +6,9 @@
 - Reworked Approval Endpoints
   - **All approvals now use `ApprovalAction`.**
   - `status` from mods/modVersions and `accepted` from edit request bodies has been replaced with `action`.
-  - `reason` has been added to project & version approval endpoints
-  - add `includeUnverified` query parameter to `/approval/:queueType`
-  - [additional info can be found on the frontend](https://github.com/Futuremappermydud/bsmods-frontend/blob/285b39375de4a8bcdd4f0627e3ad95f43521b5f4/src/lib/components/ui/approval/ApprovalDialog.svelte#L131-L133)
+  - `reason` field has been added to project & version approval endpoints.
+  - add `includeUnverified` query parameter to `/approval/:queueType`.
+  - [Additional info can be found on the frontend within the approval dialog.](https://github.com/Futuremappermydud/bsmods-frontend/blob/285b39375de4a8bcdd4f0627e3ad95f43521b5f4/src/lib/components/ui/approval/ApprovalDialog.svelte#L131-L133)
 ```typescript
 export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
@@ -42,29 +42,37 @@ export enum ApprovalAction {
 }
 ```
 
-- Added `pending` status. `unverified` is now for mods that either will not be verified due to being for an outdated version of the game or do not fully meet the requirements for verification.
+- Added `pending` status & redefined `unverified`.
+  - `pending` is to be used for mods that are currently in the queue.
+  - `unverified` is to be used for:
+    - Mods that have newer versions in the queue
+    - Mods that are uploaded for versions no longer supported by approvers 
+    - Mods that do not fully comply with the approval guidelines 
+    - Mods that are not compatible with all other verified mods.
+  - Mods with the `unverified` should not receive support, but should be preserved for those who might need to run a older version of a mod or game.
   - [additional info can be found on the frontend](https://github.com/Futuremappermydud/bsmods-frontend/blob/285b39375de4a8bcdd4f0627e3ad95f43521b5f4/src/lib/components/ui/approval/ApprovalDialog.svelte#L131-L133)
-- added `linkedVersionIds` to gameVersions
-  - For all intents and purposes, this is basically "aliases". BBM still considers each game version to be a unique version, but this will automatically add all linked versions to a modversion when it is created.
-- the character `v` is now stripped from the start of version numbers when saving to the database. 
-- the error `Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.` has been removed
-- add `statusHistory` to mods & modversions. these store time, status, reason, and user id.
+- Added `linkedVersionIds` to gameVersions
+  - For all intents and purposes, this is basically "aliases". BBM still considers each game version to be unique, but this will automatically add all linked game versions to a Version when it is created or edited.
+- The character `v` is now stripped from the start of version numbers when saving to the database. 
+- The error `Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.` has been removed
+- Added `statusHistory` to projects & versions. These store time, status, reason, and user id.
 - Edits to mod descriptions bypass the edit queue
 
 ## API Changes
 - Swagger file separated into 2 files (full and public)
 - Ratelimit has been lowered to 100 req/min.
-- `moderator` role has been removed
-- `POST /admin/linkversions` has been removed
-- removed `PATCH /approval/mod/:modIdParam`
-- removed `PATCH /approval/modVersion/:modVersionIdParam`
-- removed `POST /approval/modVersion/:modVersionIdParam/revoke`
-- added `GET /multi/modversions` to get multiple modVersions at once (for getting data about dependencies)
-- added `status` to `GET /hashlookup` endpoint
-- renamed `GET /multihashlookup` to `GET /multi/hashlookup`
-- added `status` to `GET /multi/hashlookup` endpoint
-- allow `all` as a value for `status` on  `GET /mods`
-- Add `GET /inc/mod/:hash` for incrementing download counts & getting the file name for version downloads
+- Removed `moderator` role
+- Removed `POST /admin/linkversions`
+- Removed `PATCH /approval/mod/:modIdParam`
+- Removed `PATCH /approval/modVersion/:modVersionIdParam`
+- Removed `POST /approval/modVersion/:modVersionIdParam/revoke`
+- Renamed `GET /multihashlookup` to `GET /multi/hashlookup`
+- Added `GET /multi/modversions` to get multiple modVersions at once (for getting data about dependencies)
+- Added `GET /inc/mod/:hash` for incrementing download counts & getting the file name for version downloads
+- Added `status` to `GET /hashlookup` endpoint
+- Added `status` to `GET /multi/hashlookup` endpoint
+- Allow `all` as a value for `status` on  `GET /mods`
+
 
 ## Development
 - Move to ECMAScript modules
@@ -75,8 +83,8 @@ export enum ApprovalAction {
 - Logic for editing/checking permissions for mods & modVersions has been moved to the their classes instead of being done in the api routes 
 - `index.ts` no longer uses `import()` to load GitHub PAT support
 - `index.ts` can now start and stop the server.
-- added tests
+- Added tests
 - Server now properly supports using sqlite in memory (for testing)
-- run role migrator on users table after db sync.
-- disable logging and config loading if `NODE_ENV` is set to `test`.
+- Run role migrator on users table after db sync.
+- Disable logging and config loading if `NODE_ENV` is set to `test`.
 - Use `Map.get` for id lookups instead of `Array.find`
