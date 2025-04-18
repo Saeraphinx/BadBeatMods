@@ -47,6 +47,7 @@ export type ModAPIPublicResponse = {
     gitUrl: string;
     lastApprovedById: number | null;
     lastUpdatedById: number;
+    statusHistory: StatusHistory[];
     createdAt: Date;
     updatedAt: Date;
 };
@@ -62,6 +63,9 @@ export type ModVersionAPIPublicResponse = {
     dependencies: number[];
     supportedGameVersions: GameVersionAPIPublicResponse[];
     downloadCount: number;
+    statusHistory: StatusHistory[];
+    lastUpdatedById: number;
+    lastApprovedById: number | null;
     fileSize: number;
     createdAt: Date;
     updatedAt: Date;

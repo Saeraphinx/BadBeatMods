@@ -241,6 +241,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             status: this.status,
             iconFileName: this.iconFileName,
             gitUrl: this.gitUrl,
+            statusHistory: this.statusHistory,
             lastApprovedById: this.lastApprovedById,
             lastUpdatedById: this.lastUpdatedById,
             createdAt: this.createdAt,
