@@ -71,7 +71,7 @@ export class GetModRoutes {
                     let latest = modVersions[0];
 
                     if (latest) {
-                        let latestVer = await latest.toAPIResonse(latest.supportedGameVersionIds[0], statuses);
+                        let latestVer = await latest.toAPIResponse(latest.supportedGameVersionIds[0], statuses);
                         if (latestVer) {
                             mods.push({ mod: mod.toAPIResponse(), latest: latestVer });
                         }
@@ -83,7 +83,7 @@ export class GetModRoutes {
 
                 for (let retMod of modsFromDB) {
                     let mod = retMod.mod.toAPIResponse();
-                    let latest = await retMod.latest.toAPIResonse(gameVersion.id, statuses);
+                    let latest = await retMod.latest.toAPIResponse(gameVersion.id, statuses);
                     mods.push({ mod, latest });
                 }
 
@@ -156,10 +156,10 @@ export class GetModRoutes {
                 }
                 // if raw is true, return the raw mod version info instead of attempting to resolve the dependencies & other fields
                 if (raw) {
-                    returnVal.push(version.toRawAPIResonse());
+                    returnVal.push(version.toRawAPIResponse());
                 } else {
                     // resort to default behavior, which does return no matter what iirc.
-                    let resolvedVersion = await version.toAPIResonse(undefined, [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
+                    let resolvedVersion = await version.toAPIResponse(undefined, [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
@@ -211,9 +211,9 @@ export class GetModRoutes {
             }
 
             if (raw === `true`) {
-                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: modVersion.toRawAPIResonse() });
+                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: modVersion.toRawAPIResponse() });
             } else {
-                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: await modVersion.toAPIResonse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
+                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
             }
         });
 
@@ -256,9 +256,9 @@ export class GetModRoutes {
                 }
 
                 if (raw === `true`) {
-                    retVal.push({ mod: mod.toAPIResponse(), modVersion: modVersion.toRawAPIResonse() });
+                    retVal.push({ mod: mod.toAPIResponse(), modVersion: modVersion.toRawAPIResponse() });
                 } else {
-                    retVal.push({ mod: mod.toAPIResponse(), modVersion: await modVersion.toAPIResonse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
+                    retVal.push({ mod: mod.toAPIResponse(), modVersion: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
                 }
             }
 
@@ -295,17 +295,17 @@ export class GetModRoutes {
 
                 if (hashArr.includes(version.zipHash)) {
                     if (raw) {
-                        retVal.push(Promise.resolve(version.toRawAPIResonse()));
+                        retVal.push(Promise.resolve(version.toRawAPIResponse()));
                     } else {
-                        retVal.push(version.toAPIResonse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
+                        retVal.push(version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
                     }
                 }
                 for (const fileHash of version.contentHashes) {
                     if (hashArr.includes(fileHash.hash)) {
                         if (raw) {
-                            retVal.push(Promise.resolve(version.toRawAPIResonse()));
+                            retVal.push(Promise.resolve(version.toRawAPIResponse()));
                         } else {
-                            retVal.push(version.toAPIResonse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
+                            retVal.push(version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
                         }
                     }
                 }
@@ -346,18 +346,18 @@ export class GetModRoutes {
                 if (hashArr.includes(version.zipHash)) {
                     let existing = retVal.get(version.zipHash);
                     if (existing) {
-                        existing.push(version.toRawAPIResonse());
+                        existing.push(version.toRawAPIResponse());
                     } else {
-                        retVal.set(version.zipHash, [version.toRawAPIResonse()]);
+                        retVal.set(version.zipHash, [version.toRawAPIResponse()]);
                     }
                 }
                 for (const fileHash of version.contentHashes) {
                     if (hashArr.includes(fileHash.hash)) {
                         let existing = retVal.get(fileHash.hash);
                         if (existing) {
-                            existing.push(version.toRawAPIResonse());
+                            existing.push(version.toRawAPIResponse());
                         } else {
-                            retVal.set(fileHash.hash, [version.toRawAPIResonse()]);
+                            retVal.set(fileHash.hash, [version.toRawAPIResponse()]);
                         }
                     }
                 }

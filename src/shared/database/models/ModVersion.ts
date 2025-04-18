@@ -402,7 +402,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return results;
     }
 
-    public toRawAPIResonse() {
+    public toRawAPIResponse() {
         return {
             id: this.id,
             modId: this.modId,
@@ -421,7 +421,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         };
     }
 
-    public async toAPIResonse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<ModVersionAPIPublicResponse|null> {
+    public async toAPIResponse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<ModVersionAPIPublicResponse|null> {
         let dependencies = await this.getLiveDependencies(gameVersionId, statusesToSearchFor);
         if (!dependencies) {
             dependencies = this.getRawDependencies();

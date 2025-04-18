@@ -85,7 +85,7 @@ export class ApprovalRoutes {
                 mods: ModAPIPublicResponse[] | undefined,
                 modVersions: {
                     mod: ModAPIPublicResponse,
-                    version: ReturnType<typeof ModVersion.prototype.toRawAPIResonse>}[] | undefined,
+                    version: ReturnType<typeof ModVersion.prototype.toRawAPIResponse>}[] | undefined,
                 edits: {
                     mod: ModAPIPublicResponse,
                     original: Mod | ModVersion
@@ -108,7 +108,7 @@ export class ApprovalRoutes {
                         if (!mod || mod.gameName !== gameName.data) {
                             return null;
                         }
-                        return { mod: mod.toAPIResponse(), version: modVersion.toRawAPIResonse() };
+                        return { mod: mod.toAPIResponse(), version: modVersion.toRawAPIResponse() };
                     }).filter((obj) => obj !== null);
                     break;
                 case `edits`:

@@ -222,7 +222,7 @@ export class CreateModRoutes {
                 fileSize: file.size
             }).then(async (modVersion) => {
                 DatabaseHelper.refreshCache(`modVersions`);
-                let retVal = await modVersion.toRawAPIResonse();
+                let retVal = await modVersion.toRawAPIResponse();
                 return res.status(200).send({ modVersion: retVal });
             }).catch((error) => {
                 let message = `Error creating mod version.`;
