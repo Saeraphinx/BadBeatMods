@@ -630,7 +630,7 @@ function testStatusChange(testMod:Mod|ModVersion, fromStatus:Status, action:Appr
         expect(response.status).toBe(200);
         expect(response.body).toBeDefined();
         expect(response.body).toHaveProperty(`message`);
-        expect(response.body.message).toBe(`Mod ${toStatus}.`);
+        expect(response.body.message).toBe(`${type == `mod` ? `Mod` : `ModVersion`} ${toStatus}.`);
         expect(logAction).toHaveBeenCalled();
         await testMod.reload();
         expect(testMod.status).toBe(toStatus);

@@ -41,7 +41,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return mod;
     }
 
-    public async isAllowedToView(user: User|null, useCache:Mod|boolean = true) {
+    public async isAllowedToView(user: User|null|undefined, useCache:Mod|boolean = true) {
         let parentMod: Mod | null | undefined;
         if (typeof useCache === `object`) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
@@ -74,6 +74,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             user.roles.sitewide.includes(UserRoles.Admin) ||
             user.roles.sitewide.includes(UserRoles.AllPermissions) ||
             user.roles.sitewide.includes(UserRoles.Approver) ||
+            user.roles.sitewide.includes(UserRoles.GameManager) ||
             this.authorId == user.id
         ) {
             return true;
@@ -87,6 +88,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
                 }
                 if (roles.includes(UserRoles.Admin) ||
                     roles.includes(UserRoles.Approver) ||
+                    roles.includes(UserRoles.GameManager) ||
                     roles.includes(UserRoles.AllPermissions)) {
                     return true;
                 }

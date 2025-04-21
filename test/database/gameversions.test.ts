@@ -132,6 +132,25 @@ describe.sequential(`Game Versions - Hooks`, () => {
         version1.linkedVersionIds = [version2.id];
         await expect(version1.save()).rejects.toThrow();
     });
+
+    test(`should mark linked version as linked with first version`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.0.0`,
+        });
+
+        let version2 = await db.GameVersions.create({
+            gameName: SupportedGames.BeatSaber,
+            version: `1.1.0`,
+        });
+
+        version1.linkedVersionIds = [version2.id];
+        await version1.save();
+
+        version2 = await version2.reload();
+        expect(version1.linkedVersionIds).toContain(version2.id);
+        expect(version2.linkedVersionIds).toContain(version1.id);
+    });
 });
 
 describe.sequential(`Game Versions - GV`, () => {

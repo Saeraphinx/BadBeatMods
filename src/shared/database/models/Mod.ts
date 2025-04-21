@@ -29,7 +29,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public isAllowedToView(user: User|null):boolean {
+    public isAllowedToView(user: User|null|undefined):boolean {
         if (this.status == Status.Verified || this.status == Status.Unverified) {
             return true;
         }
@@ -42,6 +42,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             user.roles.sitewide.includes(UserRoles.Admin) ||
             user.roles.sitewide.includes(UserRoles.AllPermissions) ||
             user.roles.sitewide.includes(UserRoles.Approver) ||
+            user.roles.sitewide.includes(UserRoles.GameManager) ||
             this.authorIds.includes(user.id)
         ) {
             return true;
@@ -55,6 +56,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 }
                 if (roles.includes(UserRoles.Admin) ||
                     roles.includes(UserRoles.Approver) ||
+                    roles.includes(UserRoles.GameManager) ||
                     roles.includes(UserRoles.AllPermissions)) {
                     return true;
                 }
@@ -72,18 +74,22 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             return false;
         }
 
-        if (user.roles && user.roles.sitewide && (user.roles.sitewide.includes(UserRoles.AllPermissions) || user.roles.sitewide.includes(UserRoles.Approver))) {
-            return true;
-        }
-
-        if (user && user.roles && user.roles.perGame && user.roles.perGame[this.gameName] && (user.roles.perGame[this.gameName]?.includes(UserRoles.Admin) || user.roles.perGame[this.gameName]?.includes(UserRoles.Approver))) {
-            return true;
-        }
-
         if (!isGameChange) {
             if (this.authorIds.includes(user.id)) {
                 return true;
             }
+        }
+
+        if (user.roles && user.roles.sitewide &&
+            (user.roles.sitewide.includes(UserRoles.AllPermissions) ||
+             user.roles.sitewide.includes(UserRoles.Approver))) {
+            return true;
+        }
+
+        if (user && user.roles && user.roles.perGame && user.roles.perGame[this.gameName] &&
+            (user.roles.perGame[this.gameName]?.includes(UserRoles.AllPermissions) ||
+             user.roles.perGame[this.gameName]?.includes(UserRoles.Approver))) {
+            return true;
         }
 
         return false;
@@ -187,12 +193,14 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         }
         Logger.log(`Mod ${this.id} set to status ${status} by ${user.username}`);
         sendModLog(this, user, WebhookLogType.Text_StatusChanged);
+        if (prevStatus == Status.Verified) {
+            sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
+            return this;
+        }
         switch (status) {
             case Status.Unverified:
                 this.lastApprovedById = user.id;
-                if (prevStatus == Status.Verified) {
-                    sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
-                } else if (prevStatus == Status.Removed) {
+                if (prevStatus == Status.Removed) {
                     //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
                     sendModLog(this, user, WebhookLogType.RejectedUnverified, reason);

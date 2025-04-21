@@ -6,6 +6,7 @@ import { projects, users } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
+import e from 'express';
 
 
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
@@ -229,7 +230,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 });
 
-describe.sequential(`Versions - Visibility`, async () => {
+describe.sequential(`Versions - Permissions`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
     let testUser2: User;
@@ -309,113 +310,113 @@ describe.sequential(`Versions - Visibility`, async () => {
         testUser1 = await testUser1.reload();
         testUser2 = await testUser2.reload();
         // Do not restore data for the NR user.
+        vi.resetAllMocks();
     });
 
-    test(`should show private versions to the author`, async () => {
+    test.each([
+        [Status.Private, true, "author"],
+        [Status.Private, true, UserRoles.AllPermissions],
+        [Status.Private, true, UserRoles.Admin],
+        [Status.Private, true, UserRoles.Approver],
+        [Status.Private, true, UserRoles.GameManager],
+        [Status.Private, false, null],
+        [Status.Pending, true, "author"],
+        [Status.Pending, true, UserRoles.AllPermissions],
+        [Status.Pending, true, UserRoles.Admin],
+        [Status.Pending, true, UserRoles.Approver],
+        [Status.Pending, true, UserRoles.GameManager],
+        [Status.Pending, false, null],
+        [Status.Unverified, true, null],
+        [Status.Verified, true, null],
+        [Status.Removed, true, "author"],
+        [Status.Removed, true, UserRoles.AllPermissions],
+        [Status.Removed, true, UserRoles.Admin],
+        [Status.Removed, true, UserRoles.Approver],
+        [Status.Removed, true, UserRoles.GameManager],
+        [Status.Removed, false, null],
+    ])(`%s isAllowedToView %s for %s`, async (status, expected, role) => {
         let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modId: testMod1.id,
-            authorId: testUser1.id,
             modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
+            authorId: testUser1.id,
+            status: status as Status,
         });
-        let v = await modVersion.isAllowedToView(testUser1);
-        expect(v).toBe(true);
+
+        vi.spyOn(Mod.prototype, `isAllowedToView`);
+        let testUser: User | undefined;
+        let shouldCheckPerGame = false;
+        if (role === "author") {
+            testUser = testUser1;
+        } else if (role === null) {
+            testUser = undefined;
+        } else {
+            shouldCheckPerGame = true;
+            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser = testUser2;
+        }
+        let isAllowed = await modVersion.isAllowedToView(testUser);
+        expect(isAllowed).toEqual(expected); // check sitewide roles
+        expect(testMod1.isAllowedToView).toHaveBeenCalledTimes(1);
+
+        if (shouldCheckPerGame) {
+            testUser2.roles = {sitewide: [], perGame: {
+                [SupportedGames.BeatSaber]: [role as UserRoles]
+            }};
+
+            isAllowed = await modVersion.isAllowedToView(testUser2);
+            expect(isAllowed).toEqual(expected); // check per game roles
+            expect(testMod1.isAllowedToView).toHaveBeenCalledTimes(2);
+        }
     });
 
-    test(`should show private versions to sitewide all permissions`, async () => {
+    test.each([
+        ["author", true],
+        [UserRoles.AllPermissions, true],
+        [UserRoles.Admin, false],
+        [UserRoles.Approver, true],
+        [UserRoles.GameManager, false],
+        [null, false],
+    ])(`isAllowedToEdit for %s is %s`, async (role, expected) => {
         let modVersion = await db.ModVersions.create({
             ...defaultVersionData,
             modId: testMod1.id,
-            authorId: testUser1.id,
             modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
+            authorId: testUser1.id,
         });
-        let v = await modVersion.isAllowedToView(db.serverAdmin);
-        expect(v).toBe(true);
-    });
 
-    test(`should show private versions to sitewide approver`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
-        });
-        testUser2.roles = {
-            sitewide: [UserRoles.Approver],
-            perGame: {},
-        };
-        let v = await modVersion.isAllowedToView(testUser2);
-        expect(v).toBe(true);
-    });
+        let testUser;
+        vi.spyOn(Mod.prototype, `isAllowedToView`);
+        vi.spyOn(ModVersion.prototype, `isAllowedToView`);
+        let shouldCheckPerGame = false;
+        if (role === "author") {
+            testUser = testUser1;
+        } else if (role === null) {
+            testUser = undefined;
+        } else {
+            shouldCheckPerGame = true;
+            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser = testUser2;
+        }
+        let isAllowed = await modVersion.isAllowedToEdit(testUser);
+        expect(isAllowed).toEqual(expected); // check sitewide roles
+        if (isAllowed) {
+            expect(ModVersion.prototype.isAllowedToView).toHaveBeenCalledTimes(1);
+            expect(Mod.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
+        }
 
-    test(`should show private versions to game approver`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            supportedGameVersionIds: [testGv1.id],
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
-        });
-        testUser2.roles = {
-            sitewide: [],
-            perGame: {
-                [SupportedGames.BeatSaber]: [UserRoles.Approver],
-            },
-        };
-        let v = await modVersion.isAllowedToView(testUser2);
-        expect(v).toBe(true);
-    });
+        if (shouldCheckPerGame) {
+            testUser2.roles = {sitewide: [], perGame: {
+                [SupportedGames.BeatSaber]: [role as UserRoles]
+            }};
 
-    test(`should not show private versions to random user`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
-        });
-        let v = await modVersion.isAllowedToView(testUser2);
-        expect(v).toBe(false);
-    });
-
-    test(`should not show private versions to not logged in user`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Private,
-        });
-        let v = await modVersion.isAllowedToView(null);
-        expect(v).toBe(false);
-    });
-
-    test(`should show verified versions to regular user`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Verified,
-        });
-        let v = await modVersion.isAllowedToView(testUser2);
-        expect(v).toBe(true);
-    });
-
-    test(`should show verified versions to not logged in user`, async () => {
-        let modVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-            modId: testMod1.id,
-            authorId: testUser1.id,
-            modVersion: new SemVer(`1.0.0`),
-            status: Status.Verified,
-        });
-        let v = await modVersion.isAllowedToView(null);
-        expect(v).toBe(true);
+            isAllowed = await modVersion.isAllowedToEdit(testUser);
+            expect(isAllowed).toEqual(expected); // check per game roles
+            if (isAllowed) {
+                expect(ModVersion.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
+                expect(Mod.prototype.isAllowedToView).toHaveBeenCalledTimes(4);
+            }
+        }
     });
 });
 
@@ -528,48 +529,3 @@ describe.sequential(`Versions - Editing`, async () => {
         expect(sendModVersionLog).toHaveBeenNthCalledWith(2, modVersion, testUser1, expectedLogType, undefined, `test`);
     });
 });
-/*
-        let promises: Promise<GameVersion | User | ModVersion | Mod>[] = [];
-            for (let version of gameVersions) {
-                promises.push(db.GameVersions.create({
-                    ...version,
-                    gameName: version.gameName as SupportedGames,
-                    createdAt: new Date(version.createdAt),
-                    updatedAt: new Date(version.updatedAt),
-                }));
-            }
-            /*
-        for (let user of users) {
-            promises.push(db.Users.create({
-                ...user,
-                roles: user.roles as UserRolesObject,
-                createdAt: new Date(user.createdAt),
-                updatedAt: new Date(user.updatedAt),
-            }));
-        }
-
-        for (let project of projects) {
-            promises.push(db.Mods.create({
-                ...project,
-                gameName: project.gameName as SupportedGames,
-                status: project.status as Status,
-                category: project.category as Categories,
-                createdAt: new Date(project.createdAt),
-                updatedAt: new Date(project.updatedAt),
-            }));
-        }
-
-        await Promise.all(promises);
-        promises = [];
-
-        for (let version of versions) {
-            await db.ModVersions.create({
-                ...version,
-                modVersion: new SemVer(version.modVersion.raw),
-                status: version.status as Status,
-                platform: version.platform as Platform,
-                createdAt: new Date(version.createdAt),
-                updatedAt: new Date(version.updatedAt),
-            });
-        }
-        */
