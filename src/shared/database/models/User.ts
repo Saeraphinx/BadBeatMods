@@ -1,6 +1,6 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { Logger } from "../../Logger.ts";
-import { SupportedGames, UserAPIPublicResponse } from "../../Database.ts";
+import { SupportedGames, UserAPIPublicResponse, UserRoles, UserRolesObject } from "../../Database.ts";
 
 export type UserInfer = InferAttributes<User>;
 export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
@@ -79,22 +79,4 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
             updatedAt: this.updatedAt,
         };
     }
-}
-
-export interface UserRolesObject {
-    sitewide: UserRoles[];
-    perGame: {
-        [gameName in SupportedGames]?: UserRoles[];
-    }
-}
-
-// if you remove or change these, you must update Value
-export enum UserRoles {
-    AllPermissions = `allpermissions`,
-    Admin = `admin`,
-    Poster = `poster`,
-    GameManager = `gamemanager`,
-    Approver = `approver`,
-    LargeFiles = `largefiles`,
-    Banned = `banned`,
 }

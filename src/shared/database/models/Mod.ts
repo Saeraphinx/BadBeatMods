@@ -2,9 +2,9 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse, StatusHistory } from "../DBHelper.ts";
+import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
 import { ModVersion } from "./ModVersion.ts";
-import { User, UserRoles } from "./User.ts";
+import { User } from "./User.ts";
 import path from "path";
 import fs from "fs";
 import { Config } from "../../Config.ts";

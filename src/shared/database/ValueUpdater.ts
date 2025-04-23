@@ -1,5 +1,6 @@
 import { Logger } from "../Logger.ts";
-import { User, UserRoles } from "./models/User.ts";
+import { UserRoles } from "./DBHelper.ts";
+import { User } from "./models/User.ts";
 
 export async function updateRoles(user: User) {
     let shouldSync = false;
@@ -61,6 +62,8 @@ function translateUserRole(oldRoleName: string): UserRoles[] {
             return [UserRoles.Banned];
         case `largefiles`:
             return [UserRoles.LargeFiles];
+        case `gamemanager`:
+            return [UserRoles.GameManager];
         default:
             return [];
     }

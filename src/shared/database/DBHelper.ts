@@ -1,11 +1,10 @@
 import { Logger } from "../Logger.ts";
-import { DatabaseManager } from "../Database.ts";
+import { DatabaseManager, User } from "../Database.ts";
 import { EditQueue } from "./models/EditQueue.ts";
 import { GameVersion } from "./models/GameVersion.ts";
 import { Mod } from "./models/Mod.ts";
 import { ModVersion } from "./models/ModVersion.ts";
 import { MOTD } from "./models/MOTD.ts";
-import { User, UserRolesObject } from "./models/User.ts";
 
 // #region Enums & Types
 export enum SupportedGames {
@@ -69,6 +68,24 @@ export type ModVersionAPIPublicResponse = {
     fileSize: number;
     createdAt: Date;
     updatedAt: Date;
+}
+
+export interface UserRolesObject {
+    sitewide: UserRoles[];
+    perGame: {
+        [gameName in SupportedGames]?: UserRoles[];
+    }
+}
+
+// if you remove these, you must update ValueUpdater.ts
+export enum UserRoles {
+    AllPermissions = `allpermissions`,
+    Admin = `admin`,
+    Poster = `poster`,
+    GameManager = `gamemanager`,
+    Approver = `approver`,
+    LargeFiles = `largefiles`,
+    Banned = `banned`,
 }
 
 export enum PostType {
