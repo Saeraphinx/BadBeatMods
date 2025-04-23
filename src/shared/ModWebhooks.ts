@@ -66,23 +66,23 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
     switch (logType) {
         case WebhookLogType.SetToPending:
             color = Colors.Purple;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Submitted for Approval - ${mod.name}`, minimal: false });
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Submitted for Approval - ${mod.name}`, minimal: false, reason: reason });
             break;
         case WebhookLogType.Verified:
             color = Colors.Green;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Approved - ${mod.name}`, minimal: true });
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Approved - ${mod.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.RejectedUnverified:
             color = Colors.Yellow;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Marked Unverified - ${mod.name}`, minimal: true });
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Marked Unverified - ${mod.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.VerificationRevoked:
             color = Colors.DarkRed;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Verification Revoked - ${mod.name}`, minimal: true });
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Verification Revoked - ${mod.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Removed:
             color = Colors.Red;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Removed - ${mod.name}`, minimal: true });
+            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Removed - ${mod.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
@@ -130,23 +130,23 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
     switch (logType) {
         case WebhookLogType.SetToPending:
             color = Colors.Purple;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Submitted for Approval - ${mod.name} v${modVersion.modVersion.raw}`, minimal: false });
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Submitted for Approval - ${mod.name} v${modVersion.modVersion.raw}`, minimal: false, reason: reason });
             break;
         case WebhookLogType.Verified:
             color = Colors.Green;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Approved - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Approved - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.RejectedUnverified:
             color = Colors.Yellow;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Marked Unverified - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Marked Unverified - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.VerificationRevoked:
             color = Colors.DarkRed;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Verification Revoked - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Verification Revoked - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Removed:
             color = Colors.Red;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Removed - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true });
+            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Removed - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
@@ -287,7 +287,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
                 icon_url: faviconUrl,
             },
         };
-    } else { 
+    } else {
         let fields = [
             {
                 name: `Authors`,

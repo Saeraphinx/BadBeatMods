@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, UserRoles } from '../../shared/Database.ts';
+import { DatabaseHelper, Status } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Validator } from '../../shared/Validator.ts';
