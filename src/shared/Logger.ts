@@ -28,7 +28,7 @@ export class Logger {
         if (process.env.NODE_ENV == `test`) {
             consoleLevel = `warn`;
         } else if (Config.devmode) {
-            consoleLevel = `debug`;
+            consoleLevel = `http`;
         }
 
         transports.push(new Winston.transports.Console({

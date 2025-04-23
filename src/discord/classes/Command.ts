@@ -82,7 +82,7 @@ export async function loadCommands(luma: Luma, commandsPath?: string) {
             let filePath = path.join(commandsDirectory, fileName);
             try {
                 const commandFile = await import(pathToFileURL(filePath).toString());
-                let command: Command = commandFile.command;
+                let command: Command = commandFile.default.command;
                 luma.commands.set(command.data.name, command);
             } catch (error) {
                 luma.logger.error(`Error when trying to load \`${filePath}\`\n\`\`\`${error}\`\`\``, `commandLoader`);

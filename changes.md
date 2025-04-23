@@ -20,6 +20,7 @@ export enum ApprovalAction {
 
 - Webhook mod logs have been overhauled
   - These are now separated by type and can be filtered by type
+    - Default is to send all logs.
   - If a type is not specified in the config for the webhook, logs with that type will not be sent.
   - Webhook logs include the reason for the action
   - Webhook logs now use a color scheme more similar to BSMG's BeatMods
@@ -62,6 +63,8 @@ export enum ApprovalAction {
 - Swagger file separated into 2 files (full and public)
 - Ratelimit has been lowered to 100 req/min.
 - Removed `moderator` role
+- Added `gamemanager` role
+  - This role is able to use add game versions and set the default game version.
 - Removed `POST /admin/linkversions`
 - Removed `PATCH /approval/mod/:modIdParam`
 - Removed `PATCH /approval/modVersion/:modVersionIdParam`
@@ -72,6 +75,7 @@ export enum ApprovalAction {
 - Added `status` to `GET /hashlookup` endpoint
 - Added `status` to `GET /multi/hashlookup` endpoint
 - Allow `all` as a value for `status` on  `GET /mods`
+- Fixed role endpoints not checking for per-game permissions.
 
 
 ## Development
@@ -88,3 +92,5 @@ export enum ApprovalAction {
 - Run role migrator on users table after db sync.
 - Disable logging and config loading if `NODE_ENV` is set to `test`.
 - Use `Map.get` for id lookups instead of `Array.find`
+- Auth ID has been moved to a different object within the request object to allow for sessions to be managed more easily
+- Fixed mispelling of "response" in various places
