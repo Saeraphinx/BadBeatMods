@@ -52,9 +52,9 @@ export const DEFAULT_CONFIG = {
         enableWebhooks: false, // acts as a sort of master switch for all webhooks. useful for dev when you dont want to deal with webhooks.
         loggingUrl: ``, // url for logging - sensitive data might be sent here
         modLogUrl: ``, // url for mod logging - new, approvals, and rejections
-        modLogTags: [], // tags to send to the mod log webhook
+        modLogTags: [`all`], // tags to send to the mod log webhook
         modLog2Url: ``, // same as above
-        modLog2Tags: [], // same as above
+        modLog2Tags: [`all`], // same as above
         publicUrl: `` // url for public webhook - approved mods only... might have a delay? hasn't been done yet.
     },
     bot: {
@@ -554,10 +554,22 @@ export class Config {
                 failedToLoad.push(`webhooks.modLogUrl`);
             }
 
+            if (process.env.WEBHOOKS_MODLOGTAGS) {
+                Config._webhooks.modLogTags = process.env.WEBHOOKS_MODLOGTAGS.split(`,`);
+            } else {
+                failedToLoad.push(`webhooks.modLogTags`);
+            }
+
             if (process.env.WEBHOOKS_MODLOG2URL) {
                 Config._webhooks.modLog2Url = process.env.WEBHOOKS_MODLOG2URL;
             } else {
                 failedToLoad.push(`webhooks.modLog2Url`);
+            }
+
+            if (process.env.WEBHOOKS_MODLOG2TAGS) {
+                Config._webhooks.modLog2Tags = process.env.WEBHOOKS_MODLOG2TAGS.split(`,`);
+            } else {
+                failedToLoad.push(`webhooks.modLog2Tags`);
             }
 
             if (process.env.WEBHOOKS_PUBLICURL) {

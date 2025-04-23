@@ -34,13 +34,13 @@ async function sendToWebhooks(content: string | MessagePayload | WebhookMessageC
             webhookClient2 = new WebhookClient({ url: Config.webhooks.modLog2Url });
         }
         if (webhookClient1) {
-            if (Config.webhooks.modLogTags.includes(logType)) {
+            if (Config.webhooks.modLogTags.includes(logType) || (Config.webhooks.modLogTags.length === 1 && Config.webhooks.modLogTags[0] === `all`)) {
                 retVal.push(webhookClient1.send(content));
             }
         }
 
         if (webhookClient2) {
-            if (Config.webhooks.modLog2Tags.includes(logType)) {
+            if (Config.webhooks.modLog2Tags.includes(logType) || (Config.webhooks.modLog2Tags.length === 1 && Config.webhooks.modLog2Tags[0] === `all`)) {
                 retVal.push(webhookClient2.send(content));
             }
         }
