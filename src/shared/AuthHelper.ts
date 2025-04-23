@@ -26,7 +26,7 @@ declare module 'express-serve-static-core' {
 // setting the type in this way is stupid but it works for callbacks
 export async function validateSession(req: Request, res: Response, role: UserRoles|boolean = UserRoles.Admin, gameName:SupportedGames|null|boolean = null, handleRequest:boolean = true): Promise<{ user: User } | { user: null }> {
     
-    let sessionId = req?.bbmAuth?.userId as number|undefined | undefined;
+    let sessionId = req?.bbmAuth?.userId as number | undefined;
     // check for devmode options
     if (Config.devmode && Config.authBypass) {
         let user = await DatabaseHelper.database.Users.findOne({ where: { id: 1 } });
