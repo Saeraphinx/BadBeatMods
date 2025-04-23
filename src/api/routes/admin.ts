@@ -306,28 +306,35 @@ export class AdminRoutes {
                         user.addPerGameRole(gameName.data, UserRoles.Admin);
                         break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Approver);
                         break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.addPerGameRole(gameName.data, UserRoles.GameManager);
+                        break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Poster);
                         break;
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver);
+                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -355,6 +362,13 @@ export class AdminRoutes {
                             return;
                         }
                         user.addSiteWideRole(UserRoles.Admin);
+                        break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.addSiteWideRole(UserRoles.GameManager);
                         break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
@@ -442,14 +456,21 @@ export class AdminRoutes {
                         user.removePerGameRole(gameName.data, UserRoles.Admin);
                         break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.removePerGameRole(gameName.data, UserRoles.Approver);
                         break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.removePerGameRole(gameName.data, UserRoles.GameManager);
+                        break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -457,14 +478,14 @@ export class AdminRoutes {
                         break;
                     
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.removePerGameRole(gameName.data, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver);
+                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -488,6 +509,13 @@ export class AdminRoutes {
                             return;
                         }
                         user.removeSiteWideRole(UserRoles.Approver);
+                        break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.removeSiteWideRole(UserRoles.GameManager);
                         break;
                     case UserRoles.Poster:
                         session = await validateSession(req, res, UserRoles.Admin);
