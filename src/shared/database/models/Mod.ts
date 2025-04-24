@@ -200,6 +200,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         switch (status) {
             case Status.Unverified:
                 this.lastApprovedById = user.id;
+                this.save();
                 if (prevStatus == Status.Removed) {
                     //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
@@ -208,6 +209,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
+                this.save();
                 shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Verified, reason) : null;
                 break;
             case Status.Removed:
