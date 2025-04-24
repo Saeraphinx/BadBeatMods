@@ -152,21 +152,21 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Updated by ${userMakingChanges.username}`,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Updated by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_StatusChanged:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Status Changed to ${modVersion.status} by ${userMakingChanges.username}`,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Status Changed to ${modVersion.status} by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_Created:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}>)** - Created by ${userMakingChanges.username}`,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Created by ${userMakingChanges.username}`,
             }, logType);
             break;
         default:
@@ -334,6 +334,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
             thumbnail: {
                 url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
             },
+            fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
@@ -384,10 +385,10 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
                 inline: false,
             });
         }
-        
+
         return {
             title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
-            url: `${Config.server.url}/mods/${mod.id}`,
+            url: `${Config.server.url}/mods/${mod.id}#${modVersion.id}`,
             description: `${mod.summary} `,
             author: {
                 name: `${userMakingChanges.username} `,
@@ -396,6 +397,7 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
             thumbnail: {
                 url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
             },
+            fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
@@ -440,7 +442,7 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
         }
         return {
             title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
-            url: `${Config.server.url}/mods/${mod.id}`,
+            url: `${Config.server.url}/mods/${mod.id}#${modVersion.id}`,
             description: `${mod.summary} `,
             author: {
                 name: `${userMakingChanges.username} `,

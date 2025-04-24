@@ -40,6 +40,7 @@ export enum ApprovalAction {
     Text_StatusChanged = `statusChanged`,
     Text_EditBypassed = `editBypassed`,
     Text_Updated = `updated`,
+    // All = `all`, // All logs
 }
 ```
 

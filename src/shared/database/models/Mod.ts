@@ -193,7 +193,8 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         }
         Logger.log(`Mod ${this.id} set to status ${status} by ${user.username}`);
         sendModLog(this, user, WebhookLogType.Text_StatusChanged);
-        if (prevStatus == Status.Verified) {
+
+        if (prevStatus == Status.Verified && status !== Status.Verified) {
             sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
             return this;
         }
