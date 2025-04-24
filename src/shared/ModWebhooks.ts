@@ -269,6 +269,15 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
     }
 
     if (options?.minimal) {
+        let fields = [];
+        if (options?.reason) {
+            fields.push({
+                name: `Reason`,
+                value: `${options.reason} `,
+                inline: false,
+            });
+        }
+
         return {
             title: options.title ? options.title : `Mod: ${mod.name}`,
             url: `${Config.server.url}/mods/${mod.id}`,
@@ -280,6 +289,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
             thumbnail: {
                 url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
             },
+            fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
@@ -366,6 +376,15 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
     }
 
     if (options?.minimal) {
+        let fields = [];
+        if (options?.reason) {
+            fields.push({
+                name: `Reason`,
+                value: `${options.reason} `,
+                inline: false,
+            });
+        }
+        
         return {
             title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
             url: `${Config.server.url}/mods/${mod.id}`,
