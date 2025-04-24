@@ -96,7 +96,7 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Status Changed to ${mod.status} by ${userMakingChanges.username}`,
+                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Status changed to ${mod.status} by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_Created:
@@ -159,7 +159,7 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Status Changed to ${modVersion.status} by ${userMakingChanges.username}`,
+                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Status changed to ${modVersion.status} by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_Created:
