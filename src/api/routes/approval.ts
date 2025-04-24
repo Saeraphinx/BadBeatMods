@@ -305,15 +305,15 @@ export class ApprovalRoutes {
             switch (action.data) {
                 case ApprovalAction.Accept:
                     status = Status.Verified;
-                    promise = modVersion.setStatus(status, session.user);
+                    promise = modVersion.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Deny:
                     status = Status.Unverified;
-                    promise = modVersion.setStatus(status, session.user);
+                    promise = modVersion.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Remove:
                     status = Status.Removed;
-                    promise = modVersion.setStatus(status, session.user);
+                    promise = modVersion.setStatus(status, session.user, reason.data);
                     break;
                 case ApprovalAction.Restore:
                     if (await modVersion.isRestorable() === false) {
@@ -321,11 +321,11 @@ export class ApprovalRoutes {
                     }
 
                     if (mod.status === Status.Removed) { // above checks if the mod is restorable
-                        mod.setStatus(Status.Pending, session.user);
+                        mod.setStatus(Status.Pending, session.user, reason.data);
                     }
 
                     status = Status.Pending;
-                    promise = modVersion.setStatus(status, session.user);
+                    promise = modVersion.setStatus(status, session.user, reason.data);
                     break;
                 default:
                     return res.status(400).send({ message: `Invalid action.` });
