@@ -1,8 +1,10 @@
 import { Routes, REST, RESTGetAPIApplicationCommandResult, ContextMenuCommandBuilder, ContextMenuCommandInteraction, Collection } from "discord.js";
-import { Luma } from "./Luma";
-import { Config } from "../../shared/Config";
+import { Luma } from "./Luma.ts";
+import { Config } from "../../shared/Config.ts";
 import path from "node:path";
 import fs from "node:fs";
+import { Logger } from "../../shared/Logger.ts";
+import { fileURLToPath } from "node:url";
 
 
 export interface IContextMenu {
@@ -53,12 +55,12 @@ export class ContextMenu {
         try {
             await this.execute(luma, interaction);
         } catch (error: any) {
-            console.error(error);
+            Logger.error(error);
             luma.logger.warn(`Interaction (${interaction.commandName}) did not reply.`, `Interactions`);
             await interaction.reply({ content: `damn it broke. msg <@!213074932458979330>\nError: \`${error.name}: ${error.message}\`` }).catch(error => {
                 interaction.editReply(`damn it broke. msg <@!213074932458979330>\nError: \`${error.name}: ${error.message}\``).catch(error => {
                     luma.logger.warn(`Interaction (${interaction.commandName}) did not reply in time.`, `Interactions`);
-                    console.warn(error);
+                    Logger.warn(error);
                 });
             });
         }
@@ -72,7 +74,7 @@ export function loadContextMenus(luma: Luma, commandsPath?: string) {
     if (commandsPath) {
         commandsDirectory = commandsPath;
     } else {
-        commandsDirectory = path.resolve(__dirname);
+        commandsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
     }
 
     fs.readdirSync(path.join(commandsDirectory), { withFileTypes: true })

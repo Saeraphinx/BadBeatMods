@@ -1,18 +1,27 @@
 import path from "path";
 import { exit } from "process";
-import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, ModelStatic, Op, QueryInterface, Sequelize } from "sequelize";
-import { Logger } from "./Logger";
-import { coerce, satisfies, SemVer } from "semver";
-import { Config } from "./Config";
-import { sendEditLog, sendModLog, sendModVersionLog } from "./ModWebhooks";
+import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
+import { Logger } from "./Logger.ts";
+import { SemVer } from "semver";
+import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
+import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
+import { EditQueue } from "./database/models/EditQueue.ts";
+import { GameVersion } from "./database/models/GameVersion.ts";
+import { Mod } from "./database/models/Mod.ts";
+import { ModVersion } from "./database/models/ModVersion.ts";
+import { MOTD } from "./database/models/MOTD.ts";
+import { User } from "./database/models/User.ts";
+import { updateRoles } from "./database/ValueUpdater.ts";
 
-export enum SupportedGames {
-    BeatSaber = `BeatSaber`,
-    ChroMapper = `ChroMapper`,
-    TromboneChampUnflattened = `TromboneChampUnflattened`,
-    SpinRhythmXD = `SpinRhythmXD`,
-}
+// in use by this file
+export * from "./database/models/EditQueue.ts";
+export * from "./database/models/GameVersion.ts";
+export * from "./database/models/Mod.ts";
+export * from "./database/models/ModVersion.ts";
+export * from "./database/models/MOTD.ts";
+export * from "./database/models/User.ts";
+export * from "./database/DBHelper.ts";
 
 function isValidDialect(dialect: string): dialect is `sqlite` |`postgres` {
     return [`sqlite`, `postgres`].includes(dialect);
@@ -34,12 +43,21 @@ export class DatabaseManager {
     constructor() {
         Logger.log(`Loading DatabaseManager...`);
 
+        let storagePath = undefined;
+        if (Config.database.dialect === `sqlite`) {
+            if (Config.database.url !== `:memory:`) {
+                storagePath = path.resolve(Config.database.url);
+            } else {
+                storagePath = `:memory:`;
+            }
+        }
+
         this.sequelize = new Sequelize(`bbm_database`, Config.database.username, Config.database.password, {
             host: Config.database.dialect === `sqlite` ? `localhost` : Config.database.url,
             port: Config.database.dialect === `sqlite` ? undefined : 5432,
             dialect: isValidDialect(Config.database.dialect) ? Config.database.dialect : `sqlite`,
             logging: Config.flags.logRawSQL ? Logger.winston.log : false,
-            storage: Config.database.dialect === `sqlite` ? path.resolve(Config.database.url) : undefined,
+            storage: storagePath,
         });
 
         this.umzug = new Umzug({
@@ -48,7 +66,7 @@ export class DatabaseManager {
             },
             storage: new SequelizeStorage({sequelize: this.sequelize}),
             context: this.sequelize.getQueryInterface(),
-            logger: console
+            logger: Logger
         });
     }
 
@@ -66,21 +84,6 @@ export class DatabaseManager {
             await this.migrate();
         }
         this.loadTables();
-
-        /*if (Config.database.dialect === `postgres`) {
-            const client = new Client({
-                user: Config.database.username,
-                password: Config.database.password,
-                host: Config.database.url,
-                port: 5432,
-            });
-            client.connect();
-            client.query(`CREATE DATABASE IF NOT EXISTS bbm_database;`).catch((error) => {
-                Logger.error(`Error creating database: ${error}`);
-                client.end();
-                exit(-1);
-            });
-        }*/
 
         if (Config.database.dialect === `postgres`) {
             if (Config.database.alter === true) {
@@ -186,9 +189,8 @@ export class DatabaseManager {
         }
     }
 
-    
-    // #region LoadTables
     private loadTables() {
+        // #region Users
         this.Users = User.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -249,7 +251,8 @@ export class DatabaseManager {
             tableName: `users`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region GameVersions
         this.GameVersions = GameVersion.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -272,6 +275,19 @@ export class DatabaseManager {
                 allowNull: false,
                 defaultValue: false,
             },
+            linkedVersionIds: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`linkedVersionIds`));
+                },
+                set(value: number[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`linkedVersionIds`, JSON.stringify(value));
+                },
+            },
             createdAt: DataTypes.DATE, // just so that typescript isn't angy
             updatedAt: DataTypes.DATE,
             deletedAt: DataTypes.DATE,
@@ -281,7 +297,8 @@ export class DatabaseManager {
             tableName: `gameVersions`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region Mods
         this.Mods = Mod.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -342,6 +359,19 @@ export class DatabaseManager {
                 allowNull: false,
                 defaultValue: `private`,
             },
+            statusHistory: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`statusHistory`));
+                },
+                set(value: StatusHistory[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`statusHistory`, JSON.stringify(value));
+                },
+            },
             lastApprovedById: {
                 type: DataTypes.INTEGER,
                 allowNull: true,
@@ -359,7 +389,8 @@ export class DatabaseManager {
             tableName: `mods`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region ModVersions
         this.ModVersions = ModVersion.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -459,6 +490,19 @@ export class DatabaseManager {
                 allowNull: false,
                 defaultValue: 0
             },
+            statusHistory: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`statusHistory`));
+                },
+                set(value: StatusHistory[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`statusHistory`, JSON.stringify(value));
+                },
+            },
             createdAt: DataTypes.DATE, // just so that typescript isn't angy
             updatedAt: DataTypes.DATE,
             deletedAt: DataTypes.DATE,
@@ -468,7 +512,8 @@ export class DatabaseManager {
             tableName: `modVersions`,
             paranoid: true,
         });
-
+        // #endregion
+        // #region EditApprovalQueue
         this.EditApprovalQueue = EditQueue.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -520,7 +565,8 @@ export class DatabaseManager {
             tableName: `editApprovalQueues`, // fuck you sequelize.
             paranoid: true,
         });
-
+        // #endregion
+        // #region MOTD
         this.MOTDs = MOTD.init({
             id: {
                 type: DataTypes.INTEGER,
@@ -617,9 +663,18 @@ export class DatabaseManager {
             paranoid: true,
 
         });
-        // #endregion
 
         // #region Hooks
+        this.Users.afterSync(async () => {
+            let users = await this.Users.findAll();
+            let promises = [];
+            for (let user of users) {
+                promises.push(updateRoles(user));
+            }
+            await Promise.all(promises);
+        });
+
+
         this.Mods.afterValidate(async (mod) => {
             await Mod.checkForExistingMod(mod.name).then((existingMod) => {
                 if (existingMod) {
@@ -668,6 +723,25 @@ export class DatabaseManager {
                 if (gameVersion.gameName != parentMod.gameName) {
                     throw new Error(`ModVersion must only have game versions for the parent mod's game.`);
                 }
+
+                // check if game version is linked to another game version
+                if (gameVersion.linkedVersionIds.length > 0) {
+                    let linkedVersions = await this.GameVersions.findAll({ where: { id: gameVersion.linkedVersionIds } });
+                    // ensure that all linked versions are valid and for the same game
+                    if (linkedVersions.length != gameVersion.linkedVersionIds.length) {
+                        throw new Error(`Invalid linked game versions found. Please contact a site administrator.`);
+                    }
+
+                    for (let linkedVersion of linkedVersions) {
+                        if (linkedVersion.gameName != parentMod.gameName) {
+                            throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the parent mod's game. Please contact a site administrator.`);
+                        }
+
+                        if (!modVersion.supportedGameVersionIds.includes(linkedVersion.id)) {
+                            modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, linkedVersion.id];
+                        }
+                    }
+                }
             }
 
             modVersion.supportedGameVersionIds = modVersion.supportedGameVersionIds.sort((a, b) => {
@@ -678,13 +752,7 @@ export class DatabaseManager {
                     return 0;
                 }
 
-                let svA = coerce(gvA.version, { loose: true });
-                let svB = coerce(gvB.version, { loose: true });
-                if (svA && svB) {
-                    return svA.compare(svB); // the earliest version is first in the array
-                } else {
-                    return gvB.version.localeCompare(gvA.version);
-                }
+                return GameVersion.compareVersions(gvA, gvB);
             });
 
             if (modVersion.dependencies.length > 0) {
@@ -700,10 +768,15 @@ export class DatabaseManager {
                         throw new Error(`ModVersion cannot depend on itself.`);
                     }
 
-                    if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
+                    /*if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
                         throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
-                    }
+                    }*/
                 }
+            }
+
+            // do not allow modVersion to be created with a version that starts with v
+            if (modVersion.modVersion.raw.startsWith(`v`)) {
+                modVersion.modVersion = new SemVer(modVersion.modVersion.raw.slice(1));
             }
         });
 
@@ -716,6 +789,32 @@ export class DatabaseManager {
             });
         });
 
+        this.GameVersions.afterValidate(async (gameVersion) => {
+            if (gameVersion.linkedVersionIds.length > 0) {
+                let linkedVersions = await this.GameVersions.findAll({ where: { id: gameVersion.linkedVersionIds } });
+                // ensure that all linked versions are valid and for the same game
+                if (linkedVersions.length != gameVersion.linkedVersionIds.length) {
+                    throw new Error(`Invalid linked Game Version IDs.`);
+                }
+
+                for (let linkedVersion of linkedVersions) {
+                    if (linkedVersion.gameName != gameVersion.gameName) {
+                        throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the same game.`);
+                    }
+
+                    if (linkedVersion.id == gameVersion.id) {
+                        throw new Error(`Game Version cannot link to itself.`);
+                    }
+
+                    // ensure that the linked version is also linked back to this version
+                    if (!linkedVersion.linkedVersionIds.includes(gameVersion.id)) {
+                        linkedVersion.linkedVersionIds = [...linkedVersion.linkedVersionIds, gameVersion.id];
+                        await linkedVersion.save({hooks: false});
+                    }
+                }
+            }
+        });
+
         this.EditApprovalQueue.beforeCreate(async (queueItem) => {
             if (!queueItem.isMod() && !queueItem.isModVersion()) {
                 throw new Error(`Invalid object type.`);
@@ -724,957 +823,3 @@ export class DatabaseManager {
     }
     // #endregion
 }
-// #region User
-export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
-    declare readonly id: CreationOptional<number>;
-    declare username: string;
-    declare githubId: string | null;
-    declare discordId: string | null;
-    declare sponsorUrl: string | null;
-    declare displayName: string;
-    declare bio: string;
-    declare roles: UserRolesObject;
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
-
-    public addSiteWideRole(role: UserRoles) {
-        if (!this.roles.sitewide.includes(role)) {
-            this.roles = {
-                sitewide: [...this.roles.sitewide, role],
-                perGame: this.roles.perGame,
-            };
-            this.save();
-        } else {
-            Logger.warn(`User ${this.username} already has role ${role}`);
-        }
-    }
-
-    public addPerGameRole(game: SupportedGames, role: UserRoles) {
-        let roleObj = { ...this.roles };
-        if (!roleObj.perGame[game]) {
-            roleObj.perGame[game] = [];
-        }
-
-        if (!roleObj.perGame[game].includes(role)) {
-            roleObj.perGame[game] = [...roleObj.perGame[game], role];
-            this.roles = roleObj;
-            this.save();
-        } else {
-            Logger.warn(`User ${this.username} already has role ${role} for game ${game}`);
-        }
-    }
-
-    public removeSiteWideRole(role: UserRoles) {
-        if (this.roles.sitewide.includes(role)) {
-            this.roles = {
-                sitewide: this.roles.sitewide.filter((r) => r != role),
-                perGame: this.roles.perGame,
-            };
-            this.save();
-        } else {
-            Logger.warn(`User ${this.username} does not have role ${role}`);
-        }
-    }
-
-    public removePerGameRole(game: SupportedGames, role: UserRoles) {
-        let roleObj = { ...this.roles };
-        if (roleObj.perGame[game] && roleObj.perGame[game].includes(role)) {
-            roleObj.perGame[game] = roleObj.perGame[game].filter((r) => r != role);
-            this.roles = roleObj;
-            this.save();
-        } else {
-            Logger.warn(`User ${this.username} does not have role ${role} for game ${game}`);
-        }
-    }
-
-    public toAPIResponse() {
-        return {
-            id: this.id.valueOf(), // this is a number, but the type system doesn't like it
-            username: this.username,
-            githubId: this.githubId,
-            sponsorUrl: this.sponsorUrl,
-            displayName: this.displayName,
-            roles: this.roles,
-            bio: this.bio,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt,
-        };
-    }
-}
-
-export interface UserRolesObject {
-    sitewide: UserRoles[];
-    perGame: {
-        [gameName in SupportedGames]?: UserRoles[];
-    }
-}
-
-export enum UserRoles {
-    AllPermissions = `allpermissions`,
-    Admin = `admin`,
-    Poster = `poster`,
-    Approver = `approver`,
-    Moderator = `moderator`,
-    LargeFiles = `largefiles`,
-    Banned = `banned`,
-}
-// #endregion
-// #region GameVersion
-export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
-    declare readonly id: CreationOptional<number>;
-    declare gameName: SupportedGames;
-    declare version: string; // semver-esc version (e.g. 1.29.1)
-    declare defaultVersion: boolean;
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
-
-    public toAPIResponse() {
-        return {
-            id: this.id,
-            gameName: this.gameName,
-            version: this.version,
-            defaultVersion: this.defaultVersion,
-        };
-    }
-
-    public static async getDefaultVersion(gameName: SupportedGames): Promise<string | undefined> {
-        let version: GameVersion | undefined = DatabaseHelper.cache.gameVersions.find((version) => version.gameName == gameName && version.defaultVersion == true);
-        if (!version) {
-            let dbVer = await DatabaseHelper.database.GameVersions.findOne({ where: { gameName, defaultVersion: true } });
-            if (dbVer) {
-                version = dbVer;
-            }
-        }
-        if (!version) {
-            return undefined;
-        }
-        return version.version;
-    }
-
-    public static async getDefaultVersionObject(gameName: SupportedGames): Promise<GameVersion | undefined> {
-        let version = DatabaseHelper.cache.gameVersions.find((version) => version.gameName == gameName && version.defaultVersion == true);
-        if (!version) {
-            let dbVer = await DatabaseHelper.database.GameVersions.findOne({ where: { gameName, defaultVersion: true } });
-            if (dbVer) {
-                version = dbVer;
-            }
-        }
-        return version;
-    }
-
-    public async getSupportedMods(platform: Platform, statusesToSearchFor: Status[]): Promise<{mod: Mod, latest:ModVersion}[]> {
-        let mods = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == this.gameName && statusesToSearchFor.includes(mod.status));
-
-        let supportedMods: {mod: Mod, latest:ModVersion}[] = [];
-        for (let mod of mods) {
-            // get the latest version for the mod, and if it exists, add it to the list of supported mods
-            let latest = await mod.getLatestVersion(this.id, platform, statusesToSearchFor);
-            if (latest) {
-                supportedMods.push({mod, latest});
-            }
-        }
-        return supportedMods;
-    }
-}
-// #endregion
-// #region Mod
-export type ModInfer = InferAttributes<Mod>;
-export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod>> {
-    declare readonly id: CreationOptional<number>;
-    declare name: string;
-    declare summary: string;
-    declare description: string;
-    declare gameName: SupportedGames;
-    declare category: Categories;
-    declare authorIds: number[];
-    declare status: Status;
-    declare iconFileName: string;
-    declare gitUrl: string;
-    declare lastApprovedById: CreationOptional<number> | null;
-    declare lastUpdatedById: number;
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date>;
-
-    public isAllowedToView(user: User|null) {
-        if (this.status == Status.Verified || this.status == Status.Unverified) {
-            return true;
-        }
-        // Private & Removed are the only mods that are not viewable by the public
-        if (!user || !user.roles || !user.roles.sitewide) {
-            return false;
-        }
-        
-        if (
-            user.roles.sitewide.includes(UserRoles.Admin) ||
-            user.roles.sitewide.includes(UserRoles.Moderator) ||
-            user.roles.sitewide.includes(UserRoles.AllPermissions) ||
-            user.roles.sitewide.includes(UserRoles.Approver) ||
-            this.authorIds.includes(user.id)
-        ) {
-            return true;
-        } else {
-            if (!user.roles.perGame[this.gameName]) {
-                return false;
-            } else {
-                let roles = user.roles.perGame[this.gameName];
-                if (!roles) {
-                    return false;
-                }
-                if (roles.includes(UserRoles.Admin) ||
-                    roles.includes(UserRoles.Moderator) ||
-                    roles.includes(UserRoles.Approver) ||
-                    roles.includes(UserRoles.AllPermissions)) {
-                    return true;
-                }
-            }
-        }
-    }
-
-
-    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
-        let versions = DatabaseHelper.cache.modVersions.filter((version) => {
-            // if the version is not for the correct platform
-            if (version.modId !== this.id) {
-                return false;
-            }
-
-            if (!statusesToSearchFor.includes(version.status)) {
-                return false;
-            }
-
-            // if the version is not for the correct game
-            if (!version.supportedGameVersionIds.includes(gameVersionId)) {
-                return false;
-            }
-
-            if (version.platform === Platform.UniversalQuest) {
-                return platform === Platform.UniversalQuest;
-            } else {
-                if (version.platform === Platform.UniversalPC || version.platform === platform) {
-                    return true;
-                }
-            }
-        });
-
-        let latest = null;
-        for (let version of versions) {
-            if (!latest || version.modVersion.compare(latest.modVersion) > 0) {
-                latest = version;
-            }
-        }
-
-        return latest;
-    }
-
-    public async setStatus(status:Status, user: User) {
-        this.status = status;
-        try {
-            await this.save();
-        } catch (error) {
-            Logger.error(`Error setting status: ${error}`);
-            throw error;
-        }
-        Logger.log(`Mod ${this.id} set to status ${status} by ${user.username}`);
-        switch (status) {
-            case Status.Unverified:
-                sendModLog(this, user, `New`);
-                break;
-            case Status.Verified:
-                this.lastApprovedById = user.id;
-                sendModLog(this, user, `Approved`);
-                break;
-            case Status.Removed:
-                sendModLog(this, user, `Rejected`);
-                break;
-        }
-        return this;
-    }
-
-    public static async checkForExistingMod(name: string) {
-        let mod = await DatabaseHelper.database.Mods.findOne({ where: { name: name } });
-        return mod;
-    }
-
-    public static async countExistingMods(name: string) {
-        let count = await DatabaseHelper.database.Mods.count({ where: { name: name } });
-        return count;
-    }
-
-    public toAPIResponse() {
-        return {
-            id: this.id,
-            name: this.name,
-            summary: this.summary,
-            description: this.description,
-            gameName: this.gameName,
-            category: this.category,
-            authors: DatabaseHelper.cache.users.filter((user) => this.authorIds.includes(user.id)).map((user) => user.toAPIResponse()),
-            status: this.status,
-            iconFileName: this.iconFileName,
-            gitUrl: this.gitUrl,
-            lastApprovedById: this.lastApprovedById,
-            lastUpdatedById: this.lastUpdatedById,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt,
-        };
-    }
-}
-// #endregion
-// #region ModVersion
-export type ModVersionInfer = InferAttributes<ModVersion>;
-export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreationAttributes<ModVersion>> {
-    declare readonly id: CreationOptional<number>;
-    declare modId: number;
-    declare authorId: number;
-    declare modVersion: SemVer;
-    declare supportedGameVersionIds: number[];
-    declare status: Status;
-    declare dependencies: number[]; // array of modVersion ids
-    declare platform: Platform;
-    declare zipHash: string;
-    declare contentHashes: ContentHash[];
-    declare downloadCount: CreationOptional<number>;
-    declare lastApprovedById: CreationOptional<number> | null;
-    declare lastUpdatedById: number;
-    declare fileSize: number;
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date> | null;
-
-    public async isAllowedToView(user: User|null, useCache:Mod|boolean = true) {
-        let parentMod: Mod | null | undefined;
-        if (typeof useCache === `object`) {
-            parentMod = useCache; // if a mod is passed in, use that as the parent mod
-        } else if (useCache) {
-            parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == this.modId);
-        } else {
-            parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
-        }
-
-        if (!parentMod) {
-            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.modId}).`);
-            return false;
-        }
-
-        let parentModVisible = parentMod.isAllowedToView(user);
-
-        if (!parentModVisible) {
-            return false;
-        }
-
-        if (this.status == Status.Verified || this.status == Status.Unverified) {
-            return true;
-        }
-
-        if (!user || !user.roles || !user.roles.sitewide) {
-            return false;
-        }
-
-        if (
-            user.roles.sitewide.includes(UserRoles.Admin) ||
-            user.roles.sitewide.includes(UserRoles.Moderator) ||
-            user.roles.sitewide.includes(UserRoles.AllPermissions) ||
-            user.roles.sitewide.includes(UserRoles.Approver) ||
-            this.authorId == user.id
-        ) {
-            return true;
-        } else {
-            if (!user.roles.perGame[parentMod.gameName]) {
-                return false;
-            } else {
-                let roles = user.roles.perGame[parentMod.gameName];
-                if (!roles) {
-                    return false;
-                }
-                if (roles.includes(UserRoles.Admin) ||
-                    roles.includes(UserRoles.Moderator) ||
-                    roles.includes(UserRoles.Approver) ||
-                    roles.includes(UserRoles.AllPermissions)) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    public async setStatus(status:Status, user: User) {
-        this.status = status;
-        try {
-            await this.save();
-        } catch (error) {
-            Logger.error(`Error setting status: ${error}`);
-            throw error;
-        }
-        Logger.log(`Mod ${this.id} approved by ${user.username}`);
-        switch (status) {
-            case Status.Unverified:
-                sendModVersionLog(this, user, `New`);
-                break;
-            case Status.Verified:
-                this.lastApprovedById = user.id;
-                sendModVersionLog(this, user, `Approved`);
-                break;
-            case Status.Removed:
-                sendModVersionLog(this, user, `Rejected`);
-                break;
-        }
-        return this;
-    }
-
-    public async addGameVersionId(gameVersionId: number, submitterId: number) {
-        if (this.supportedGameVersionIds.includes(gameVersionId)) {
-            return Promise.resolve(null);
-        }
-
-        if (this.status !== Status.Verified) {
-            this.supportedGameVersionIds = [...this.supportedGameVersionIds, gameVersionId];
-            return this.save();
-        } else {
-            let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitterId, approved: null } });
-
-            if (existingEdit) {
-                throw new Error(`Edit already exists for this mod version.`);
-            }
-
-            return DatabaseHelper.database.EditApprovalQueue.create({
-                submitterId: submitterId,
-                objectId: this.id,
-                objectTableName: `modVersions`,
-                object: {
-                    dependencies: this.dependencies,
-                    modVersion: this.modVersion,
-                    platform: this.platform,
-                    supportedGameVersionIds: [...this.supportedGameVersionIds, gameVersionId],
-                },
-            });
-        }
-    }
-
-    // this function called to see if a duplicate version already exists in the database. if it does, creation of a new version should be halted.
-    public static async checkForExistingVersion(modId: number, semver: SemVer, platform:Platform): Promise<ModVersion | null> {
-        let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { modId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
-        return modVersion;
-    }
-
-    public static async countExistingVersions(modId: number, semver: SemVer, platform:Platform): Promise<number> {
-        let count = await DatabaseHelper.database.ModVersions.count({ where: { modId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
-        return count;
-    }
-
-    public async getSupportedGameVersions(): Promise<GameVersionAPIPublicResponse[]> {
-        let gameVersions: GameVersionAPIPublicResponse[] = [];
-        for (let versionId of this.supportedGameVersionIds) {
-            let version = DatabaseHelper.cache.gameVersions.find((version) => version.id == versionId);
-            if (!version) {
-                let dbVer = await DatabaseHelper.database.GameVersions.findByPk(versionId);
-                if (dbVer) {
-                    version = dbVer;
-                }
-            }
-
-            if (version) {
-                gameVersions.push(version.toAPIResponse());
-            }
-
-        }
-        return gameVersions;
-    }
-
-    public async getUpdatedDependencies(gameVersionId: number, statusesToSearchFor: Status[]): Promise<ModVersion[] | null> {
-        let dependencies = [];
-
-        for (let dependencyId of this.dependencies) {
-            let dependency = DatabaseHelper.cache.modVersions.find((version) => version.id == dependencyId);
-            if (!dependency) {
-                let dbDep = await DatabaseHelper.database.ModVersions.findByPk(dependencyId);
-                if (dbDep) {
-                    dependency = dbDep;
-                } else {
-                    Logger.error(`Failed to find dependency ${dependencyId} (Req by ${this.id})`);
-                    return null;
-                }
-            }
-
-            let parentMod = DatabaseHelper.cache.mods.find((mod) => mod.id == dependency.modId);
-            if (!parentMod) {
-                let dbMod = await DatabaseHelper.database.Mods.findByPk(dependency.modId);
-                if (dbMod) {
-                    parentMod = dbMod;
-                } else {
-                    Logger.error(`Failed to find parent mod ${dependency.modId} for dependency ${dependency.id} (Req by ${this.id})`);
-                    return null;
-                }
-            }
-
-            let latestVersion = await parentMod.getLatestVersion(gameVersionId, dependency.platform, statusesToSearchFor);
-            if (latestVersion) {
-                dependencies.push(latestVersion);
-            } else {
-                Logger.debugWarn(`Failed to find latest version for dependency ${dependency.id} (Req by ${this.id})`);
-                return null;
-            }
-        }
-
-        return dependencies;
-    }
-    // this function is for when a mod supports a newer version but the dependancy does not. (uses ^x.x.x for comparison)
-    public static async isValidDependancySucessor(originalVersion:ModVersion, newVersion:ModVersion, forVersion: number): Promise<boolean> {
-        let newGameVersions = await newVersion.getSupportedGameVersions();
-
-        if (!newGameVersions.find((version) => version.id == forVersion)) {
-            return false;
-        }
-
-        return satisfies(newVersion.modVersion, `^${originalVersion.modVersion.raw}`);
-    }
-
-    public toRawAPIResonse() {
-        return {
-            id: this.id,
-            modId: this.modId,
-            authorId: this.authorId,
-            modVersion: this.modVersion.raw,
-            platform: this.platform,
-            zipHash: this.zipHash,
-            status: this.status,
-            dependencies: this.dependencies,
-            contentHashes: this.contentHashes,
-            supportedGameVersionIds: this.supportedGameVersionIds,
-            downloadCount: this.downloadCount,
-            fileSize: this.fileSize,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt,
-        };
-    }
-
-    public async toAPIResonse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<ModVersionAPIPublicResponse|null> {
-        let dependencies = await this.getUpdatedDependencies(gameVersionId, statusesToSearchFor);
-        if (!dependencies) {
-            return null;
-        }
-
-        let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
-        if (!author) {
-            let dbAuthor = await DatabaseHelper.database.Users.findByPk(this.authorId);
-            if (dbAuthor) {
-                author = dbAuthor;
-            } else {
-                Logger.error(`Failed to find author ${this.authorId} for mod version ${this.id}`);
-                author = DatabaseHelper.database.serverAdmin;
-            }
-        }
-
-        return {
-            id: this.id,
-            modId: this.modId,
-            author: author.toAPIResponse(),
-            modVersion: this.modVersion.raw,
-            platform: this.platform,
-            zipHash: this.zipHash,
-            status: this.status,
-            dependencies: dependencies.flatMap((dependancy) => dependancy.id),
-            contentHashes: this.contentHashes,
-            downloadCount: this.downloadCount,
-            supportedGameVersions: await this.getSupportedGameVersions(),
-            fileSize: this.fileSize,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt,
-        };
-    }
-}
-// #endregion
-// #region EditApprovalQueue
-export type ModVersionApproval = InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` }>
-export type ModApproval = InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` }>
-
-//this is gonna be fun :3
-export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAttributes<EditQueue>> {
-    declare readonly id: CreationOptional<number>;
-    declare submitterId: number;
-    declare objectId: number;
-    declare objectTableName: `modVersions` | `mods`;
-    declare object: ModVersionApproval | ModApproval;
-
-    declare approverId: CreationOptional<number> | null;
-    declare approved: boolean | null; // just use null as a 3rd bit 5head
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date> | null;
-
-    public isModVersion(): this is EditQueue & { objectTableName: `modVersions`, object: ModVersionApproval } {
-        return this.objectTableName === `modVersions` && `modVersion` in this.object;
-    }
-
-    public isMod(): this is EditQueue & { objTableName: `mods`, object: ModApproval } {
-        return this.objectTableName === `mods` && `name` in this.object;
-    }
-
-    public async approve(approver: User) {
-        if (this.approved) {
-            return;
-        }
-        
-        let record: Mod | ModVersion | undefined = undefined;
-        let original: ModInfer | ModVersionInfer | undefined = undefined;
-
-        if (this.objectTableName == `modVersions` && `modVersion` in this.object) {
-            let modVersion = await DatabaseHelper.database.ModVersions.findByPk(this.objectId);
-            if (modVersion) {
-                original = modVersion.toJSON();
-                modVersion.modVersion = this.object.modVersion || modVersion.modVersion;
-                modVersion.platform = this.object.platform || modVersion.platform;
-                modVersion.supportedGameVersionIds = this.object.supportedGameVersionIds || modVersion.supportedGameVersionIds;
-                modVersion.dependencies = this.object.dependencies || modVersion.dependencies;
-                //modVersion.lastApprovedById = approver.id;
-                modVersion.lastUpdatedById = this.submitterId;
-                //modVersion.status = Status.Verified;
-                if (modVersion.status == Status.Verified) {
-                    modVersion.lastApprovedById = approver.id;
-                }
-                record = await modVersion.save();
-            }
-        } else if (this.objectTableName == `mods` && `name` in this.object) {
-            let mod = await DatabaseHelper.database.Mods.findByPk(this.objectId);
-            if (mod) {
-                original = mod.toJSON();
-                mod.name = this.object.name || mod.name;
-                mod.summary = this.object.summary || mod.summary;
-                mod.description = this.object.description || mod.description;
-                mod.category = this.object.category || mod.category;
-                mod.gitUrl = this.object.gitUrl || mod.gitUrl;
-                mod.authorIds = this.object.authorIds || mod.authorIds;
-                mod.gameName = this.object.gameName || mod.gameName;
-                //mod.lastApprovedById = approver.id;
-                mod.lastUpdatedById = this.submitterId;
-                //mod.status = Status.Verified;
-                if (mod.status == Status.Verified) {
-                    mod.lastApprovedById = approver.id;
-                }
-                record = await mod.save();
-            }
-        }
-        this.approved = true;
-        this.approverId = approver.id;
-        this.save().then(() => {
-            Logger.log(`Edit ${this.id} approved by ${approver.username}`);
-            sendEditLog(this, approver, `Approved`, original);
-        }).catch((error) => {
-            Logger.error(`Error approving edit ${this.id}: ${error}`);
-        });
-        return record;
-    }
-
-    public async deny(approver: User) {
-        if (this.approved) {
-            return;
-        }
-
-        let record = this.isMod() ? await DatabaseHelper.database.Mods.findByPk(this.objectId) : await DatabaseHelper.database.ModVersions.findByPk(this.objectId);
-        this.approved = false;
-        this.approverId = approver.id;
-        this.save().then(() => {
-            Logger.log(`Edit ${this.id} denied by ${approver.username}`);
-            sendEditLog(this, approver, `Rejected`);
-        }).catch((error) => {
-            Logger.error(`Error denying edit ${this.id}: ${error}`);
-        });
-    }
-}
-// #endregion
-// #region MOTD
-export class MOTD extends Model<InferAttributes<MOTD>, InferCreationAttributes<MOTD>> {
-    declare readonly id: CreationOptional<number>;
-    declare gameName: SupportedGames;
-    declare gameVersionIds?: number[]|null;
-    declare postType: PostType;
-    declare platforms?: Platform[]|null;
-    declare message: string;
-    declare translations: Translations[];
-    declare authorId: number;
-    declare startTime: Date;
-    declare endTime: Date;
-    declare readonly createdAt: CreationOptional<Date>;
-    declare readonly updatedAt: CreationOptional<Date>;
-    declare readonly deletedAt: CreationOptional<Date> | null;
-
-    public static async getActiveMOTDs(gameName: SupportedGames, versions:number[]|undefined = undefined, platform:Platform|undefined, getExpired = false): Promise<MOTD[]> {
-        return DatabaseHelper.cache.motd.filter((motd) => {
-            let now = new Date();
-            if (getExpired) {
-                if (motd.endTime < now) {
-                    return false;
-                }
-            }
-
-            if (motd.startTime > now) {
-                return false;
-            }
-
-            if (motd.gameName != gameName) {
-                return false;
-            }
-
-            if (motd.gameVersionIds) {
-                if (versions && !motd.gameVersionIds.some((id) => versions.includes(id))) {
-                    return false;
-                }
-            }
-
-            if (motd.platforms && platform) {
-                if (!motd.platforms.includes(platform)) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-    }
-}
-// #endregion
-// #region Interfaces/Enums
-export type UserAPIPublicResponse = {
-    id: number;
-    username: string;
-    githubId: string | null;
-    sponsorUrl: string | null;
-    displayName: string;
-    roles: UserRolesObject;
-    bio: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-export type GameVersionAPIPublicResponse = {
-    id: number;
-    gameName: SupportedGames;
-    version: string;
-    defaultVersion: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
-};
-export type ModAPIPublicResponse = {
-    id: number;
-    name: string;
-    summary: string;
-    description: string;
-    gameName: SupportedGames;
-    category: Categories;
-    authors: UserAPIPublicResponse[];
-    status: Status;
-    iconFileName: string;
-    gitUrl: string;
-    lastApprovedById: number | null;
-    lastUpdatedById: number;
-    createdAt: Date;
-    updatedAt: Date;
-};
-export type ModVersionAPIPublicResponse = {
-    id: number;
-    modId: number;
-    modVersion: string; // semver.raw
-    author: UserAPIPublicResponse;
-    platform: Platform;
-    zipHash: string;
-    contentHashes: ContentHash[];
-    status: Status;
-    dependencies: number[];
-    supportedGameVersions: GameVersionAPIPublicResponse[];
-    downloadCount: number;
-    fileSize: number;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-export enum PostType {
-    Emergency = `emergency`,
-    GameUpdates = `gameupdates`,
-    Community = `community`
-}
-
-export interface Translations {
-    lang: string;
-    message: string;
-}
-
-export interface ContentHash {
-    path: string;
-    hash: string;
-}
-
-export enum Platform {
-    SteamPC = `steampc`,
-    OculusPC = `oculuspc`,
-    UniversalPC = `universalpc`,
-    // Quest will be one option, as PC does not have individual options for Index, Vive, etc.
-    UniversalQuest = `universalquest`,
-}
-
-export enum Status {
-    Private = `private`,
-    Removed = `removed`,
-    Unverified = `unverified`,
-    Verified = `verified`,
-}
-
-export enum Categories {
-    Core = `core`, // BSIPA, SongCore, etc
-    Essential = `essential`, // Camera2, BeatSaverDownloader, BeatSaverUpdater, etc
-    Library = `library`,
-    Cosmetic = `cosmetic`,
-    PracticeTraining = `practice`,
-    Gameplay = `gameplay`,
-    StreamTools = `streamtools`,
-    UIEnhancements = `ui`,
-    Lighting = `lighting`,
-    TweaksTools = `tweaks`,
-    Multiplayer = `multiplayer`,
-    TextChanges = `text`,
-    Editor = `editor`,
-    Other = `other`,
-}
-// #endregion
-
-// yoink thankies bstoday & bns
-function validateEnumValue(value: string | number, enumType: object): boolean {
-    if (Object.values(enumType).includes(value)) {
-        return true;
-    }
-    return false;
-}
-// #region DatabaseHelper
-export class DatabaseHelper {
-    public static database: DatabaseManager;
-    public static cache: {
-        gameVersions: GameVersion[],
-        modVersions: ModVersion[],
-        mods: Mod[],
-        users: User[],
-        editApprovalQueue: EditQueue[],
-        motd: MOTD[],
-    } = {
-            gameVersions: [],
-            modVersions: [],
-            mods: [],
-            users: [],
-            editApprovalQueue: [],
-            motd: [],
-        };
-
-    constructor(database: DatabaseManager, loadCache = true) {
-        DatabaseHelper.database = database;
-        if (loadCache) {
-            DatabaseHelper.refreshAllCaches();
-        }
-
-        setInterval(DatabaseHelper.refreshAllCaches, 1000 * 60 * 5);
-    }
-
-    public static async refreshAllCaches() {
-        Logger.debug(`Refreshing all caches`);
-        DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
-        DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-        DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
-        DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
-        DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
-        DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
-        Logger.debug(`Finished refreshing all caches`);
-    }
-
-    public static async refreshCache(tableName: `gameVersions` | `modVersions` | `mods` | `users` | `editApprovalQueue`) {
-        Logger.debug(`Refreshing cache for ${tableName}`);
-        switch (tableName) {
-            case `gameVersions`:
-                DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
-                break;
-            case `modVersions`:
-                DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-                break;
-            case `mods`:
-                DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
-                break;
-            case `users`:
-                DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
-                break;
-            case `editApprovalQueue`:
-                DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
-                break;
-        }
-        Logger.debug(`Finished refreshing cache for ${tableName}`);
-    }
-
-    public static getGameNameFromModId(id: number): SupportedGames | null {
-        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id == id);
-        if (!mod) {
-            return null;
-        }
-        return mod.gameName;
-    }
-
-    public static getGameNameFromModVersionId(id: number): SupportedGames | null {
-        let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id == id);
-        if (!modVersion) {
-            return null;
-        }
-        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id == modVersion.modId);
-        if (!mod) {
-            return null;
-        }
-        return mod.gameName;
-    }
-
-    public static getGameNameFromEditApprovalQueueId(id: number): SupportedGames | undefined {
-        let edit = DatabaseHelper.cache.editApprovalQueue.find((edit) => edit.id == id);
-        if (!edit) {
-            return undefined;
-        }
-        if (edit.objectTableName == `mods` && `gameName` in edit.object) {
-            return edit.object.gameName;
-        } else if (edit.objectTableName == `modVersions`) {
-            let gameName = DatabaseHelper.getGameNameFromModVersionId(edit.objectId);
-            return gameName ? gameName : undefined;
-        }
-    }
-
-    public static isValidPlatform(value: string): value is Platform {
-        return validateEnumValue(value, Platform);
-    }
-    
-    public static isValidVisibility(value: string): value is Status {
-        return validateEnumValue(value, Status);
-    }
-
-    public static isValidCategory(value: string): value is Categories {
-        return validateEnumValue(value, Categories);
-    }
-
-    public static isValidGameName(name: any): name is SupportedGames {
-        if (!name) {
-            return false;
-        }
-
-        if (typeof name !== `string` && typeof name !== `number`) {
-            return false;
-        }
-        
-        return validateEnumValue(name, SupportedGames);
-    }
-
-    public static async isValidGameVersion(gameName: string, version: string): Promise<number | null> {
-        if (!gameName || !version) {
-            return null;
-        }
-
-        if (!DatabaseHelper.isValidGameName(gameName)) {
-            return null;
-        }
-
-        let game = await DatabaseHelper.database.GameVersions.findOne({ where: { gameName: gameName, version: version } });
-        return game ? game.id : null;
-    }
-
-    public static isValidPostType(value: string): value is PostType {
-        return validateEnumValue(value, PostType);
-    }
-}
-// #endregion

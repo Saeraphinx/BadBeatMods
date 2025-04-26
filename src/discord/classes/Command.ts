@@ -1,8 +1,10 @@
 import { CommandInteraction, SlashCommandBuilder, Routes, REST, RESTGetAPIApplicationCommandResult, Collection, AutocompleteInteraction } from "discord.js";
 import * as fs from 'fs';
 import * as path from 'path';
-import { Luma } from "./Luma";
-import { Config } from "../../shared/Config";
+import { Luma } from "./Luma.ts";
+import { Config } from "../../shared/Config.ts";
+import { Logger } from "../../shared/Logger.ts";
+import { fileURLToPath, pathToFileURL } from "url";
 
 export interface ICommand {
     data:SlashCommandBuilder;
@@ -57,31 +59,30 @@ export class Command {
         try {
             await this.execute(luma, interaction);
         } catch (error: any) {
-            console.error(error);
+            Logger.error(error);
             luma.logger.warn(`Interaction (${interaction.commandName}) did not reply.`, `Interactions`);
         }
     }
 }
 
-export function loadCommands(luma: Luma, commandsPath?: string) {
+export async function loadCommands(luma: Luma, commandsPath?: string) {
     luma.commands = new Collection<string, Command>();
 
     let commandsDirectory: string;
     if (commandsPath) {
         commandsDirectory = commandsPath;
     } else {
-        commandsDirectory = path.resolve(__dirname);
+        commandsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
     }
 
     fs.readdirSync(path.join(commandsDirectory), { withFileTypes: true })
         .filter((item) => !item.isDirectory() && item.name.endsWith(`.js`))
-        .forEach(item => {
+        .forEach(async item => {
             let fileName: string = item.name;
             let filePath = path.join(commandsDirectory, fileName);
             try {
-                // eslint-disable-next-line @typescript-eslint/no-var-requires
-                const commandFile = require(filePath);
-                let command: Command = commandFile.command;
+                const commandFile = await import(pathToFileURL(filePath).toString());
+                let command: Command = commandFile.default.command;
                 luma.commands.set(command.data.name, command);
             } catch (error) {
                 luma.logger.error(`Error when trying to load \`${filePath}\`\n\`\`\`${error}\`\`\``, `commandLoader`);

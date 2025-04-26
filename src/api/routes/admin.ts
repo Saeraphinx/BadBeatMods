@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Config } from '../../shared/Config';
+import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Config } from '../../shared/Config.ts';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Validator } from '../../shared/Validator';
-import { Logger } from '../../shared/Logger';
+import { Validator } from '../../shared/Validator.ts';
+import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendModVersionLog } from '../../shared/ModWebhooks';
+import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
 
 export class AdminRoutes {
     private router: Router;
@@ -178,56 +178,7 @@ export class AdminRoutes {
 
             return res.status(200).send({ message: `All dependencies are valid.` });
         });
-
-        this.router.post(`/admin/linkversions`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
-                "bearerAuth": [],
-                "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Mark all versions as compatible with another gameversion.'
-            // #swagger.description = 'Link two versions together.'
-            /* #swagger.requestBody = {
-                description: 'The versions to link.',
-                required: true,
-                schema: {
-                    version1: 1,
-                    version2: 2
-                }
-            } */
-            let session = await validateSession(req, res, UserRoles.Admin);
-            if (!session.user) {
-                return;
-            }
-
-            let versionId1 = Validator.zDBID.safeParse(req.body.version1);
-            let versionId2 = Validator.zDBID.safeParse(req.body.version2);
-
-            if (!versionId1.success || !versionId2.success) {
-                return res.status(400).send({ message: `Missing version.` });
-            }
-
-            const modVersions = await DatabaseHelper.database.ModVersions.findAll();
-            const version1 = await DatabaseHelper.database.GameVersions.findByPk(versionId1.data.toString());
-            const version2 = await DatabaseHelper.database.GameVersions.findByPk(versionId1.data.toString());
-            if (!version1 || !version2) {
-                return res.status(404).send({ message: `Versions not found.` });
-            }
-
-            for (let modVersion of modVersions) {
-                if (modVersion.supportedGameVersionIds.includes(version1.id) && !modVersion.supportedGameVersionIds.includes(version2.id)) {
-                    modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, version2.id];
-                }
-
-                if (modVersion.supportedGameVersionIds.includes(version2.id) && !modVersion.supportedGameVersionIds.includes(version1.id)) {
-                    modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, version1.id];
-                }
-                modVersion.save();
-            }
-
-            return res.status(200).send({ message: `Version ${version1.gameName} ${version1.version} & ${version2.gameName} ${version2.version} have been linked.` });
-        });
-      
+    
         this.router.post(`/admin/sortgameversions`, async (req, res) => {
             // #swagger.tags = ['Admin']
             /* #swagger.security = [{
@@ -335,7 +286,7 @@ export class AdminRoutes {
                 return res.status(404).send({ message: `User not found.` });
             }
 
-            let sessionId = req.session.userId;
+            let sessionId = req.bbmAuth?.userId;
             if (!sessionId) {
                 return res.status(400).send({ message: `You cannot modify your own roles.` });
             } else {
@@ -354,36 +305,36 @@ export class AdminRoutes {
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.addPerGameRole(gameName.data, UserRoles.Moderator);
-                        break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Approver);
                         break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.addPerGameRole(gameName.data, UserRoles.GameManager);
+                        break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.Poster);
                         break;
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.addPerGameRole(gameName.data, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver);
+                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -412,12 +363,12 @@ export class AdminRoutes {
                         }
                         user.addSiteWideRole(UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
+                    case UserRoles.GameManager:
                         session = await validateSession(req, res, UserRoles.Admin);
                         if (!session.user) {
                             return;
                         }
-                        user.addSiteWideRole(UserRoles.Moderator);
+                        user.addSiteWideRole(UserRoles.GameManager);
                         break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
@@ -504,22 +455,22 @@ export class AdminRoutes {
                         }
                         user.removePerGameRole(gameName.data, UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.removePerGameRole(gameName.data, UserRoles.Moderator);
-                        break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.removePerGameRole(gameName.data, UserRoles.Approver);
                         break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.removePerGameRole(gameName.data, UserRoles.GameManager);
+                        break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -527,14 +478,14 @@ export class AdminRoutes {
                         break;
                     
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin);
+                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
                         if (!session.user) {
                             return;
                         }
                         user.removePerGameRole(gameName.data, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver);
+                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
                         if (!session.user) {
                             return;
                         }
@@ -552,19 +503,19 @@ export class AdminRoutes {
                         }
                         user.removeSiteWideRole(UserRoles.Admin);
                         break;
-                    case UserRoles.Moderator:
-                        session = await validateSession(req, res, UserRoles.Admin);
-                        if (!session.user) {
-                            return;
-                        }
-                        user.removeSiteWideRole(UserRoles.Moderator);
-                        break;
                     case UserRoles.Approver:
                         session = await validateSession(req, res, UserRoles.Admin);
                         if (!session.user) {
                             return;
                         }
                         user.removeSiteWideRole(UserRoles.Approver);
+                        break;
+                    case UserRoles.GameManager:
+                        session = await validateSession(req, res, UserRoles.Admin);
+                        if (!session.user) {
+                            return;
+                        }
+                        user.removeSiteWideRole(UserRoles.GameManager);
                         break;
                     case UserRoles.Poster:
                         session = await validateSession(req, res, UserRoles.Admin);
@@ -646,7 +597,7 @@ export class AdminRoutes {
             modVersion.modId = newMod.id;
             await modVersion.save().then(() => {
                 DatabaseHelper.refreshCache(`modVersions`);
-                sendModVersionLog(modVersion, session.user, `Approved`, newMod);
+                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
                 return res.status(200).send({ message: `Version ${modVersionId.data} moved to mod ${newModId.data}.` });
             }).catch((err) => {
                 Logger.error(`Error moving mod version ${modVersionId.data}: ${err}`);

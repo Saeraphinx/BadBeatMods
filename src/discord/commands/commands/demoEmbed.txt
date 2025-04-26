@@ -1,8 +1,8 @@
 import { SlashCommandBuilder, InteractionContextType, CommandInteraction, MessageFlags } from "discord.js";
-import { Command } from "../../classes/Command";
-import { Luma } from "../../classes/Luma";
-import { sendEditLog, sendModLog, sendModVersionLog } from "../../../shared/ModWebhooks";
-import { DatabaseHelper } from "../../../shared/Database";
+import { Command } from "../../classes/Command.ts";
+import { Luma } from "../../classes/Luma.ts";
+import { sendEditLog, sendModLog, sendModVersionLog } from "../../../shared/ModWebhooks.ts";
+import { DatabaseHelper } from "../../../shared/Database.ts";
 import { randomInt } from "crypto";
 let commandData = new SlashCommandBuilder();
 commandData.setName(`embed`)
@@ -48,7 +48,7 @@ commandData.setName(`embed`)
         )
     ).setContexts(InteractionContextType.PrivateChannel, InteractionContextType.Guild, InteractionContextType.BotDM);
 
-module.exports = {
+export default {
     command: new Command({
         data: commandData,
         execute: async function exec(luma: Luma, interaction: CommandInteraction) {

@@ -1,12 +1,12 @@
 /* eslint-disable no-console */ // Logger can't be initialized before Config, so we need to disable this here.
 import * as fs from 'fs';
 import * as path from 'path';
-import { HTTPTools } from './HTTPTools';
+import { Utils } from './Utils.ts';
 
 // This is a simple config loader that reads from a JSON file and maps the values to a static class. It's a little excessive but this way the config is clearly communicated, and is available without a refrence to the file itself.
 // To add a config option, add it to the DEFAULT_CONFIG object, and add a property to the Config class with the same name. The Config class will automatically load the config from the file and map it to the static properties.
 const CONFIG_PATH = path.resolve(`./storage/config.json`);
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
     auth: {
         discord: {
             clientId: `DISCORD_CLIENT_ID`,
@@ -44,14 +44,17 @@ const DEFAULT_CONFIG = {
         cdnRoute: `/cdn`, // the base route for the cdn. no trailing slash
         trustProxy: true, // if useing the env variable, will attempt to check for bool strings. if that doesn't work, it will check if the value is a number. otherwise, it will interpret it as a string and pass it directly to the trust proxy setting https://expressjs.com/en/guide/behind-proxies.html
         fileUploadLimitMB: 50, // the file size limit for mod uploads
-        fileUploadMultiplierMB: 3.0 // the multiplier for the file size limit for the largefiles role. the resulting equation is Math.floor(Config.server.fileUploadLimitMB * Config.server.fileUploadMultiplierMB * 1024 * 1024) to get the value in bytes
+        fileUploadMultiplierMB: 3.0, // the multiplier for the file size limit for the largefiles role. the resulting equation is Math.floor(Config.server.fileUploadLimitMB * Config.server.fileUploadMultiplierMB * 1024 * 1024) to get the value in bytes
+        cfwSecret: ``, // secret for the Cloudflare Worker. used for the CDN. if you are not using a Cloudflare Worker, leave this blank.
     },
     webhooks: {
         // If you don't want to use the webhook, just leave it blank. if a urls is under 8 characters, it will be ignored.
         enableWebhooks: false, // acts as a sort of master switch for all webhooks. useful for dev when you dont want to deal with webhooks.
         loggingUrl: ``, // url for logging - sensitive data might be sent here
         modLogUrl: ``, // url for mod logging - new, approvals, and rejections
+        modLogTags: [`all`], // tags to send to the mod log webhook
         modLog2Url: ``, // same as above
+        modLog2Tags: [`all`], // same as above
         publicUrl: `` // url for public webhook - approved mods only... might have a delay? hasn't been done yet.
     },
     bot: {
@@ -107,6 +110,7 @@ export class Config {
         trustProxy: boolean | number | string;
         fileUploadLimitMB: number;
         fileUploadMultiplierMB: number;
+        cfwSecret: string;
     };
     private static _devmode: boolean = DEFAULT_CONFIG.devmode;
     private static _authBypass: boolean = DEFAULT_CONFIG.authBypass;
@@ -114,7 +118,9 @@ export class Config {
         enableWebhooks: boolean;
         loggingUrl: string;
         modLogUrl: string;
+        modLogTags: string[];
         modLog2Url: string;
+        modLog2Tags: string[];
         publicUrl: string;
     };
     private static _bot: {
@@ -164,8 +170,22 @@ export class Config {
     public static get flags() {
         return this._flags;
     }
+    public static readonly API_VERSION = `0.0.1`;
     // #endregion
     constructor() {
+        if (process.env.NODE_ENV === `test`) {
+            for (let key of Object.keys(DEFAULT_CONFIG)) {
+                // @ts-expect-error 7046
+                Config[`_${key}`] = DEFAULT_CONFIG[key];
+            }
+    
+            Config._server.sessionSecret = Utils.createRandomString(64);
+            Config._database.url = `:memory:`;
+            Config._server.port = 8485;
+            Config._server.url = `http://localhost:8485`;
+            return;
+        }
+
         if (process.env.IS_DOCKER !== `true` && fs.existsSync(CONFIG_PATH)) {
             console.log(`Loading config using config file.`);
             let success = Config.loadConfigFromFile(CONFIG_PATH);
@@ -338,7 +358,7 @@ export class Config {
             Config[`_${key}`] = DEFAULT_CONFIG[key];
         }
 
-        Config._server.sessionSecret = HTTPTools.createRandomString(64);
+        Config._server.sessionSecret = Utils.createRandomString(64);
 
         try {
             // #region Auth
@@ -508,6 +528,12 @@ export class Config {
             } else {
                 failedToLoad.push(`server.fileUploadLimitMB`);
             }
+
+            if (process.env.SERVER_CFWSECRET) {
+                Config._server.cfwSecret = process.env.SERVER_CFWSECRET;
+            } else {
+                failedToLoad.push(`server.cfwSecret`);
+            }
             // #endregion
             // #region Webhooks
             if (process.env.WEBHOOKS_ENABLEWEBHOOKS) {
@@ -528,10 +554,22 @@ export class Config {
                 failedToLoad.push(`webhooks.modLogUrl`);
             }
 
+            if (process.env.WEBHOOKS_MODLOGTAGS) {
+                Config._webhooks.modLogTags = process.env.WEBHOOKS_MODLOGTAGS.split(`,`);
+            } else {
+                failedToLoad.push(`webhooks.modLogTags`);
+            }
+
             if (process.env.WEBHOOKS_MODLOG2URL) {
                 Config._webhooks.modLog2Url = process.env.WEBHOOKS_MODLOG2URL;
             } else {
                 failedToLoad.push(`webhooks.modLog2Url`);
+            }
+
+            if (process.env.WEBHOOKS_MODLOG2TAGS) {
+                Config._webhooks.modLog2Tags = process.env.WEBHOOKS_MODLOG2TAGS.split(`,`);
+            } else {
+                failedToLoad.push(`webhooks.modLog2Tags`);
             }
 
             if (process.env.WEBHOOKS_PUBLICURL) {

@@ -1,7 +1,7 @@
 import { CommandInteraction, SlashCommandBuilder, EmbedBuilder, InteractionContextType, AutocompleteInteraction } from "discord.js";
-import { Command } from "../../classes/Command";
-import { Luma } from "../../classes/Luma";
-import { DatabaseHelper } from "../../../shared/Database";
+import { Command } from "../../classes/Command.ts";
+import { Luma } from "../../classes/Luma.ts";
+import { DatabaseHelper } from "../../../shared/Database.ts";
 import { Op } from "sequelize";
 import { rcompare } from "semver";
 
@@ -11,7 +11,7 @@ commandData.setDescription(`Finds info on a mod.`);
 commandData.addStringOption(option => option.setName(`search`).setDescription(`The name of the mod you're looking for.`).setAutocomplete(true));
 commandData.setContexts(InteractionContextType.PrivateChannel, InteractionContextType.Guild, InteractionContextType.BotDM);
 
-module.exports = {
+export default {
     command: new Command({
         data: commandData,
         execute: async function exec(luma: Luma, interaction: CommandInteraction) {

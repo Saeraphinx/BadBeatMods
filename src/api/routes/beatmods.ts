@@ -1,7 +1,7 @@
 import { Request, Express, Response, Router } from 'express';
-import { Categories, DatabaseHelper, GameVersion, Mod, ModVersion, Platform, SupportedGames, Status } from '../../shared/Database';
-import { Logger } from '../../shared/Logger';
-import { Config } from '../../shared/Config';
+import { Categories, DatabaseHelper, GameVersion, Mod, ModVersion, Platform, SupportedGames, Status } from '../../shared/Database.ts';
+import { Logger } from '../../shared/Logger.ts';
+import { Config } from '../../shared/Config.ts';
 import { coerce } from 'semver';
 
 export class BeatModsRoutes {
@@ -180,7 +180,7 @@ export class BeatModsRoutes {
         } else {
             let modVersions = DatabaseHelper.cache.modVersions.filter((mV) => statuses.includes(mV.status));
             for (let modVersion of modVersions) {
-                let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                 if (!mod) {
                     continue;
                 }
@@ -203,7 +203,7 @@ export class BeatModsRoutes {
         let dependencies: (BeatModsMod | string)[] = [];
         let mVDeps: ModVersion[] = [];
         if (gameVersion) {
-            let intmVDeps = await modVersion.getUpdatedDependencies(gameVersion.id, [Status.Verified]);
+            let intmVDeps = await modVersion.getLiveDependencies(gameVersion.id, [Status.Verified]);
             if (!intmVDeps) {
                 return null;
             }
@@ -223,7 +223,7 @@ export class BeatModsRoutes {
                     if (!dependency) {
                         return null;
                     }
-                    let dependencyMod = DatabaseHelper.cache.mods.find((mod) => mod.id === dependency?.modId);
+                    let dependencyMod = DatabaseHelper.mapCache.mods.get(dependency?.modId);
                     if (!dependencyMod) {
                         return null;
                     }

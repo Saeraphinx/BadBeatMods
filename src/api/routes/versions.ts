@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Logger } from '../../shared/Logger';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Logger } from '../../shared/Logger.ts';
+import { Validator } from '../../shared/Validator.ts';
 import { coerce } from 'semver';
 
 export class VersionsRoutes {
@@ -69,7 +69,7 @@ export class VersionsRoutes {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
             }
         
-            let session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
+            let session = await validateSession(req, res, UserRoles.GameManager, reqBody.data.gameName);
             if (!session.user) {
                 return;
             }
@@ -130,7 +130,7 @@ export class VersionsRoutes {
                 return res.status(404).send({ message: `GameVersion not found` });
             }
 
-            let session = validateSession(req, res, UserRoles.Admin, gameVersion.gameName);
+            let session = validateSession(req, res, UserRoles.GameManager, gameVersion.gameName);
             if (!session) {
                 return;
             }

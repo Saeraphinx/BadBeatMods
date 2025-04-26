@@ -1,14 +1,16 @@
-import e, { Router } from 'express';
+import { Router } from 'express';
 import path from 'node:path';
-import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database';
+import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database.ts';
 import JSZip from 'jszip';
 import crypto from 'crypto';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper';
-import { Config } from '../../shared/Config';
-import { Logger } from '../../shared/Logger';
+import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
+import { Config } from '../../shared/Config.ts';
+import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
-import { Validator } from '../../shared/Validator';
+import { Validator } from '../../shared/Validator.ts';
 import { UploadedFile } from 'express-fileupload';
+import { sendModLog, sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export class CreateModRoutes {
     private router: Router;
@@ -99,9 +101,13 @@ export class CreateModRoutes {
                     (icon as UploadedFile).mv(filePath);
                 }
                 Logger.log(`Mod ${mod.name} created by ${session.user.username}.`);
+                sendModLog(mod, session.user, WebhookLogType.Text_Created);
                 return res.status(200).send({ mod });
             }).catch((error) => {
-                return res.status(500).send({ message: `Error creating mod: ${error} ${error?.name}` });
+                let message = `Error creating mod.`;
+                message = Utils.parseErrorMessage(error);
+                Logger.error(`Error creating mod: ${error} - ${message}`);
+                return res.status(500).send({ message: message });
             });
         });
 
@@ -135,7 +141,6 @@ export class CreateModRoutes {
             let reqBody = Validator.zUploadModVersion.safeParse(req.body);
             let file = req.files?.file;
 
-            //#region Request Validation
             if (!modId.success) {
                 return res.status(400).send({ message: `Invalid modId.` });
             }
@@ -177,7 +182,7 @@ export class CreateModRoutes {
                     return res.status(413).send({ message: `File too large. Max size is ${Config.server.fileUploadLimitMB}MB.` });
                 }
             }
-            //#endregion
+
             let isZip = (file.mimetype === `application/zip` || file.mimetype === `application/x-zip-compressed`) && file.name.endsWith(`.zip`);
             let hashs: ContentHash[] = [];
             if (isZip) {
@@ -222,14 +227,14 @@ export class CreateModRoutes {
                 fileSize: file.size
             }).then(async (modVersion) => {
                 DatabaseHelper.refreshCache(`modVersions`);
-                let retVal = await modVersion.toRawAPIResonse();
+                let retVal = await modVersion.toRawAPIResponse();
+                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, mod);
                 return res.status(200).send({ modVersion: retVal });
             }).catch((error) => {
-                let message = `Error creating mod version.`;
-                if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
-                    message = error.errors.map((e: any) => e.message).join(`, `);
-                }
-                return res.status(500).send({ message: `Error creating mod version: ${error} ${message} ${error?.name}` });
+                let message = `Error creating mod.`;
+                message = Utils.parseErrorMessage(error);
+                Logger.error(`Error creating mod: ${error} - ${message}`);
+                return res.status(500).send({ message: message });
             });
         });
     }

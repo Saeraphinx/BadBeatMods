@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database';
-import { validateSession } from '../../shared/AuthHelper';
-import { Validator } from '../../shared/Validator';
+import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database.ts';
+import { validateSession } from '../../shared/AuthHelper.ts';
+import { Validator } from '../../shared/Validator.ts';
 
 export class UserRoutes {
     private router: Router;

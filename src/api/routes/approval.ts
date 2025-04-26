@@ -1,11 +1,17 @@
 import { Router } from 'express';
-import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse, User } from '../../shared/Database';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper';
-import { Logger } from '../../shared/Logger';
+import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse } from '../../shared/Database.ts';
+import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
+import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
-import { Validator } from '../../shared/Validator';
-import { sendModVersionLog } from '../../shared/ModWebhooks';
+import { Validator } from '../../shared/Validator.ts';
+
+export enum ApprovalAction {
+    Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
+    Deny = `deny`, // Reject the mod/modVersion, set its status to unverified, but do not remove it
+    Remove = `remove`, // Remove the mod/modVersion from the database
+    Restore = `restore`, // Restore the mod/modVersion if it was previously removed
+}
 
 export class ApprovalRoutes {
     private router: Router;
@@ -18,16 +24,16 @@ export class ApprovalRoutes {
     private async loadRoutes() {
         // #region Get Approvals
         this.router.get(`/approval/:queueType`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Approval']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get new mods & modVersions pending approval.'
-            // #swagger.description = 'Get a list of mods & modVersions pending their first approval.'
-            // #swagger.parameters['queueType'] = { description: 'The type of queue to get.', schema: { type: 'string', '@enum': ['mods', 'modVersions', 'edits'] }, required: true }
-            // #swagger.parameters['gameName'] = { description: 'The name of the game to get new mods for.', type: 'string', required: true }
-            /*
+            }]
+            #swagger.summary = 'Get new mods & modVersions pending approval.'
+            #swagger.description = 'Get a list of mods & modVersions pending their first approval.'
+            #swagger.parameters['queueType'] = { description: 'The type of queue to get.', schema: { type: 'string', '@enum': ['mods', 'modVersions', 'edits'] }, required: true }
+            #swagger.parameters['gameName'] = { description: 'The name of the game to get new mods for.', type: 'string', required: true }
             #swagger.responses[200] = {
                 description: 'List of mods pending first approval. The response will contain the mods, modVersions, and edits that are pending approval. Note that mods, modVersions, and edits will only be returned depending on the queueType specified. The edit objects `original` property will contain the original mod or modVersion object.',
                 schema: {
@@ -57,11 +63,12 @@ export class ApprovalRoutes {
                     }]
                 }
             }
+            #swagger.responses[204] = { description: 'No mods found.' }
+            #swagger.responses[400] = { description: 'Missing game name.' }
+            #swagger.responses[401] = { description: 'Unauthorized.' }
             */
-            // #swagger.responses[204] = { description: 'No mods found.' }
-            // #swagger.responses[400] = { description: 'Missing game name.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
             let gameName = Validator.zGameName.safeParse(req.query.gameName);
+            let includeUnverified = Validator.z.boolean({coerce: true}).safeParse(req.query.includeUnverified === `true`);
             if (!gameName.success) {
                 return res.status(400).send({ message: `Missing game name.` });
             }
@@ -78,7 +85,7 @@ export class ApprovalRoutes {
                 mods: ModAPIPublicResponse[] | undefined,
                 modVersions: {
                     mod: ModAPIPublicResponse,
-                    version: ReturnType<typeof ModVersion.prototype.toRawAPIResonse>}[] | undefined,
+                    version: ReturnType<typeof ModVersion.prototype.toRawAPIResponse>}[] | undefined,
                 edits: {
                     mod: ModAPIPublicResponse,
                     original: Mod | ModVersion
@@ -89,18 +96,19 @@ export class ApprovalRoutes {
                 modVersions: undefined,
                 edits: undefined
             };
+            let statusQuery = includeUnverified.data ? [{ status: Status.Unverified }, { status: Status.Pending }] : [{ status: Status.Pending}];
             switch (queueType.data) {
                 case `mods`:
                     //get mods and modVersions that are unverified (gameName filter on mods only)
-                    response.mods = (await DatabaseHelper.database.Mods.findAll({ where: { status: `unverified`, gameName: gameName.data } })).map((mod) => mod.toAPIResponse());
+                    response.mods = (await DatabaseHelper.database.Mods.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } })).map((mod) => mod.toAPIResponse());
                     break;
                 case `modVersions`:
-                    response.modVersions = (await DatabaseHelper.database.ModVersions.findAll({ where: { status: `unverified` } })).map((modVersion) => {
-                        let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
+                    response.modVersions = (await DatabaseHelper.database.ModVersions.findAll({ where: { [Op.or]: statusQuery } })).map((modVersion) => {
+                        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                         if (!mod || mod.gameName !== gameName.data) {
                             return null;
                         }
-                        return { mod: mod.toAPIResponse(), version: modVersion.toRawAPIResonse() };
+                        return { mod: mod.toAPIResponse(), version: modVersion.toRawAPIResponse() };
                     }).filter((obj) => obj !== null);
                     break;
                 case `edits`:
@@ -110,33 +118,23 @@ export class ApprovalRoutes {
                     }
 
                     // filter out edits that don't support the game specified
-                    response.edits = editQueue.filter((edit) => {
-                        if (`name` in edit.object) {
-                            return edit.object.gameName === gameName.data;
-                        } else {
-                            return edit.object.supportedGameVersionIds.filter((gameVersionId) => {
-                                let gV = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.id === gameVersionId);
-                                if (!gV) {
-                                    return false;
-                                }
-                                return gV.gameName === gameName.data;
-                            }).length > 0;
-                        }
-                    }).map((edit) => {
+                    response.edits = editQueue.map((edit) => {
                         let isMod = edit.objectTableName === `mods`;
                         if (isMod) {
-                            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === edit.objectId);
-                            if (!mod) {
+                            let mod = DatabaseHelper.mapCache.mods.get(edit.objectId);
+                            if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
+
                             return { mod: mod.toAPIResponse(), original: mod, edit: edit };
                         } else {
-                            let modVersion = DatabaseHelper.cache.modVersions.find((modVersion) => modVersion.id === edit.objectId);
+                            let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
                             if (!modVersion) {
                                 return null;
                             }
-                            let mod = DatabaseHelper.cache.mods.find((mod) => mod.id === modVersion.modId);
-                            if (!mod) {
+                            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                            
+                            if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
                             return { mod: mod.toAPIResponse(), original: modVersion, edit: edit };
@@ -151,65 +149,48 @@ export class ApprovalRoutes {
             }
             res.status(200).send(response);
         });
-
-        /*this.router.get(`/approval/edits`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            //
-            // #swagger.summary = 'Get edits pending approval.'
-            // #swagger.description = 'Get a list of already existing mod & modVersions that are pending approval.'
-            // #swagger.parameters['gameName'] = { description: 'The name of the game to get edits for.', type: 'string' }
-            // #swagger.responses[200] = { description: 'List of edits pending approval', schema: { edits: [{$ref: '#/components/schemas/EditApprovalQueueDBObject'}] } }
-            // #swagger.responses[204] = { description: 'No edits found.' }
-            // #swagger.responses[400] = { description: 'Missing game name.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
-            let gameName = Validator.zGameName.safeParse(req.query.gameName);
-            if (!gameName.success) {
-                return res.status(400).send({ message: `Missing game name.` });
-            }
-            let session = await validateSession(req, res, UserRoles.Approver, gameName.data);
-            if (!session.user) {
-                return;
-            }
-
-            // get all edits that are unapproved
-
-            res.status(200).send({ edits: editQueue });
-        });*/
         // #endregion
         // #region Accept/Reject Approvals
+
         this.router.post(`/approval/mod/:modIdParam/approve`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Approval']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Approve a mod.'
-            // #swagger.description = 'Approve a mod for public visibility.'
-            // #swagger.parameters['modIdParam'] = { description: 'The id of the mod to approve.', type: 'integer' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.summary = 'Approve a mod.'
+            #swagger.description = 'Approve a mod for public visibility.'
+            #swagger.parameters['modIdParam'] = { description: 'The id of the mod to approve.', type: 'integer' }
+            #swagger.requestBody = {
                     required: true,
                     description: 'The status to set the mod to.',
                     schema: {
                         type: 'object',
                         properties: {
-                            status: {
+                            action: {
                                 type: 'string',
                                 description: 'The status to set the mod to.',
-                                example: 'verified'
+                            },
+                            reason: {
+                                type: 'string',
+                                description: 'The reason for the status change.',
                             }
                         }
                     }
                 }
+            
+            #swagger.responses[200] = { description: 'Mod status updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[400] = { description: 'Missing status.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[401] = { description: 'Unauthorized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[404] = { description: 'Mod not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[500] = { description: 'Error approving mod.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             */
-            // #swagger.responses[200] = { description: 'Mod status updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[400] = { description: 'Missing status.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[401] = { description: 'Unauthorized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[404] = { description: 'Mod not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[500] = { description: 'Error approving mod.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let status = Validator.zStatus.safeParse(req.body.status);
-            if (!modId.success || !status.success) {
-                return res.status(400).send({ message: `Invalid Mod ID or Status.` });
+            let action = Validator.z.nativeEnum(ApprovalAction).safeParse(req.body.action);
+            let reason = Validator.z.string().optional().safeParse(req.body.reason);
+            if (!modId.success || !action.success || !reason.success) {
+                return res.status(400).send({ message: `Invalid parameters.` });
             }
 
             let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
@@ -222,34 +203,58 @@ export class ApprovalRoutes {
                 return;
             }
 
-            if (mod.status !== Status.Unverified) {
-                return res.status(400).send({ message: `Mod is not in unverified status.` });
+            if (mod.status === Status.Removed && action.data !== ApprovalAction.Restore) {
+                return res.status(400).send({ message: `Mod is removed. Please restore it first.` });
             }
 
-            if (status.data === Status.Unverified) {
-                return res.status(400).send({ message: `Invalid status.` });
+            let promise: Promise<Mod>;
+            let status: Status;
+            switch (action.data) {
+                case ApprovalAction.Accept:
+                    status = Status.Verified;
+                    promise = mod.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Deny:
+                    status = Status.Unverified;
+                    promise = mod.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Remove:
+                    status = Status.Removed;
+                    promise = mod.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Restore:
+                    if (await mod.isRestorable() === false) {
+                        return res.status(400).send({ message: `Mod is not restorable.` });
+                    }
+                    status = Status.Pending;
+                    promise = mod.setStatus(status, session.user, reason.data);
+                    break;
+                default:
+                    return res.status(400).send({ message: `Invalid action.` });
             }
 
-            mod.setStatus(status.data, session.user).then(() => {
-                Logger.log(`Mod ${modId.data} set to status ${status.data} by ${session.user!.username}.`);
+            promise.then(() => {
+                Logger.log(`Mod ${modId.data} set to status ${status} by ${session.user!.username}.`);
                 DatabaseHelper.refreshCache(`mods`);
-                return res.status(200).send({ message: `Mod ${status.data}.` });
+                // logs sent out in the setStatus method
+                return res.status(200).send({ message: `Mod ${status}.` });
             }).catch((error) => {
-                Logger.error(`Error ${status.data} mod: ${error}`);
-                return res.status(500).send({ message: `Error ${status.data} mod:  ${error}` });
+                Logger.error(`Error ${status} mod: ${error}`);
+                return res.status(500).send({ message: `Error ${status} mod:  ${error}` });
             });
         });
 
         this.router.post(`/approval/modversion/:modVersionIdParam/approve`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Approval']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Approve a modVersion.'
-            // #swagger.description = 'Approve a modVersion for public visibility.'
-            // #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to approve.', type: 'integer' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.summary = 'Approve a modVersion.'
+            #swagger.description = 'Approve a modVersion for public visibility.'
+            #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to approve.', type: 'integer' }
+            #swagger.requestBody = {
                     required: true,
                     description: 'The status to set the modVersion to.',
                     schema: {
@@ -263,15 +268,16 @@ export class ApprovalRoutes {
                         }
                     }
                 }
+            #swagger.responses[200] = { description: 'ModVersion status updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[400] = { description: 'Missing status.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[401] = { description: 'Unauthorized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[404] = { description: 'ModVersion not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            #swagger.responses[500] = { description: 'Error approving modVersion.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             */
-            // #swagger.responses[200] = { description: 'ModVersion status updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[400] = { description: 'Missing status.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[401] = { description: 'Unauthorized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[404] = { description: 'ModVersion not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            // #swagger.responses[500] = { description: 'Error approving modVersion.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            let status = Validator.zStatus.safeParse(req.body.status);
-            if (!modVersionId.success || !status.success) {
+            let action = Validator.z.nativeEnum(ApprovalAction).safeParse(req.body.action);
+            let reason = Validator.z.string().optional().safeParse(req.body.reason);
+            if (!modVersionId.success || !action.success || !reason.success) {
                 return res.status(400).send({ message: `Invalid ModVersion ID or Status.` });
             }
             let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModVersionId(modVersionId.data));
@@ -290,34 +296,63 @@ export class ApprovalRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            if (modVersion.status !== Status.Unverified) {
-                return res.status(400).send({ message: `Mod is not in unverified status.` });
+            if (modVersion.status === Status.Removed && action.data !== ApprovalAction.Restore) {
+                return res.status(400).send({ message: `Version is removed.` });
             }
 
-            if (status.data === Status.Unverified) {
-                return res.status(400).send({ message: `Invalid status. Use /approval/modVersion/:modVersionIdParam/revoke instead` });
+            let promise: Promise<ModVersion>;
+            let status: Status;
+            switch (action.data) {
+                case ApprovalAction.Accept:
+                    status = Status.Verified;
+                    promise = modVersion.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Deny:
+                    status = Status.Unverified;
+                    promise = modVersion.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Remove:
+                    status = Status.Removed;
+                    promise = modVersion.setStatus(status, session.user, reason.data);
+                    break;
+                case ApprovalAction.Restore:
+                    if (await modVersion.isRestorable() === false) {
+                        return res.status(400).send({ message: `Mod version is not restorable.` });
+                    }
+
+                    if (mod.status === Status.Removed) { // above checks if the mod is restorable
+                        mod.setStatus(Status.Pending, session.user, reason.data);
+                    }
+
+                    status = Status.Pending;
+                    promise = modVersion.setStatus(status, session.user, reason.data);
+                    break;
+                default:
+                    return res.status(400).send({ message: `Invalid action.` });
             }
 
-            modVersion.setStatus(status.data, session.user).then(() => {
-                Logger.log(`ModVersion ${modVersion.id} set to status ${status.data} by ${session.user.username}.`);
+            promise.then(() => {
+                Logger.log(`ModVersion ${modVersion.id} set to status ${status} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`modVersions`);
-                return res.status(200).send({ message: `Mod ${status.data}.` });
+                // logs sent out by the modVersion.setStatus method
+                return res.status(200).send({ message: `ModVersion ${status}.` });
             }).catch((error) => {
-                Logger.error(`Error ${status.data} mod: ${error}`);
-                return res.status(500).send({ message: `Error ${status.data} mod:  ${error}` });
+                Logger.error(`Error ${status} mod: ${error}`);
+                return res.status(500).send({ message: `Error ${status} mod:  ${error}` });
             });
         });
 
         this.router.post(`/approval/edit/:editIdParam/approve`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Approval']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Approve an edit.'
-            // #swagger.description = 'Approve an edit for public visibility.'
-            // #swagger.parameters['editIdParam'] = { description: 'The id of the edit to approve.', type: 'integer' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.summary = 'Approve an edit.'
+            #swagger.description = 'Approve an edit for public visibility.'
+            #swagger.parameters['editIdParam'] = { description: 'The id of the edit to approve.', type: 'integer' }
+            #swagger.requestBody = {
                 required: true,
                 description: 'The accepted value.',
                 schema: {
@@ -330,15 +365,15 @@ export class ApprovalRoutes {
                     },
                 }
             }
+            #swagger.responses[200] = { description: 'Edit status updated.' }
+            #swagger.responses[400] = { description: 'Missing status.' }
+            #swagger.responses[401] = { description: 'Unauthorized.' }
+            #swagger.responses[404] = { description: 'Edit not found.' }
+            #swagger.responses[500] = { description: 'Error approving edit.' }
             */
-            // #swagger.responses[200] = { description: 'Edit status updated.' }
-            // #swagger.responses[400] = { description: 'Missing status.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
-            // #swagger.responses[404] = { description: 'Edit not found.' }
-            // #swagger.responses[500] = { description: 'Error approving edit.' }
             let editId = Validator.zDBID.safeParse(req.params.editIdParam);
-            let accepted = Validator.z.boolean().safeParse(req.body.accepted);
-            if (!editId.success || !accepted.success) {
+            let action = Validator.z.nativeEnum(ApprovalAction).safeParse(req.body.action);
+            if (!editId.success || !action.success) {
                 return res.status(400).send({ message: `Invalid edit id or accepted value.` });
             }
             let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromEditApprovalQueueId(editId.data));
@@ -375,7 +410,7 @@ export class ApprovalRoutes {
             }
 
             // approve or deny edit
-            if (accepted.data) {
+            if (action.data === ApprovalAction.Accept) {
                 edit.approve(session.user).then((record) => {
                     Logger.log(`Edit ${editId.data} accepted by ${session.user.username}.`);
                     isMod ? DatabaseHelper.refreshCache(`mods`) : DatabaseHelper.refreshCache(`modVersions`);
@@ -399,157 +434,6 @@ export class ApprovalRoutes {
         });
         // #endregion
         // #region Edit Approvals
-        this.router.patch(`/approval/mod/:modIdParam`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            // #swagger.summary = 'Edit a mod in the approval queue.'
-            // #swagger.description = 'Edit a mod in the approval queue.'
-            // #swagger.parameters['modIdParam'] = { description: 'The id of the mod to edit.', type: 'integer', required: true }
-            // #swagger.deprecated = true
-            /* #swagger.requestBody = {
-                required: true,
-                description: 'The mod object to update.',
-                schema: {
-                    name: 'string',
-                    summary: 'string',
-                    description: 'string',
-                    gitUrl: 'string',
-                    category: 'string',
-                    gameName: 'string',
-                    authorIds: [1, 2, 3],
-                }
-            } */
-            // #swagger.responses[200] = { description: 'Mod updated.', schema: { mod: {} } }
-            // #swagger.responses[400] = { description: 'No changes provided.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
-            // #swagger.responses[404] = { description: 'Mod not found.' }
-            // #swagger.responses[500] = { description: 'Error updating mod.' }
-            return res.status(501).send({ message: `This endpoint is deprecated.` });
-            /*
-            let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            if (!modId.success) {
-                return res.status(400).send({ message: `Invalid mod id.` });
-            }
-            let reqBody = Validator.zUpdateMod.safeParse(req.body);
-            if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
-            }
-            if (!reqBody.data) {
-                return res.status(400).send({ message: `Missing parameters.` });
-            }
-            let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModId(modId.data));
-            if (!session.user) {
-                return;
-            }
-
-            // if the gameName is being changed, check if the user has permission to approve mods the new game
-            if (reqBody.data.gameName && reqBody.data.gameName !== DatabaseHelper.getGameNameFromModId(modId.data) && validateAdditionalGamePermissions(session, reqBody.data.gameName, UserRoles.Approver) == false) {
-                return res.status(401).send({ message: `You cannot edit this mod.` });
-            }
-
-            // parameter validation
-            if (!reqBody.data.name && !reqBody.data.summary && !reqBody.data.description && !reqBody.data.gitUrl && !reqBody.data.category && !reqBody.data.gameName && !reqBody.data.authorIds) {
-                return res.status(400).send({ message: `No changes provided.` });
-            }
-
-            if ((await Validator.validateIDArray(reqBody.data.authorIds, `users`, false, true)) == false) {
-                return res.status(400).send({ message: `Invalid authorIds.` });
-            }
-
-            // get db object
-            let mod = await DatabaseHelper.database.Mods.findByPk(modId.data);
-
-            if (!mod) {
-                return res.status(404).send({ message: `Mod not found.` });
-            }
-
-            // if the parameter is not provided, keep the old value
-            mod.name = reqBody.data.name || mod.name;
-            mod.summary = reqBody.data.summary || mod.summary;
-            mod.description = reqBody.data.description || mod.description;
-            mod.gitUrl = reqBody.data.gitUrl || mod.gitUrl;
-            mod.category = reqBody.data.category || mod.category;
-            mod.gameName = reqBody.data.gameName || mod.gameName;
-            mod.lastUpdatedById = session.user.id;
-            mod.save().then(() => {
-                Logger.log(`Mod ${modId.data} updated by ${session.user.username}.`);
-                return res.status(200).send({ message: `Mod updated.`, mod: mod });
-            }).catch((error) => {
-                Logger.error(`Error updating mod ${modId.data}: ${error}`);
-                return res.status(500).send({ message: `Error updating mod: ${error}` });
-            });
-            */
-        });
-
-        this.router.patch(`/approval/modversion/:modVersionIdParam`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            // #swagger.summary = 'Edit a modVersion in the approval queue.'
-            // #swagger.description = 'Edit a modVersion in the approval queue.'
-            // #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to edit.', type: 'integer', required: true }
-            // #swagger.deprecated = true
-            /* #swagger.requestBody = {
-                required: true,
-                description: 'The modVersion object to update.',
-                schema: {
-                    modVersion: 'string',
-                    supportedGameVersionIds: [1, 2, 3],
-                    dependencies: [1, 2, 3],
-                    platform: 'string',
-                }
-            } */
-            // #swagger.responses[200] = { description: 'ModVersion updated.', schema: { modVersion: {} } }
-            // #swagger.responses[400] = { description: 'No changes provided.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
-            // #swagger.responses[404] = { description: 'ModVersion not found.' }
-            // #swagger.responses[500] = { description: 'Error updating modVersion.' }
-            return res.status(501).send({ message: `This endpoint is deprecated.` });
-            /*
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            if (!modVersionId.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
-            }
-            let reqBody = Validator.zUpdateModVersion.safeParse(req.body);
-            if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
-            }
-            let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModVersionId(modVersionId.data));
-            if (!session.user) {
-                return;
-            }
-
-            // parameter validation & getting db object
-            let modVer = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data, status: Status.Unverified } });
-            if (!modVer) {
-                return res.status(404).send({ message: `Mod version not found.` });
-            }
-
-            if (!reqBody.data || (!reqBody.data.modVersion && !reqBody.data.supportedGameVersionIds && !reqBody.data.dependencies && !reqBody.data.platform)) {
-                return res.status(400).send({ message: `No changes provided.` });
-            }
-
-            if ((await Validator.validateIDArray(reqBody.data.supportedGameVersionIds, `gameVersions`, false, true)) == false) {
-                return res.status(400).send({ message: `Invalid gameVersionIds.` });
-            }
-
-            if ((await Validator.validateIDArray(reqBody.data.dependencies, `modVersions`, true, true)) == false) {
-                return res.status(400).send({ message: `Invalid dependencies.` });
-            }
-
-            // if the parameter is not provided, keep the old value
-            modVer.dependencies = reqBody.data.dependencies || modVer.dependencies;
-            modVer.supportedGameVersionIds = reqBody.data.supportedGameVersionIds || modVer.supportedGameVersionIds;
-            modVer.modVersion = reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : modVer.modVersion;
-            modVer.platform = reqBody.data.platform || modVer.platform;
-            modVer.lastUpdatedById = session.user.id;
-            modVer.save().then(() => {
-                Logger.log(`ModVersion ${modVersionId.data} updated by ${session.user.username}.`);
-                return res.status(200).send({ message: `ModVersion updated.`, modVersion: modVer });
-            }).catch((error) => {
-                Logger.error(`Error updating modVersion ${modVersionId.data}: ${error}`);
-                return res.status(500).send({ message: `Error updating modVersion: ${error}` });
-            });
-            */
-        });
-
         this.router.patch(`/approval/edit/:editIdParam`, async (req, res) => {
             // #swagger.tags = ['Approval']
             /* #swagger.security = [{
@@ -698,93 +582,5 @@ export class ApprovalRoutes {
             res.status(200).send({ message: `Edit updated.`, edit: edit });
         });
         // #endregion
-        // #region Revoke Approvals
-        this.router.post(`/approval/modVersion/:modVersionIdParam/revoke`, async (req, res) => {
-            // #swagger.tags = ['Approval']
-            /* #swagger.security = [{
-                "bearerAuth": [],
-                "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Revoke a modVersion's verification.'
-            // #swagger.description = 'Revoke a modVersion\'s verification status.\n\nThis will also revoke the verification status of any modVersions that depend on this modVersion.'
-            // #swagger.parameters['modVersionIdParam'] = { description: 'The id of the modVersion to revoke.', type: 'integer', required: true }
-            // #swagger.parameters['allowDependants'] = { description: 'Allow dependants to remain verified. This is dangerous.', type: 'boolean', required: true }
-            // #swagger.responses[200] = { description: 'ModVersion revoked.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            if (!modVersionId.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
-            }
-            let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModVersionId(modVersionId.data));
-            if (!session.user) {
-                return;
-            }
-
-            //get db objects
-            let status = Validator.zStatus.safeParse(req.body.status);
-            //let allowDependants = Validator.z.boolean().safeParse(req.body.allowDependants);
-            //if (!allowDependants.success) {
-            //    return res.status(400).send({ message: `Missing allowDependants.` });
-            //}
-
-            let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
-            if (!modVersion) {
-                return res.status(404).send({ message: `Mod version not found.` });
-            }
-
-            // i have to filter twice since in the database, the dependants are stored as a string.
-            //let dependants = (await DatabaseHelper.database.ModVersions.findAll()).filter((modVersion) => modVersion.dependencies.includes(modVersionId.data));
-            
-            // for each dependant, revoke their verification status
-            //let revokedIds:number[] = [];
-            //if (dependants.length > 0) {
-            //    if (allowDependants.data == false) {
-            //        return res.status(400).send({ message: `Mod version has ${dependants.length} dependants. Set "allowDependants" to true to revoke this mod's approved status.` });
-            //    }
-            //    for (let dependant of dependants) {
-            //        let ids = await unverifyModVersionId(session.user, dependant.id, dependant);
-            //        revokedIds = [...revokedIds, ...ids];
-            //    }
-            //} else {
-            //    let ids = await unverifyModVersionId(session.user, modVersionId.data, modVersion);
-            //    revokedIds = [...revokedIds, ...ids];
-            //}
-            modVersion.setStatus(Status.Unverified, session.user).then(() => {
-                Logger.log(`ModVersion ${modVersionId.data} has been revoked by ${session.user.username}.`);
-                sendModVersionLog(modVersion, session.user, `Revoked`);
-                //Logger.log(`Revoked IDs: ${revokedIds.join(`, `)}`);
-                DatabaseHelper.refreshCache(`modVersions`);
-                return res.status(200).send({ message: `Mod version revoked.`, revokedIds: [modVersionId.data] });
-            }).catch((error) => {
-                Logger.error(`Error revoking modVersion ${modVersionId.data}: ${error}`);
-                return res.status(500).send({ message: `Error revoking modVersion:  ${error}` });
-            });
-        });
-        // #endregion
     }
-}
-
-async function unverifyModVersionId(approver:User, modVersion: number, modObj?:ModVersion): Promise<number[]> {
-    // get db object if it wasn't proiveded to us
-    let modVersionDb = modObj || await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersion } });
-
-    // if the modVersion doesn't exist or is already unverified, return no additional dependants
-    if (!modVersionDb || modVersionDb.status !== Status.Verified) {
-        return [];
-    }
-
-    // revoke the modVersion's verification
-    let revokedIds = [modVersionDb.id];
-    modVersionDb.lastApprovedById = approver.id;
-    modVersionDb.status = Status.Unverified;
-
-    await modVersionDb.save().then(async () => {
-        // for each dependant of a dependant, revoke their verification status
-        for (let dependant of modVersionDb.dependencies) {
-            let id = await unverifyModVersionId(approver, dependant); // recursiveness
-            revokedIds = [...revokedIds, ...id];
-        }
-        sendModVersionLog(modVersionDb, approver, `Revoked`);
-    });
-    // return the ids of all revoked modVersions
-    return revokedIds;
 }

@@ -434,6 +434,58 @@
         ]
       }
     },
+    "/multi/modversions": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get multiple mod versions by ID.",
+        "description": "Get multiple mod versions by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modVersionIds",
+            "in": "query",
+            "description": "The mod version IDs.",
+            "required": true,
+            "schema": {
+              "type": "array"
+            }
+          },
+          {
+            "name": "raw",
+            "description": "Return the raw mod depedendcies without attempting to resolve them.",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the mod version."
+          },
+          "400": {
+            "description": "Invalid mod version id."
+          },
+          "404": {
+            "description": "Mod version not found."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
     "/hashlookup": {
       "get": {
         "tags": [
@@ -458,6 +510,14 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "status",
+            "description": "Only show mods with these statuses.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -473,7 +533,7 @@
         }
       }
     },
-    "/multihashlookup": {
+    "/multi/hashlookup": {
       "get": {
         "tags": [
           "Mods"
@@ -481,6 +541,13 @@
         "summary": "Get a specific mod version that has a file with the specified hash.",
         "description": "Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.",
         "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "hash",
             "description": "The hash to look up.",
@@ -875,6 +942,46 @@
             "cookieAuth": []
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "Mods"
+        ],
+        "description": "Delete an edit.",
+        "parameters": [
+          {
+            "name": "editIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Edit ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/auth": {
@@ -1252,50 +1359,6 @@
         ]
       }
     },
-    "/admin/linkversions": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Mark all versions as compatible with another gameversion.",
-        "description": "Link two versions together.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ],
-        "requestBody": {
-          "description": "The versions to link.",
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "version1": 1,
-                "version2": 2
-              }
-            },
-            "application/xml": {
-              "schema": {
-                "version1": 1,
-                "version2": 2
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/sortgameversions": {
       "post": {
         "tags": [
@@ -1496,6 +1559,13 @@
               ]
             },
             "description": "The type of queue to get."
+          },
+          {
+            "name": "includeUnverified",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "gameName",
@@ -1709,10 +1779,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "status": {
+                  "action": {
                     "type": "string",
-                    "description": "The status to set the mod to.",
-                    "example": "verified"
+                    "description": "The status to set the mod to."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "The reason for the status change."
                   }
                 }
               }
@@ -1721,10 +1794,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "status": {
+                  "action": {
                     "type": "string",
-                    "description": "The status to set the mod to.",
-                    "example": "verified"
+                    "description": "The status to set the mod to."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "The reason for the status change."
                   }
                 }
               }
@@ -1912,222 +1988,6 @@
         }
       }
     },
-    "/approval/mod/{modIdParam}": {
-      "patch": {
-        "tags": [
-          "Approval"
-        ],
-        "summary": "Edit a mod in the approval queue.",
-        "description": "Edit a mod in the approval queue.",
-        "parameters": [
-          {
-            "name": "modIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The id of the mod to edit."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Mod updated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "mod": {
-                      "type": "object",
-                      "properties": {}
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              },
-              "application/xml": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "mod": {
-                      "type": "object",
-                      "properties": {}
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "No changes provided."
-          },
-          "401": {
-            "description": "Unauthorized."
-          },
-          "404": {
-            "description": "Mod not found."
-          },
-          "500": {
-            "description": "Error updating mod."
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "description": "The mod object to update.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "name": "string",
-                "summary": "string",
-                "description": "string",
-                "gitUrl": "string",
-                "category": "string",
-                "gameName": "string",
-                "authorIds": [
-                  1,
-                  2,
-                  3
-                ]
-              }
-            },
-            "application/xml": {
-              "schema": {
-                "name": "string",
-                "summary": "string",
-                "description": "string",
-                "gitUrl": "string",
-                "category": "string",
-                "gameName": "string",
-                "authorIds": [
-                  1,
-                  2,
-                  3
-                ]
-              }
-            }
-          }
-        },
-        "deprecated": true
-      }
-    },
-    "/approval/modversion/{modVersionIdParam}": {
-      "patch": {
-        "tags": [
-          "Approval"
-        ],
-        "summary": "Edit a modVersion in the approval queue.",
-        "description": "Edit a modVersion in the approval queue.",
-        "parameters": [
-          {
-            "name": "modVersionIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The id of the modVersion to edit."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ModVersion updated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "modVersion": {
-                      "type": "object",
-                      "properties": {}
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              },
-              "application/xml": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "modVersion": {
-                      "type": "object",
-                      "properties": {}
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "No changes provided."
-          },
-          "401": {
-            "description": "Unauthorized."
-          },
-          "404": {
-            "description": "ModVersion not found."
-          },
-          "500": {
-            "description": "Error updating modVersion."
-          },
-          "501": {
-            "description": "Not Implemented"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "description": "The modVersion object to update.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "modVersion": "string",
-                "supportedGameVersionIds": [
-                  1,
-                  2,
-                  3
-                ],
-                "dependencies": [
-                  1,
-                  2,
-                  3
-                ],
-                "platform": "string"
-              }
-            },
-            "application/xml": {
-              "schema": {
-                "modVersion": "string",
-                "supportedGameVersionIds": [
-                  1,
-                  2,
-                  3
-                ],
-                "dependencies": [
-                  1,
-                  2,
-                  3
-                ],
-                "platform": "string"
-              }
-            }
-          }
-        },
-        "deprecated": true
-      }
-    },
     "/approval/edit/{editIdParam}": {
       "patch": {
         "tags": [
@@ -2289,73 +2149,6 @@
                   2,
                   3
                 ]
-              }
-            }
-          }
-        }
-      }
-    },
-    "/approval/modVersion/{modVersionIdParam}/revoke": {
-      "post": {
-        "tags": [
-          "Approval"
-        ],
-        "summary": "Revoke a modVersion",
-        "description": "Revoke a modVersion\\'s verification status.\\n\\nThis will also revoke the verification status of any modVersions that depend on this modVersion.",
-        "parameters": [
-          {
-            "name": "modVersionIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The id of the modVersion to revoke."
-          },
-          {
-            "name": "allowDependants",
-            "description": "Allow dependants to remain verified. This is dangerous.",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ModVersion revoked.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerMessage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "allowDependants": {
-                    "example": "any"
-                  }
-                }
               }
             }
           }
@@ -3090,6 +2883,7 @@
               "private",
               "removed",
               "unverified",
+              "pending",
               "verified"
             ]
           },
@@ -3178,6 +2972,7 @@
               "private",
               "removed",
               "unverified",
+              "pending",
               "verified"
             ]
           },
@@ -3254,8 +3049,8 @@
                     "allpermissions",
                     "admin",
                     "poster",
+                    "gamemanager",
                     "approver",
-                    "moderator",
                     "largefiles",
                     "banned"
                   ]
@@ -3585,6 +3380,7 @@
               "private",
               "removed",
               "unverified",
+              "pending",
               "verified"
             ]
           },
@@ -3682,6 +3478,7 @@
               "private",
               "removed",
               "unverified",
+              "pending",
               "verified"
             ]
           },
@@ -3775,8 +3572,8 @@
                     "allpermissions",
                     "admin",
                     "poster",
+                    "gamemanager",
                     "approver",
-                    "moderator",
                     "largefiles",
                     "banned"
                   ]
