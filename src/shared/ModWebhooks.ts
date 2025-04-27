@@ -205,22 +205,22 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
         if (!modVersion) {
             return Logger.error(`Mod version not found for edit ${edit.id}`);
         }
-        versionString = ` ${modVersion.modVersion.raw}`;
+        versionString = ` v${modVersion.modVersion.raw}`;
     }
 
     let embed;
     switch (logType) {
         case WebhookLogType.EditSubmitted:
             color = Colors.Purple;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Submitted for Approval - ${mod.name}`, minimal: false });
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Submitted for Approval - ${mod.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.EditApproved:
             color = Colors.Green;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Approved - ${mod.name}`, minimal: false });
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Approved - ${mod.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.EditRejected:
             color = Colors.Red;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Rejected - ${mod.name}`, minimal: false });
+            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Rejected - ${mod.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
