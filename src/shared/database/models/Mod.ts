@@ -224,10 +224,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     }
 
     public async isRestorable(): Promise<boolean> {
-        if (this.status == Status.Removed) {
-            return fs.existsSync(`${path.resolve(Config.storage.iconsDir)}/${this.iconFileName}`);
-        }
-        return false;
+        return fs.existsSync(`${path.resolve(Config.storage.iconsDir)}/${this.iconFileName}`);
     }
 
     public static async checkForExistingMod(name: string) {

@@ -199,20 +199,15 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     }
 
     public async isRestorable(): Promise<boolean> {
-        if (this.status == Status.Removed) {
-            let mod = await DatabaseHelper.database.Mods.findByPk(this.modId);
-            if (!mod) {
-                Logger.error(`Mod ${this.modId} not found for mod version ${this.id}`);
-                return false;
-            }
-            if (mod.status == Status.Removed) {
-                if (!mod.isRestorable()) {
-                    return false;
-                }
-            }
-            return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
+        let mod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+        if (!mod) {
+            Logger.error(`Mod ${this.modId} not found for mod version ${this.id}`);
+            return false;
         }
-        return false;
+        if (!mod.isRestorable()) {
+            return false;
+        }
+        return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
     }
 
     public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<ModVersion | EditQueue | null> {
