@@ -49,10 +49,16 @@ export class GetModRoutes {
             let statuses: Status[] = [Status.Verified];
             switch (reqQuery.data.status) {
                 case `all`:
-                case Status.Unverified:
                     statuses = [Status.Verified, Status.Unverified, Status.Pending];
                     break;
+                case Status.Pending:
+                    statuses = [Status.Verified, Status.Pending];
+                    break;
+                case Status.Unverified:
+                    statuses = [Status.Verified, Status.Unverified];
+                    break;
                 case Status.Verified:
+                default:
                     statuses = [Status.Verified];
                     break;
             }

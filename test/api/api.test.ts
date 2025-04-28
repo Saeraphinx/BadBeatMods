@@ -239,59 +239,28 @@ describe.sequential(`API`, async () => {
             }
         });
 
-        test(`/mods - gv, universal platform, verified status`, async () => {
-            const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${Status.Verified}`);
-            expect(response.status).toBe(200);
-            expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`mods`);
-            expect(response.body.mods).toBeInstanceOf(Array);
-            expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
-            for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
-                expect(currentMod).toHaveProperty(`mod`);
-                expect(currentMod).toHaveProperty(`latest`);
-                let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
-                expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
-                expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-                expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
-                expect(currentMod.mod.status).toBe(Status.Verified);
-                expect(currentMod.latest.status).toBe(Status.Verified);
+        test.each([
+            `all`,
+            `${Status.Verified}`,
+            `${Status.Unverified}`,
+            `${Status.Pending}`
+        ])(`/mods - gv, platform and status %s`, async (statusString, statuses) => {
+            let exepectedStatuses: Status[] = [];
+            switch (statusString) {
+                case `all`:
+                    exepectedStatuses = [Status.Verified, Status.Unverified, Status.Pending];
+                    break;
+                case `${Status.Verified}`:
+                    exepectedStatuses = [Status.Verified];
+                    break;
+                case `${Status.Unverified}`:
+                    exepectedStatuses = [Status.Verified, Status.Unverified];
+                    break;
+                case `${Status.Pending}`:
+                    exepectedStatuses = [Status.Verified, Status.Pending];
+                    break;
             }
-        });
-
-        test(`/mods - gv, universal platform, unverified and verified statuses`, async () => {
-            let hasSeenVerified = false;
-            let hasSeenUnverified = false;
-            let haveSeenPending = false;
-            const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${Status.Unverified}`);
-            expect(response.status).toBe(200);
-            expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`mods`);
-            expect(response.body.mods).toBeInstanceOf(Array);
-            expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
-            for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
-                expect(currentMod).toHaveProperty(`mod`);
-                expect(currentMod).toHaveProperty(`latest`);
-                let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
-                expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
-                expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-                expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
-                expect([Status.Verified, Status.Unverified, Status.Pending].includes(currentMod.mod.status)).toBeTruthy();
-                expect([Status.Verified, Status.Unverified, Status.Pending].includes(currentMod.latest.status)).toBeTruthy();
-                if (currentMod.mod.status === Status.Verified) {
-                    hasSeenVerified = true;
-                } else if (currentMod.mod.status === Status.Unverified) {
-                    hasSeenUnverified = true;
-                } else if (currentMod.mod.status === Status.Pending) {
-                    haveSeenPending = true;
-                }
-            }
-            expect(hasSeenVerified).toBeTruthy();
-            expect(hasSeenUnverified).toBeTruthy();
-            expect(haveSeenPending).toBeTruthy();
+            await testGetMod(exepectedStatuses, statusString.toString());
         });
 
         test(`/hashlookup - contentHash`, async () => {
@@ -617,6 +586,37 @@ describe.sequential(`API`, async () => {
         });
     });
 });
+
+async function testGetMod(statuses:Status[], statusString:string) {
+    let seenStatuses: Status[] = [];
+    const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty(`mods`);
+    expect(response.body).toBeDefined();
+    expect(response.body.mods.length).toBeGreaterThan(0);
+    expect(response.body.mods).toBeInstanceOf(Array);
+    let mods = response.body.mods;
+    for (let cmod of response.body.mods) {
+        let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
+        expect(currentMod).toHaveProperty(`mod`);
+        expect(currentMod).toHaveProperty(`latest`);
+        let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
+        expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
+        expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+        expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
+        expect(statuses.includes(currentMod.mod.status)).toBeTruthy();
+        expect(statuses.includes(currentMod.latest.status)).toBeTruthy();
+        if (seenStatuses.includes(currentMod.mod.status) === false) {
+            seenStatuses.push(currentMod.mod.status);
+        }
+    }
+    for (let status of statuses) {
+        expect(seenStatuses.includes(status)).toBeTruthy();
+    }
+    for (let status of seenStatuses) {
+        expect(statuses.includes(status)).toBeTruthy();
+    }
+}
 
 function testStatusChange(testMod:Mod|ModVersion, fromStatus:Status, action:ApprovalAction, toStatus:Status, logAction:Function) {
     return async () => {
