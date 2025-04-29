@@ -445,13 +445,6 @@
           {
             "name": "id",
             "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "modVersionIds",
-            "in": "query",
             "description": "The mod version IDs.",
             "required": true,
             "schema": {

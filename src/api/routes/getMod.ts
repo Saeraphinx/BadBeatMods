@@ -234,7 +234,7 @@ export class GetModRoutes {
             // #swagger.responses[200] = { description: 'Returns the mod version.' }
             // #swagger.responses[400] = { description: 'Invalid mod version id.' }
             // #swagger.responses[404] = { description: 'Mod version not found.' }
-            // #swagger.parameters['modVersionIds'] = { in: 'query', description: 'The mod version IDs.', type: 'array', required: true }
+            // #swagger.parameters['id'] = { in: 'query', description: 'The mod version IDs.', type: 'array', required: true }
             // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
             let session = await validateSession(req, res, false, null, false);
             let modVersionIds = Validator.zDBIDArray.safeParse(req.query.id);
