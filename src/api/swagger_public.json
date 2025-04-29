@@ -47,10 +47,16 @@
           },
           {
             "name": "status",
-            "description": "The status of the mod. Available status are: 'verified'. Typing anything other than that will show you unverified mods too.",
+            "description": "The status of the mod. All statuses that are not verified will also include verified mods.",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "all",
+                "verified",
+                "unverified",
+                "pending"
+              ]
             }
           },
           {
@@ -58,7 +64,12 @@
             "description": "The platform of the mod. Available platforms are: 'oculuspc', 'universalpc', 'steampc'",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "oculuspc",
+                "universalpc",
+                "steampc"
+              ]
             }
           }
         ],
