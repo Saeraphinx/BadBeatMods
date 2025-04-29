@@ -12,7 +12,7 @@ import { Mod } from "./database/models/Mod.ts";
 import { ModVersion } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
-import { updateRoles } from "./database/ValueUpdater.ts";
+import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -674,6 +674,15 @@ export class DatabaseManager {
             await Promise.all(promises);
         });
 
+        this.ModVersions.afterSync(async () => {
+            let modVersions = await this.ModVersions.findAll();
+            let promises = [];
+            for (let modVersion of modVersions) {
+                promises.push(updateDependencies(modVersion, this.ModVersions));
+            }
+            await Promise.all(promises);
+        });
+
 
         this.Mods.afterValidate(async (mod) => {
             await Mod.checkForExistingMod(mod.name).then((existingMod) => {
@@ -758,19 +767,16 @@ export class DatabaseManager {
             if (modVersion.dependencies.length > 0) {
                 //dedupe dependencies
                 modVersion.dependencies = [...new Set(modVersion.dependencies)];
-                let dependencies = await ModVersion.findAll({ where: { id: modVersion.dependencies } });
-                if (dependencies.length != modVersion.dependencies.length) {
-                    throw new Error(`Invalid dependencies found.`);
+                let parentIds = modVersion.dependencies.map((dep) => dep.parentId);
+                if ([...new Set(parentIds)].length != modVersion.dependencies.length) {
+                    throw new Error(`ModVersion cannot have duplicate dependencies.`);
                 }
-
-                for (let dependency of dependencies) {
-                    if (dependency.modId == modVersion.modId) {
-                        throw new Error(`ModVersion cannot depend on itself.`);
-                    }
-
-                    /*if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
-                        throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
-                    }*/
+                let parentMods = await Mod.findAll({ where: { id: parentIds } });
+                if (parentMods.length == 0) {
+                    throw new Error(`No valid parent mods found.`);
+                }
+                if (parentMods.length != parentIds.length) {
+                    throw new Error(`Invalid or duplicate parent mod(s) found.`);
                 }
             }
 

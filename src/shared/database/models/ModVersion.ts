@@ -2,7 +2,7 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
 import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
 import { Mod } from "./Mod.ts";
@@ -19,7 +19,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     declare modVersion: SemVer;
     declare supportedGameVersionIds: number[];
     declare status: Status;
-    declare dependencies: number[]; // array of modVersion ids
+    declare dependencies: Dependency[];
     declare platform: Platform;
     declare zipHash: string;
     declare contentHashes: ContentHash[];

@@ -143,6 +143,11 @@ export enum Categories {
     Editor = `editor`,
     Other = `other`,
 }
+
+export interface Dependency {
+    parentId: number; // mod/project id
+    sv: string; // "^1.0.0"
+}
 // #endregion
 
 // yoink thankies bstoday & bns

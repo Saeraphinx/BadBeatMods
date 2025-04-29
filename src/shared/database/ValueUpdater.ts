@@ -1,7 +1,10 @@
+import { ModelStatic } from "sequelize";
+import { ModVersion } from "../Database.ts";
 import { Logger } from "../Logger.ts";
-import { UserRoles } from "./DBHelper.ts";
+import { Dependency, UserRoles } from "./DBHelper.ts";
 import { User } from "./models/User.ts";
 
+// #region UserRoles
 export async function updateRoles(user: User) {
     let shouldSync = false;
     let userRoles = user.roles;
@@ -68,4 +71,26 @@ function translateUserRole(oldRoleName: string): UserRoles[] {
             return [];
     }
     return [];
+}
+// #endregion
+
+// #region Dependencies V2
+/*
+Yes. I'm aware this isn't the best solution, but I can't think of a better one and I think I can live with this for the time being.
+Maybe a different solution will come to mind later, but for now, this should work w/o issue.
+*/
+export async function updateDependencies(modVersion: ModVersion, mvdb: ModelStatic<ModVersion>) {
+    if (modVersion.dependencies && modVersion.dependencies.length > 0 && modVersion.dependencies.every((dep) => typeof dep == `number`)) {
+        let newDepVer:Dependency[] = [];
+        for (let dep of modVersion.dependencies) {
+            let mv = await mvdb.findByPk(dep);
+            if (mv) {
+                newDepVer.push({parentId: mv.modId, sv: `^${mv.modVersion}`});
+            } else {
+                Logger.error(`Mod Version ${modVersion.id} has a dependency on a mod version that doesn't exist. Removing...`);
+            }
+        }
+        modVersion.dependencies = newDepVer;
+        await modVersion.save();
+    }
 }
