@@ -30,7 +30,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     declare readonly deletedAt: CreationOptional<Date> | null;
 
     public isAllowedToView(user: User|null|undefined):boolean {
-        if (this.status == Status.Verified || this.status == Status.Unverified) {
+        if (this.status == Status.Verified || this.status == Status.Unverified || this.status == Status.Pending) {
             return true;
         }
         // Private & Removed are the only mods that are not viewable by the public

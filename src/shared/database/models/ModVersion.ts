@@ -62,7 +62,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             return false;
         }
 
-        if (this.status == Status.Verified || this.status == Status.Unverified) {
+        if (this.status == Status.Verified || this.status == Status.Unverified || this.status == Status.Pending) {
             return true;
         }
 
