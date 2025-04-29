@@ -325,7 +325,7 @@ describe.sequential(`Versions - Permissions`, async () => {
         [Status.Pending, true, UserRoles.Admin],
         [Status.Pending, true, UserRoles.Approver],
         [Status.Pending, true, UserRoles.GameManager],
-        [Status.Pending, false, null],
+        [Status.Pending, true, null],
         [Status.Unverified, true, null],
         [Status.Verified, true, null],
         [Status.Removed, true, "author"],
