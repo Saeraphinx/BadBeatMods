@@ -40,9 +40,11 @@ export class CDNRoutes {
                     } else {
                         res.set(`Content-Disposition`, `attachment;`);
                     }
-                    modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                        Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
-                    });
+                    if (Config.server.cfwSecret || Config.server.cfwSecret !== ``) {
+                        modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
+                            Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                        });
+                    }
                 } else {
                     res.set(`Content-Disposition`, `attachment;`);
                 }
