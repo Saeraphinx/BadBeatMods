@@ -53,18 +53,18 @@ export class CDNRoutes {
         this.router.get(`/inc/mod/:hash`, async (req, res) => {
             // #swagger.ignore = true
             if (!Config.server.cfwSecret || Config.server.cfwSecret === ``) {
-                return res.status(401).json({
-                    message: `Unauthorized request`,
+                return res.status(400).json({
+                    message: `Endpoint not available`,
                 });
             }
             if (!req.headers[`CF-Worker`]) {
                 return res.status(403).json({
-                    message: `Request is not from Cloudflare Worker`,
+                    message: `Forbidden request`,
                 });
             }
             if (req.headers[`x-cfw-secret`] !== Config.server.cfwSecret) {
                 return res.status(403).json({
-                    message: `Invalid CFW secret`,
+                    message: `Forbidden request`,
                 });
             }
             let hash = req.params.hash;
