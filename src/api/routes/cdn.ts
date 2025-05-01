@@ -31,6 +31,9 @@ export class CDNRoutes {
             maxAge: 1000 * 60 * 60 * 24 * 7,
             setHeaders: (res, file) => {
                 res.set(`Content-Type`, `application/zip`);
+                if (res.req.headers[`cf-worker`]) {
+                    return;
+                }
                 let hash = path.basename(file).replace(path.extname(file), ``);
                 let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
                 if (modVersion) {
@@ -40,11 +43,9 @@ export class CDNRoutes {
                     } else {
                         res.set(`Content-Disposition`, `attachment;`);
                     }
-                    if (Config.server.cfwSecret || Config.server.cfwSecret !== ``) {
-                        modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                            Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
-                        });
-                    }
+                    modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
+                        Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                    });
                 } else {
                     res.set(`Content-Disposition`, `attachment;`);
                 }
@@ -59,7 +60,7 @@ export class CDNRoutes {
                     message: `Endpoint not available`,
                 });
             }
-            if (!req.headers[`CF-Worker`]) {
+            if (!req.headers[`cf-worker`]) {
                 return res.status(403).json({
                     message: `Forbidden request`,
                 });
