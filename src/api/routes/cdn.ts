@@ -4,17 +4,20 @@ import path from 'path';
 import { Config } from '../../shared/Config.ts';
 import { DatabaseHelper } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
+import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
 
 export class CDNRoutes {
     private router: Router;
+    private ratelimiter: RateLimitRequestHandler;
 
-    constructor(router: Router) {
+    constructor(router: Router, ratelimiter: RateLimitRequestHandler) {
         this.router = router;
+        this.ratelimiter = ratelimiter;
         this.loadRoutes();
     }
 
     private async loadRoutes() {
-        this.router.use(`/icon`, express.static(path.resolve(Config.storage.iconsDir), {
+        this.router.use(`/icon`, this.ratelimiter, express.static(path.resolve(Config.storage.iconsDir), {
             extensions: [`png`],
             dotfiles: `ignore`,
             immutable: true,
@@ -23,7 +26,7 @@ export class CDNRoutes {
             fallthrough: true,
         }));
         
-        this.router.use(`/mod`, express.static(path.resolve(Config.storage.modsDir), {
+        this.router.use(`/mod`, this.ratelimiter, express.static(path.resolve(Config.storage.modsDir), {
             extensions: [`zip`],
             dotfiles: `ignore`,
             immutable: true,
@@ -53,7 +56,12 @@ export class CDNRoutes {
             fallthrough: true,
         }));
 
-        this.router.get(`/inc/mod/:hash`, async (req, res) => {
+        this.router.get(`/inc/mod/:hash`, rateLimit({
+            windowMs: 1000 * 30,
+            max: 200,
+            statusCode: 429,
+            message: {message: `Too many requests`}
+        }), async (req, res) => {
             // #swagger.ignore = true
             if (!Config.server.cfwSecret || Config.server.cfwSecret === ``) {
                 return res.status(400).json({
