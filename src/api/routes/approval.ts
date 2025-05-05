@@ -565,7 +565,7 @@ export class ApprovalRoutes {
                         return res.status(400).send({ message: `Invalid gameVersionIds.` });
                     }
 
-                    if ((await Validator.validateIDArray(reqBodyv.data.dependencies, `modVersions`, true, true)) == false) {
+                    if ((await Validator.validateIDArray(reqBodyv.data.dependencies?.map(d => d.parentId), `mods`, true, true)) == false) {
                         return res.status(400).send({ message: `Invalid dependencies.` });
                     }
 

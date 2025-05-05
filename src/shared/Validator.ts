@@ -51,7 +51,10 @@ const ZodModVersion = z.object({
     modId: ZodDBID,
     supportedGameVersionIds: ZodDBIDArray,
     modVersion: z.string().refine(valid, { message: `Invalid SemVer` }),
-    dependencies: ZodDBIDArray,
+    dependencies: z.array(z.object({
+        parentId: ZodDBID,
+        sv: z.string().refine(valid, { message: `Invalid SemVer` }),
+    })),
     platform: ZodPlatform,
     status: ZodStatus,
 });
@@ -107,7 +110,10 @@ export class Validator {
     public static readonly zUpdateModVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray.optional(),
         modVersion: z.string().refine(valid, { message: `Invalid SemVer` }).optional(),
-        dependencies: ZodDBIDArray.optional(),
+        dependencies: z.array(z.object({
+            parentId: ZodDBID,
+            sv: z.string().refine(valid, { message: `Invalid SemVer` }),
+        })).optional(),
         platform: ZodPlatform.optional(),
     });
 

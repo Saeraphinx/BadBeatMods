@@ -222,7 +222,7 @@ export class UpdateModRoutes {
             }
 
             if (reqBody.data.dependencies) {
-                if ((await Validator.validateIDArray(reqBody.data.dependencies, `modVersions`, true)) == false) {
+                if ((await Validator.validateIDArray(reqBody.data.dependencies.map(d => d.parentId), `mods`, true)) == false) {
                     return res.status(400).send({ message: `Invalid dependencies.` });
                 }
             }
