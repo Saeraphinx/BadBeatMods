@@ -139,7 +139,7 @@ function init() {
         validate: {trustProxy: false},
     });
 
-    cdnRouter.use(cdnRateLimiter);
+    //cdnRouter.use(cdnRateLimiter);
 
     app.use(session(sessionConfigData));
     passport.use(`bearer`, new BearerStrategy(
@@ -298,7 +298,7 @@ function init() {
         }));
     }
 
-    new CDNRoutes(cdnRouter);
+    new CDNRoutes(cdnRouter, cdnRateLimiter);
 
     app.use(Config.server.apiRoute, apiRouter);
     app.use(Config.server.cdnRoute, cdnRouter);

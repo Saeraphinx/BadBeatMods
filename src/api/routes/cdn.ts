@@ -4,17 +4,20 @@ import path from 'path';
 import { Config } from '../../shared/Config.ts';
 import { DatabaseHelper } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
+import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
 
 export class CDNRoutes {
     private router: Router;
+    private ratelimiter: RateLimitRequestHandler;
 
-    constructor(router: Router) {
+    constructor(router: Router, ratelimiter: RateLimitRequestHandler) {
         this.router = router;
+        this.ratelimiter = ratelimiter;
         this.loadRoutes();
     }
 
     private async loadRoutes() {
-        this.router.use(`/icon`, express.static(path.resolve(Config.storage.iconsDir), {
+        this.router.use(`/icon`, this.ratelimiter, express.static(path.resolve(Config.storage.iconsDir), {
             extensions: [`png`],
             dotfiles: `ignore`,
             immutable: true,
@@ -23,7 +26,7 @@ export class CDNRoutes {
             fallthrough: true,
         }));
         
-        this.router.use(`/mod`, express.static(path.resolve(Config.storage.modsDir), {
+        this.router.use(`/mod`, this.ratelimiter, express.static(path.resolve(Config.storage.modsDir), {
             extensions: [`zip`],
             dotfiles: `ignore`,
             immutable: true,
@@ -31,6 +34,9 @@ export class CDNRoutes {
             maxAge: 1000 * 60 * 60 * 24 * 7,
             setHeaders: (res, file) => {
                 res.set(`Content-Type`, `application/zip`);
+                if (res.req.headers[`cf-worker`]) {
+                    return;
+                }
                 let hash = path.basename(file).replace(path.extname(file), ``);
                 let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
                 if (modVersion) {
@@ -50,14 +56,19 @@ export class CDNRoutes {
             fallthrough: true,
         }));
 
-        this.router.get(`/inc/mod/:hash`, async (req, res) => {
+        this.router.get(`/inc/mod/:hash`, rateLimit({
+            windowMs: 1000 * 30,
+            max: 200,
+            statusCode: 429,
+            message: {message: `Too many requests`}
+        }), async (req, res) => {
             // #swagger.ignore = true
             if (!Config.server.cfwSecret || Config.server.cfwSecret === ``) {
                 return res.status(400).json({
                     message: `Endpoint not available`,
                 });
             }
-            if (!req.headers[`CF-Worker`]) {
+            if (!req.headers[`cf-worker`]) {
                 return res.status(403).json({
                     message: `Forbidden request`,
                 });
@@ -73,7 +84,7 @@ export class CDNRoutes {
             if (modVersion) {
                 let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
                 if (mod) {
-                    fileName = `${mod.name} v${modVersion.modVersion}.zip"`;
+                    fileName = `${mod.name} v${modVersion.modVersion}.zip`;
                 }
                 modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
                     Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
