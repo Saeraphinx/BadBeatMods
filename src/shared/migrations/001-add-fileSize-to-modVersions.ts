@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import { Migration } from "../Database.ts";
+import { query } from "express";
 
 /*
     Adding fileSize column to modVersions table.
@@ -8,7 +9,8 @@ import { Migration } from "../Database.ts";
 */
 
 export const up: Migration = async ({ context: sequelize }) => {
-    await sequelize.addColumn(`modVersions`, `fileSize`, {
+    let query = sequelize.getQueryInterface();
+    await query.addColumn(`modVersions`, `fileSize`, {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0
@@ -16,5 +18,6 @@ export const up: Migration = async ({ context: sequelize }) => {
 };
 
 export const down: Migration = async ({ context: sequelize }) => {
-    await sequelize.removeColumn(`modVersions`, `fileSize`);
+    let query = sequelize.getQueryInterface();
+    await query.removeColumn(`modVersions`, `fileSize`);
 };

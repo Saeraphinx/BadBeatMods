@@ -38,7 +38,7 @@ export class DatabaseManager {
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
     public serverAdmin: User;
-    public umzug: Umzug<QueryInterface>;
+    public umzug: Umzug<Sequelize>;
 
     constructor() {
         Logger.log(`Loading DatabaseManager...`);
@@ -65,7 +65,7 @@ export class DatabaseManager {
                 glob: `./build/shared/migrations/*.js`, // have to use the built versions because the source is not present in the final build
             },
             storage: new SequelizeStorage({sequelize: this.sequelize}),
-            context: this.sequelize.getQueryInterface(),
+            context: this.sequelize,
             logger: Logger
         });
     }
