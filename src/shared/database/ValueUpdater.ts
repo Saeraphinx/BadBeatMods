@@ -79,11 +79,11 @@ function translateUserRole(oldRoleName: string): UserRoles[] {
 Yes. I'm aware this isn't the best solution, but I can't think of a better one and I think I can live with this for the time being.
 Maybe a different solution will come to mind later, but for now, this should work w/o issue.
 */
-export async function updateDependencies(modVersion: ModVersion, mvdb: ModelStatic<ModVersion>) {
+export async function updateDependencies(modVersion: ModVersion, mvdb: ModVersion[]) {
     if (modVersion.dependencies && modVersion.dependencies.length > 0 && modVersion.dependencies.every((dep) => typeof dep == `number`)) {
         let newDepVer:Dependency[] = [];
         for (let dep of modVersion.dependencies) {
-            let mv = await mvdb.findByPk(dep);
+            let mv = mvdb.find(d => d.id == dep);
             if (mv) {
                 newDepVer.push({parentId: mv.modId, sv: `^${mv.modVersion}`});
             } else {

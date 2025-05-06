@@ -84,6 +84,7 @@ export class DatabaseManager {
             await this.migrate();
         }
         this.loadTables();
+        let helper = new DatabaseHelper(this);
 
         if (Config.database.dialect === `postgres`) {
             if (Config.database.alter === true) {
@@ -95,7 +96,7 @@ export class DatabaseManager {
             alter: Config.database.alter,
         }).then(async () => {
             Logger.log(`DatabaseManager Loaded.`);
-            new DatabaseHelper(this, false);
+            helper.init(false);
 
             await DatabaseHelper.refreshAllCaches().then(() => {
                 Logger.log(`DatabaseHelper Loaded.`);
@@ -678,7 +679,7 @@ export class DatabaseManager {
             let modVersions = await this.ModVersions.findAll();
             let promises = [];
             for (let modVersion of modVersions) {
-                promises.push(updateDependencies(modVersion, this.ModVersions));
+                promises.push(updateDependencies(modVersion, modVersions));
             }
             await Promise.all(promises);
         });
