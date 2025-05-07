@@ -2,7 +2,7 @@ import path from "path";
 import { exit } from "process";
 import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
 import { Logger } from "./Logger.ts";
-import { SemVer } from "semver";
+import { SemVer, valid, validRange } from "semver";
 import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
 import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
@@ -769,6 +769,7 @@ export class DatabaseManager {
                 //dedupe dependencies
                 modVersion.dependencies = [...new Set(modVersion.dependencies)];
                 let parentIds = modVersion.dependencies.map((dep) => dep.parentId);
+                let versions = modVersion.dependencies.map((dep) => dep.sv);
                 if ([...new Set(parentIds)].length != modVersion.dependencies.length) {
                     throw new Error(`ModVersion cannot have duplicate dependencies.`);
                 }
@@ -778,6 +779,9 @@ export class DatabaseManager {
                 }
                 if (parentMods.length != parentIds.length) {
                     throw new Error(`Invalid or duplicate parent mod(s) found.`);
+                }
+                if (versions.every(v => validRange(v) == null)) {
+                    throw new Error(`Invalid SemVer version(s) found.`);
                 }
             }
 

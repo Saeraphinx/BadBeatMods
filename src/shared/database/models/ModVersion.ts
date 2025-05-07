@@ -294,20 +294,11 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
 
         return dependencies;
     }
-    // this function is for when a mod supports a newer version but the dependancy does not. (uses ^x.x.x for comparison)
-    public static async isValidDependancySucessor(originalVersion:ModVersion, newVersion:ModVersion, forVersion: number): Promise<boolean> {
-        let newGameVersions = await newVersion.getSupportedGameVersions();
 
-        if (!newGameVersions.find((version) => version.id == forVersion)) {
-            return false;
-        }
-
-        return satisfies(newVersion.modVersion, `^${originalVersion.modVersion.raw}`);
-    }
-
-    public async checkDependencies(gameVersionId: number, statusesToSearchFor: Status[]) { //: Promise<DependencyCheckResults[]> {
+    //this method should check to see if all dependencies are satisfied for a given game version id and status.
+    /*public async checkDependencies(gameVersionId: number, statusesToSearchFor: Status[]) { //: Promise<DependencyCheckResults[]> {
         return null; // TODO: implement this function
-    }
+    }*/
 
     public toRawAPIResponse() {
         return {
