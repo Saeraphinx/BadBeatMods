@@ -18,11 +18,17 @@ describe(`Database Initialization`, () => {
 
     test(`should load models`, async () => {
         expect(db.Users).toBeDefined();
-        expect(db.ModVersions).toBeDefined();
-        expect(db.Mods).toBeDefined();
+        expect(db.Users.getTableName()).toBe(`users`);
+        expect(db.Versions).toBeDefined();
+        expect(db.Versions.getTableName()).toBe(`modVersions`);
+        expect(db.Projects).toBeDefined();
+        expect(db.Projects.getTableName()).toBe(`mods`);
         expect(db.GameVersions).toBeDefined();
+        expect(db.GameVersions.getTableName()).toBe(`gameVersions`);
         expect(db.EditApprovalQueue).toBeDefined();
+        expect(db.EditApprovalQueue.getTableName()).toBe(`editApprovalQueues`);
         expect(db.MOTDs).toBeDefined();
+        expect(db.MOTDs.getTableName()).toBe(`motds`);
     });
 
     test(`should have a server admin user`, async () => {

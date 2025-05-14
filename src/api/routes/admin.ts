@@ -28,7 +28,7 @@ export class AdminRoutes {
                 return;
             }
 
-            let versions = await DatabaseHelper.database.ModVersions.findAll();
+            let versions = await DatabaseHelper.database.Versions.findAll();
             let errors = [];
 
             let allZips = fs.readdirSync(path.resolve(Config.storage.modsDir), { withFileTypes: true }).filter(dirent => dirent.isFile() && dirent.name.endsWith(`.zip`));
@@ -57,7 +57,7 @@ export class AdminRoutes {
                 return;
             }
 
-            let mods = await DatabaseHelper.database.Mods.findAll();
+            let mods = await DatabaseHelper.database.Projects.findAll();
             let errors = [];
 
             let allIcons = fs.readdirSync(path.resolve(Config.storage.iconsDir), { withFileTypes: true }).filter(dirent => dirent.isFile()).map(dirent => dirent.name);
@@ -143,11 +143,11 @@ export class AdminRoutes {
                     for (let dependancyId of mod.latest.dependencies) {
                         if (!mods.mods.find((m: any) => m.latest.id === dependancyId)) {
                             let versionString = (mod.latest.supportedGameVersions as object[]).flatMap((gV:any) => `${gV.gameName} ${gV.version}`).join(`, `);
-                            let dependancy = DatabaseHelper.cache.modVersions.find((mV: any) => mV.id === dependancyId);
+                            let dependancy = DatabaseHelper.cache.versions.find((mV: any) => mV.id === dependancyId);
                             if (!dependancy) {
                                 return res.status(404).send({ message: `Database ID for modVersions not found.`, dependancyId });
                             }
-                            let dependancyMod = DatabaseHelper.cache.mods.find((m: any) => m.id === dependancy.modId);
+                            let dependancyMod = DatabaseHelper.cache.projects.find((m: any) => m.id === dependancy.projectId);
                             if (!dependancyMod) {
                                 return res.status(404).send({ message: `Database ID for mods not found.`, dependancyId });
                             }
@@ -192,7 +192,7 @@ export class AdminRoutes {
                 return;
             }
 
-            const modVersions = await DatabaseHelper.database.ModVersions.findAll();
+            const modVersions = await DatabaseHelper.database.Versions.findAll();
             const gameVersions = await DatabaseHelper.database.GameVersions.findAll();
 
             res.status(200).send({ message: `Sorting ${modVersions.length} mod versions. Edits will not be created.` });
@@ -236,7 +236,7 @@ export class AdminRoutes {
             }
 
             let updateCount = 0;
-            const versions = await DatabaseHelper.database.ModVersions.findAll({where: { fileSize: 0 }});
+            const versions = await DatabaseHelper.database.Versions.findAll({where: { fileSize: 0 }});
             for (let version of versions) {
                 let filePath = path.resolve(Config.storage.modsDir, `${version.zipHash}.zip`);
                 if (fs.existsSync(filePath)) {
@@ -570,12 +570,12 @@ export class AdminRoutes {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
-            let modVersion = await DatabaseHelper.database.ModVersions.findByPk(modVersionId.data);
+            let modVersion = await DatabaseHelper.database.Versions.findByPk(modVersionId.data);
             if (!modVersion) {
                 return res.status(404).send({ message: `Version not found.` });
             }
 
-            let originalMod = await DatabaseHelper.database.Mods.findByPk(modVersion.modId);
+            let originalMod = await DatabaseHelper.database.Projects.findByPk(modVersion.projectId);
             if (!originalMod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -585,7 +585,7 @@ export class AdminRoutes {
                 return;
             }
 
-            let newMod = await DatabaseHelper.database.Mods.findByPk(newModId.data);
+            let newMod = await DatabaseHelper.database.Projects.findByPk(newModId.data);
             if (!newMod) {
                 return res.status(404).send({ message: `New mod not found.` });
             }
@@ -594,7 +594,7 @@ export class AdminRoutes {
                 return res.status(400).send({ message: `Mods must be for the same game.` });
             }
 
-            modVersion.modId = newMod.id;
+            modVersion.projectId = newMod.id;
             await modVersion.save().then(() => {
                 DatabaseHelper.refreshCache(`modVersions`);
                 sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);

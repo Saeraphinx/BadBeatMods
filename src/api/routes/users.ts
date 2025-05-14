@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database.ts';
+import { DatabaseHelper, GameVersion, ProjectAPIPublicResponse, Platform, Status, User } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 
@@ -75,7 +75,7 @@ export class UserRoutes {
 
             let user = DatabaseHelper.cache.users.find((u) => u.id === id.data);
             if (user) {
-                let mods: {mod: ModAPIPublicResponse, latest: any }[] = [];
+                let mods: {mod: ProjectAPIPublicResponse, latest: any }[] = [];
                 if (status.data !== Status.Verified && status.data !== Status.Unverified) {
                     session = await validateSession(req, res, false, null, true);
                     if (!session.user) {
@@ -83,7 +83,7 @@ export class UserRoutes {
                     }
                 }
 
-                for (let mod of DatabaseHelper.cache.mods) {
+                for (let mod of DatabaseHelper.cache.projects) {
                     if (mod.status !== status.data) {
                         continue;
                     }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.ts";
+import { Categories, DatabaseHelper, GameVersion, Version, Platform, Status, SupportedGames, User, Project, PostType, UserRoles, EditQueue } from "./Database.ts";
 import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
 
@@ -169,13 +169,13 @@ export class Validator {
             return false;
         }
 
-        let records: Mod[]|ModVersion[]|User[]|GameVersion[]|EditQueue[] = [];
+        let records: Project[]|Version[]|User[]|GameVersion[]|EditQueue[] = [];
         switch (tableName) {
             case `mods`:
-                records = await DatabaseHelper.database.Mods.findAll({ where: { id: ids } });
+                records = await DatabaseHelper.database.Projects.findAll({ where: { id: ids } });
                 break;
             case `modVersions`:
-                records = await DatabaseHelper.database.ModVersions.findAll({ where: { id: ids } });
+                records = await DatabaseHelper.database.Versions.findAll({ where: { id: ids } });
                 break;
             case `users`:
                 records = await DatabaseHelper.database.Users.findAll({ where: { id: ids } });

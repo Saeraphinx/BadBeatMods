@@ -2,8 +2,8 @@ import { Logger } from "../Logger.ts";
 import { DatabaseManager, User } from "../Database.ts";
 import { EditQueue } from "./models/EditQueue.ts";
 import { GameVersion } from "./models/GameVersion.ts";
-import { Mod } from "./models/Mod.ts";
-import { ModVersion } from "./models/ModVersion.ts";
+import { Project } from "./models/Mod.ts";
+import { Version } from "./models/ModVersion.ts";
 import { MOTD } from "./models/MOTD.ts";
 
 // #region Enums & Types
@@ -33,7 +33,7 @@ export type GameVersionAPIPublicResponse = {
     createdAt?: Date;
     updatedAt?: Date;
 };
-export type ModAPIPublicResponse = {
+export type ProjectAPIPublicResponse = {
     id: number;
     name: string;
     summary: string;
@@ -50,9 +50,9 @@ export type ModAPIPublicResponse = {
     createdAt: Date;
     updatedAt: Date;
 };
-export type ModVersionAPIPublicResponse = {
+export type VersionAPIPublicResponse = {
     id: number;
-    modId: number;
+    projectId: number;
     modVersion: string; // semver.raw
     author: UserAPIPublicResponse;
     platform: Platform;
@@ -163,28 +163,28 @@ export class DatabaseHelper {
     public static database: DatabaseManager;
     public static cache: {
         gameVersions: GameVersion[],
-        modVersions: ModVersion[],
-        mods: Mod[],
+        versions: Version[],
+        projects: Project[],
         users: User[],
         editApprovalQueue: EditQueue[],
         motd: MOTD[],
     } = {
             gameVersions: [],
-            modVersions: [],
-            mods: [],
+            versions: [],
+            projects: [],
             users: [],
             editApprovalQueue: [],
             motd: [],
         };
     public static mapCache: {
         gameVersions: Map<number, GameVersion>,
-        mods: Map<number, Mod>,
-        modVersions: Map<number, ModVersion>,
+        projects: Map<number, Project>,
+        versions: Map<number, Version>,
         users: Map<number, User>,
     } = {
             gameVersions: new Map(),
-            mods: new Map(),
-            modVersions: new Map(),
+            projects: new Map(),
+            versions: new Map(),
             users: new Map(),
         };
 
@@ -207,14 +207,14 @@ export class DatabaseHelper {
     public static async refreshAllCaches() {
         Logger.debug(`Refreshing all caches`);
         DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
-        DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-        DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
+        DatabaseHelper.cache.versions = await DatabaseHelper.database.Versions.findAll();
+        DatabaseHelper.cache.projects = await DatabaseHelper.database.Projects.findAll();
         DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
         DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
-        DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
-        DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
+        DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((mod) => [mod.id, mod]));
+        DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((modVersion) => [modVersion.id, modVersion]));
         DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
         Logger.debug(`Finished refreshing all caches`);
     }
@@ -227,12 +227,12 @@ export class DatabaseHelper {
                 DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
                 break;
             case `modVersions`:
-                DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-                DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
+                DatabaseHelper.cache.versions = await DatabaseHelper.database.Versions.findAll();
+                DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((modVersion) => [modVersion.id, modVersion]));
                 break;
             case `mods`:
-                DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
-                DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
+                DatabaseHelper.cache.projects = await DatabaseHelper.database.Projects.findAll();
+                DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((mod) => [mod.id, mod]));
                 break;
             case `users`:
                 DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
@@ -246,7 +246,7 @@ export class DatabaseHelper {
     }
 
     public static getGameNameFromModId(id: number): SupportedGames | null {
-        let mod = DatabaseHelper.mapCache.mods.get(id);
+        let mod = DatabaseHelper.mapCache.projects.get(id);
         if (!mod) {
             return null;
         }
@@ -254,11 +254,11 @@ export class DatabaseHelper {
     }
 
     public static getGameNameFromModVersionId(id: number): SupportedGames | null {
-        let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
+        let modVersion = DatabaseHelper.mapCache.versions.get(id);
         if (!modVersion) {
             return null;
         }
-        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+        let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
         if (!mod) {
             return null;
         }

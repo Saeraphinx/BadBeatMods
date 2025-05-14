@@ -53,7 +53,7 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `No changes provided.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -125,7 +125,7 @@ export class UpdateModRoutes {
                 return;
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -207,12 +207,12 @@ export class UpdateModRoutes {
                 return res.status(400).send({ message: `No changes provided.` });
             }
 
-            let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
+            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -270,7 +270,7 @@ export class UpdateModRoutes {
             }
 
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -307,12 +307,12 @@ export class UpdateModRoutes {
             }
 
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
+            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -347,7 +347,7 @@ export class UpdateModRoutes {
                 return;
             }
 
-            let usersMods = await DatabaseHelper.cache.mods.filter((mod) => {
+            let usersMods = await DatabaseHelper.cache.projects.filter((mod) => {
                 return mod.authorIds.includes(session.user.id);
             });
 
@@ -355,11 +355,11 @@ export class UpdateModRoutes {
                 if (edit.isMod()) {
                     return edit.submitterId == session.user.id || usersMods.some((mod) => edit.objectId == mod.id);
                 } else {
-                    let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+                    let modVersion = DatabaseHelper.mapCache.versions.get(edit.objectId);
                     if (!modVersion) {
                         return false;
                     }
-                    return edit.submitterId == session.user.id || usersMods.some((mod) => mod.id == modVersion.modId);
+                    return edit.submitterId == session.user.id || usersMods.some((mod) => mod.id == modVersion.projectId);
                 }
             });
 
@@ -389,7 +389,7 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Edit not found.` });
             }
 
-            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.projects.get(edit.objectId) : DatabaseHelper.mapCache.versions.get(edit.objectId);
             if (!parentObj) {
                 return res.status(404).send({ message: `Parent object not found.` });
             }
@@ -426,7 +426,7 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Edit not found.` });
             }
 
-            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.projects.get(edit.objectId) : DatabaseHelper.mapCache.versions.get(edit.objectId);
             if (!parentObj) {
                 return res.status(404).send({ message: `Parent object not found.` });
             }

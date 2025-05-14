@@ -1,12 +1,12 @@
 import { SemVer } from "semver";
-import { Categories, ContentHash, GameVersionInfer, ModInfer, ModVersionInfer, Platform, Status, SupportedGames, UserInfer, UserRoles } from "../src/shared/Database";
+import { Categories, ContentHash, GameVersionInfer, Platform, ProjectInfer, Status, SupportedGames, UserInfer, UserRoles, VersionInfer } from "../src/shared/Database";
 import {de, faker} from "@faker-js/faker";
 import * as fs from 'fs';
 
 let fakeGameVersionData: GameVersionInfer[] = [];
 let fakeUserData: UserInfer[] = [];
-let fakeProjectData: ModInfer[] = [];
-let fakeVersionData: ModVersionInfer[] = [];
+let fakeProjectData: ProjectInfer[] = [];
+let fakeVersionData: VersionInfer[] = [];
 let gvid = 1;
 for (let game of getEnumValues(SupportedGames)) {
     for (let i = 1; i < 10; i++) {
@@ -80,7 +80,7 @@ for (let project of fakeProjectData) {
 
         fakeVersionData.push({
             id: j++,
-            modId: project.id,
+            projectId: project.id,
             modVersion: new SemVer(`1.0.0`),
             platform: platform as Platform,
             status: project.status,

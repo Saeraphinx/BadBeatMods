@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
@@ -63,12 +63,12 @@ export class GetModRoutes {
                     break;
             }
                 
-            let mods: {mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse | null}[] = [];
+            let mods: {mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse | null}[] = [];
             if (gameVersion === null) {
-                let modDb = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
+                let modDb = DatabaseHelper.cache.projects.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
 
                 for (let mod of modDb) {
-                    let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id && statuses.includes(modVersion.status));
+                    let modVersions = DatabaseHelper.cache.versions.filter((modVersion) => modVersion.projectId === mod.id && statuses.includes(modVersion.status));
 
                     modVersions = modVersions.sort((a, b) => {
                         return b.modVersion.compare(a.modVersion);
@@ -142,7 +142,7 @@ export class GetModRoutes {
                 raw = false;
             }
 
-            let mod = DatabaseHelper.mapCache.mods.get(modId.data);
+            let mod = DatabaseHelper.mapCache.projects.get(modId.data);
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -152,7 +152,7 @@ export class GetModRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id);
+            let modVersions = DatabaseHelper.cache.versions.filter((modVersion) => modVersion.projectId === mod.id);
             let returnVal: any[] = [];
 
             for (let version of (modVersions)) {
@@ -205,12 +205,12 @@ export class GetModRoutes {
                 return res.status(400).send({ message: `Invalid mod version id.` });
             }
 
-            let modVersion = DatabaseHelper.mapCache.modVersions.get(modVersionId.data);
+            let modVersion = DatabaseHelper.mapCache.versions.get(modVersionId.data);
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+            let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
             
             if (!await modVersion.isAllowedToView(session.user, mod)) {
                 return res.status(404).send({ message: `Mod version not found.` });
@@ -245,16 +245,16 @@ export class GetModRoutes {
 
             let dedupedIds = Array.from(new Set(modVersionIds.data));
 
-            let retVal: {mod: ModAPIPublicResponse, modVersion: any}[] = [];
+            let retVal: {mod: ProjectAPIPublicResponse, modVersion: any}[] = [];
             for (const id of dedupedIds) {
-                let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
+                let modVersion = DatabaseHelper.mapCache.versions.get(id);
                 if (!modVersion) {
                     return res.status(404).send({ message: `Mod version not found.` });
                 }
 
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                 if (!mod) {
-                    return res.status(404).send({ message: `Mod ID ${modVersion.modId} not found.` });
+                    return res.status(404).send({ message: `Mod ID ${modVersion.projectId} not found.` });
                 }
                 
                 if (!await modVersion.isAllowedToView(session.user, mod)) {
@@ -294,7 +294,7 @@ export class GetModRoutes {
             let retVal: Promise<any>[] = [];
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
-            for (const version of DatabaseHelper.cache.modVersions) {
+            for (const version of DatabaseHelper.cache.versions) {
                 if (status !== undefined && status !== version.status) {
                     continue;
                 }
@@ -345,7 +345,7 @@ export class GetModRoutes {
             let retVal: Map<string, any[]> = new Map();
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
-            for (const version of DatabaseHelper.cache.modVersions) {
+            for (const version of DatabaseHelper.cache.versions) {
                 if (status !== undefined && status !== version.status) {
                     continue;
                 }

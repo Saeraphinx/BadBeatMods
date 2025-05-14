@@ -38,9 +38,9 @@ export class CDNRoutes {
                     return;
                 }
                 let hash = path.basename(file).replace(path.extname(file), ``);
-                let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
+                let modVersion = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
                 if (modVersion) {
-                    let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                    let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                     if (mod) {
                         res.set(`Content-Disposition`, `attachment; filename="${mod.name} v${modVersion.modVersion}.zip"`);
                     } else {
@@ -80,9 +80,9 @@ export class CDNRoutes {
             }
             let hash = req.params.hash;
             let fileName = `${hash}.zip`;
-            let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
+            let modVersion = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
             if (modVersion) {
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                 if (mod) {
                     fileName = `${mod.name} v${modVersion.modVersion}.zip`;
                 }

@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
 import { Server } from 'http';
-import { Categories, DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Mod, ModAPIPublicResponse, ModInfer, ModVersion, ModVersionAPIPublicResponse, ModVersionInfer, Platform, Status, SupportedGames, User, UserInfer, UserRoles } from '../../src/shared/Database.ts';
+import { Categories, DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
 const api = supertest(`http://localhost:8486/api`);
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -35,7 +35,7 @@ for (let user of fakeData.users) {
     });
 }
 
-let projects: ModInfer[] = [];
+let projects: ProjectInfer[] = [];
 for (let project of fakeData.projects) {
     projects.push({
         ...project,
@@ -47,7 +47,7 @@ for (let project of fakeData.projects) {
     });
 }
 
-let versions: ModVersionInfer[] = [];
+let versions: VersionInfer[] = [];
 for (let version of fakeData.versions) {
     versions.push({
         ...version,
@@ -63,16 +63,16 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?:string) => {}),
-        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
+        sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendModVersionLog: vi.fn(async (modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
+        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
     };
 });
 // #endregion
 
 describe.sequential(`API`, async () => {
     let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
-    let defaultModData: Omit<ModInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultModData: Omit<ProjectInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         // Do not mock these files for a full server run.
@@ -128,17 +128,17 @@ describe.sequential(`API`, async () => {
             const actual = await importOriginal();
             return {
                 ...actual,
-                sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType) => {}),
-                sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod) => {}),
-                sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
+                sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType) => {}),
+                sendModVersionLog: vi.fn(async (modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project) => {}),
+                sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
             };
         });
 
         process.env.NODE_ENV = `test`;
         server = await startServer();
         await server.database.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
-        await server.database.Mods.bulkCreate(projects, { individualHooks: true });
-        await server.database.ModVersions.bulkCreate(versions, { individualHooks: true });
+        await server.database.Projects.bulkCreate(projects, { individualHooks: true });
+        await server.database.Versions.bulkCreate(versions, { individualHooks: true });
         await DatabaseHelper.refreshAllCaches();
         //console.log(JSON.stringify(server.database.serverAdmin));
         defaultModData = {
@@ -211,7 +211,7 @@ describe.sequential(`API`, async () => {
             expect(response.body.mods.length).toBeGreaterThan(0);
             let mods = response.body.mods;
             for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
+                let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
                 expect(currentMod).toHaveProperty(`mod`);
                 expect(currentMod).toHaveProperty(`latest`);
                 let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
@@ -229,7 +229,7 @@ describe.sequential(`API`, async () => {
             expect(response.body.mods.length).toBeGreaterThan(0);
             let mods = response.body.mods;
             for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
+                let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
                 expect(currentMod).toHaveProperty(`mod`);
                 expect(currentMod).toHaveProperty(`latest`);
                 let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
@@ -264,7 +264,7 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/hashlookup - contentHash`, async () => {
-            let modVersion = DatabaseHelper.cache.modVersions[0];
+            let modVersion = DatabaseHelper.cache.versions[0];
             let contentHash = modVersion.contentHashes[0].hash;
             const response = await api.get(`/hashlookup?hash=${contentHash}`);
             expect(response.status).toBe(200);
@@ -276,11 +276,11 @@ describe.sequential(`API`, async () => {
             expect(apimv).toHaveProperty(`id`);
             expect(apimv).toHaveProperty(`modId`);
             expect(apimv.id).toBe(modVersion.id);
-            expect(apimv.modId).toBe(modVersion.modId);
+            expect(apimv.modId).toBe(modVersion.projectId);
         });
 
         test(`/hashlookup - ziphash`, async () => {
-            let modVersion = DatabaseHelper.cache.modVersions[0];
+            let modVersion = DatabaseHelper.cache.versions[0];
             let zipHash = modVersion.zipHash;
             const response = await api.get(`/hashlookup?hash=${zipHash}`);
             expect(response.status).toBe(200);
@@ -292,12 +292,12 @@ describe.sequential(`API`, async () => {
             expect(apimv).toHaveProperty(`id`);
             expect(apimv).toHaveProperty(`modId`);
             expect(apimv.id).toBe(modVersion.id);
-            expect(apimv.modId).toBe(modVersion.modId);
+            expect(apimv.modId).toBe(modVersion.projectId);
         });
 
         test(`/multi/hashlookup - contentHash`, async () => {
-            let contentHash1 = DatabaseHelper.cache.modVersions[0].contentHashes[0].hash;
-            let contentHash2 = DatabaseHelper.cache.modVersions[1].contentHashes[0].hash;
+            let contentHash1 = DatabaseHelper.cache.versions[0].contentHashes[0].hash;
+            let contentHash2 = DatabaseHelper.cache.versions[1].contentHashes[0].hash;
             const response = await api.get(`/multi/hashlookup?hash=${contentHash1}&hash=${contentHash2}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
@@ -309,8 +309,8 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/multi/hashlookup - zipHash`, async () => {
-            let zipHash1 = DatabaseHelper.cache.modVersions[0].zipHash;
-            let zipHash2 = DatabaseHelper.cache.modVersions[1].zipHash;
+            let zipHash1 = DatabaseHelper.cache.versions[0].zipHash;
+            let zipHash2 = DatabaseHelper.cache.versions[1].zipHash;
             const response = await api.get(`/multi/hashlookup?hash=${zipHash1}&hash=${zipHash2}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
@@ -329,7 +329,7 @@ describe.sequential(`API`, async () => {
 
         test(`/mods/:modId - priavte as author`, async () => {
             shouldAuthenticateWithRole = UserRoles.LargeFiles; // this removes admin role
-            const newMod = await server.database.Mods.create({
+            const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [1],
@@ -351,7 +351,7 @@ describe.sequential(`API`, async () => {
 
         test(`/mods/:modId - priavte as non-author`, async () => {
             shouldAuthenticateWithRole = UserRoles.LargeFiles; // this removes admin role
-            const newMod = await server.database.Mods.create({
+            const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [2],
@@ -364,7 +364,7 @@ describe.sequential(`API`, async () => {
 
         test(`/mods/:modId - private as approver`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const newMod = await server.database.Mods.create({
+            const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [2],
@@ -382,24 +382,24 @@ describe.sequential(`API`, async () => {
     });
 
     describe.sequential(`Approval`, () => {
-        let defaultMod: Mod;
-        let defaultVersion: ModVersion;
+        let defaultMod: Project;
+        let defaultVersion: Version;
         let modEdit: EditQueue;
         let versionEdit: EditQueue;
         let gnToCheck = gameVersions[0].gameName;
         beforeAll(async () => {
-            defaultMod = await server.database.Mods.create({
+            defaultMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [1],
                 gameName: gameVersions[0].gameName, // surely this will be the same gamename
                 status: Status.Verified
             });
-            defaultVersion = await server.database.ModVersions.create({
+            defaultVersion = await server.database.Versions.create({
                 ...versions[0],
                 supportedGameVersionIds: [gameVersions[0].id],
                 id: undefined,
-                modId: defaultMod.id,
+                projectId: defaultMod.id,
                 zipHash: `123456789`,
                 status: Status.Verified,
             });
@@ -536,21 +536,21 @@ describe.sequential(`API`, async () => {
         });
 
         describe.sequential(`Mod Status Changes`, () => {
-            let testMod: Mod;
-            let testModVersion: ModVersion;
+            let testMod: Project;
+            let testModVersion: Version;
             beforeAll(async () => {
-                testMod = await server.database.Mods.create({
+                testMod = await server.database.Projects.create({
                     ...defaultModData,
                     name: stuff.fakeName,
                     authorIds: [1],
                     gameName: gameVersions[0].gameName, // surely this will be the same gamename
                     status: Status.Pending
                 });
-                testModVersion = await server.database.ModVersions.create({
+                testModVersion = await server.database.Versions.create({
                     ...versions[0],
                     supportedGameVersionIds: [gameVersions[0].id],
                     id: undefined,
-                    modId: testMod.id,
+                    projectId: testMod.id,
                     zipHash: `123456789`,
                     status: Status.Pending,
                 });
@@ -597,7 +597,7 @@ async function testGetMod(statuses:Status[], statusString:string) {
     expect(response.body.mods).toBeInstanceOf(Array);
     let mods = response.body.mods;
     for (let cmod of response.body.mods) {
-        let currentMod = cmod as { mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse };
+        let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
         expect(currentMod).toHaveProperty(`mod`);
         expect(currentMod).toHaveProperty(`latest`);
         let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
@@ -618,12 +618,12 @@ async function testGetMod(statuses:Status[], statusString:string) {
     }
 }
 
-function testStatusChange(testMod:Mod|ModVersion, fromStatus:Status, action:ApprovalAction, toStatus:Status, logAction:Function) {
+function testStatusChange(testMod:Project|Version, fromStatus:Status, action:ApprovalAction, toStatus:Status, logAction:Function) {
     return async () => {
         shouldAuthenticateWithRole = UserRoles.Approver;
         testMod.status = fromStatus;
         await testMod.save();
-        let type = testMod instanceof Mod ? `mod` : `modversion`;
+        let type = testMod instanceof Project ? `project` : `version`;
         const response = await api.post(`/approval/${type}/${testMod.id}/approve`).send({
             action: action,
         });

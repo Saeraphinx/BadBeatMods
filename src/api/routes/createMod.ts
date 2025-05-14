@@ -83,7 +83,7 @@ export class CreateModRoutes {
                 }
             }
 
-            DatabaseHelper.database.Mods.create({
+            DatabaseHelper.database.Projects.create({
                 name: reqBody.data.name,
                 summary: reqBody.data.summary,
                 description: reqBody.data.description,
@@ -149,7 +149,7 @@ export class CreateModRoutes {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -213,8 +213,8 @@ export class CreateModRoutes {
                 file.mv(filePath);
             }
 
-            DatabaseHelper.database.ModVersions.create({
-                modId: modId.data,
+            DatabaseHelper.database.Versions.create({
+                projectId: modId.data,
                 authorId: session.user.id,
                 status: Status.Private,
                 supportedGameVersionIds: reqBody.data.supportedGameVersionIds,
