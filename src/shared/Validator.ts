@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.ts";
-import { valid } from "semver";
+import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
 
 //generic types that I use a lot
@@ -51,7 +51,10 @@ const ZodModVersion = z.object({
     modId: ZodDBID,
     supportedGameVersionIds: ZodDBIDArray,
     modVersion: z.string().refine(valid, { message: `Invalid SemVer` }),
-    dependencies: ZodDBIDArray,
+    dependencies: z.array(z.object({
+        parentId: ZodDBID,
+        sv: z.string().refine(validRange, { message: `Invalid SemVer` }),
+    })),
     platform: ZodPlatform,
     status: ZodStatus,
 });
@@ -107,7 +110,10 @@ export class Validator {
     public static readonly zUpdateModVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray.optional(),
         modVersion: z.string().refine(valid, { message: `Invalid SemVer` }).optional(),
-        dependencies: ZodDBIDArray.optional(),
+        dependencies: z.array(z.object({
+            parentId: ZodDBID,
+            sv: z.string().refine(validRange, { message: `Invalid SemVer` }),
+        })).optional(),
         platform: ZodPlatform.optional(),
     });
 

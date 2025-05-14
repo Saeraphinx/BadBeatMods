@@ -143,6 +143,11 @@ export enum Categories {
     Editor = `editor`,
     Other = `other`,
 }
+
+export interface Dependency {
+    parentId: number; // mod/project id
+    sv: string; // "^1.0.0"
+}
 // #endregion
 
 // yoink thankies bstoday & bns
@@ -154,6 +159,7 @@ function validateEnumValue(value: string | number, enumType: object): boolean {
 }
 // #region DatabaseHelper
 export class DatabaseHelper {
+    private static hasInitialized: boolean = false;
     public static database: DatabaseManager;
     public static cache: {
         gameVersions: GameVersion[],
@@ -182,12 +188,19 @@ export class DatabaseHelper {
             users: new Map(),
         };
 
-    constructor(database: DatabaseManager, loadCache = true) {
+    constructor(database: DatabaseManager) {
         DatabaseHelper.database = database;
-        if (loadCache) {
-            DatabaseHelper.refreshAllCaches();
+    }
+
+    public init(shouldLoadCache: boolean = true) {
+        if (DatabaseHelper.hasInitialized) {
+            Logger.warn(`DatabaseHelper has already been initialized. Skipping...`);
+            return;
         }
 
+        if (shouldLoadCache) {
+            DatabaseHelper.refreshAllCaches();
+        }
         setInterval(DatabaseHelper.refreshAllCaches, 1000 * 60 * 5);
     }
 

@@ -2,7 +2,7 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
 import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
 import { Mod } from "./Mod.ts";
@@ -19,7 +19,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     declare modVersion: SemVer;
     declare supportedGameVersionIds: number[];
     declare status: Status;
-    declare dependencies: number[]; // array of modVersion ids
+    declare dependencies: Dependency[];
     declare platform: Platform;
     declare zipHash: string;
     declare contentHashes: ContentHash[];
@@ -273,133 +273,32 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return gameVersions;
     }
 
-    public getRawDependencies() {
-        let deps = DatabaseHelper.cache.modVersions.filter((version) => this.dependencies.includes(version.id));
-        if (deps.length != this.dependencies.length) {
-            Logger.error(`Failed to find all dependencies for ${this.id}`);
-            return null;
-        } else {
-            return deps;
-        }
-    }
-
-    public async getLiveDependencies(gameVersionId: number, statusesToSearchFor: Status[]): Promise<ModVersion[] | null> {
+    public async getDependencyObjs(gameVersionId: number, statusesToSearchFor: Status[]): Promise<ModVersion[] | null> {
         let dependencies = [];
 
-        for (let dependencyId of this.dependencies) {
-            let dependency = DatabaseHelper.mapCache.modVersions.get(dependencyId);
-            if (!dependency) {
-                let dbDep = await DatabaseHelper.database.ModVersions.findByPk(dependencyId);
-                if (dbDep) {
-                    dependency = dbDep;
-                } else {
-                    Logger.error(`Failed to find dependency ${dependencyId} (Req by ${this.id})`);
-                    return null;
-                }
-            }
-
-            let parentMod = DatabaseHelper.mapCache.mods.get(dependency.modId);
+        for (let dep of this.dependencies) {
+            let parentMod = DatabaseHelper.mapCache.mods.get(dep.parentId);
             if (!parentMod) {
-                let dbMod = await DatabaseHelper.database.Mods.findByPk(dependency.modId);
-                if (dbMod) {
-                    parentMod = dbMod;
-                } else {
-                    Logger.error(`Failed to find parent mod ${dependency.modId} for dependency ${dependency.id} (Req by ${this.id})`);
-                    return null;
-                }
+                Logger.debugWarn(`Failed to find parent project ${dep.parentId} for dependency (Req by ${this.id})`);
+                return null;
             }
 
-            let latestVersion = await parentMod.getLatestVersion(gameVersionId, dependency.platform, statusesToSearchFor);
-            if (latestVersion) {
+            let latestVersion = await parentMod.getLatestVersion(gameVersionId, this.platform, statusesToSearchFor);
+            if (latestVersion && latestVersion.modVersion.compare(dep.sv) >= 1) {
                 dependencies.push(latestVersion);
             } else {
-                Logger.debugWarn(`Failed to find latest version for dependency ${dependency.id} (Req by ${this.id})`);
+                Logger.debugWarn(`Failed to find compatible version from ${this.id} (Req by ${this.id})`);
                 return null;
             }
         }
 
         return dependencies;
     }
-    // this function is for when a mod supports a newer version but the dependancy does not. (uses ^x.x.x for comparison)
-    public static async isValidDependancySucessor(originalVersion:ModVersion, newVersion:ModVersion, forVersion: number): Promise<boolean> {
-        let newGameVersions = await newVersion.getSupportedGameVersions();
 
-        if (!newGameVersions.find((version) => version.id == forVersion)) {
-            return false;
-        }
-
-        return satisfies(newVersion.modVersion, `^${originalVersion.modVersion.raw}`);
-    }
-
-    public async checkDependencies(gameVersionId: number, statusesToSearchFor: Status[]): Promise<DependencyCheckResults[]> {
-        let results: DependencyCheckResults[] = [];
-        let deps = this.dependencies.map((dependencyId) => {
-            return {id: dependencyId, depObj: DatabaseHelper.mapCache.modVersions.get(dependencyId)};
-        });
-        let updatedDeps = await this.getLiveDependencies(gameVersionId, statusesToSearchFor);
-        for (let dep of deps) {
-            // check if the dependency exists
-            if (dep.depObj == undefined) {
-                Logger.error(`Failed to find dependency ${dep.id} (Req by ${this.id})`);
-                results.push({
-                    modId: null,
-                    dependencyId: dep.id,
-                    newerDependencyId: null,
-                    isAvailable: false,
-                    reason: `Failed to find dependency ${dep.id}`,
-                });
-                continue;
-            }
-
-            // check if able to find updated dependencies
-            if (updatedDeps == null) {
-                Logger.error(`Failed to find dependencies for ${this.id}`);
-                results.push({
-                    modId: null,
-                    dependencyId: dep.id,
-                    newerDependencyId: null,
-                    isAvailable: false,
-                    reason: `Failed to resolve dependencies for ${this.id}`,
-                });
-                continue;
-            }
-
-            //
-            let updatedDep = updatedDeps.find((version) => version.modId == dep.depObj?.modId);
-            if (!updatedDep) {
-                Logger.warn(`Failed to find updated dependency ${dep.id} (Req by ${this.id})`);
-                results.push({
-                    modId: dep.depObj?.modId,
-                    dependencyId: dep.id,
-                    newerDependencyId: null,
-                    isAvailable: false,
-                    reason: `Failed to find updated dependency ${dep.id}`,
-                });
-                continue;
-            }
-
-            // check if the dependency is available
-            if (statusesToSearchFor.includes(updatedDep.status)) {
-                results.push({
-                    modId: dep.depObj?.modId,
-                    dependencyId: dep.id,
-                    newerDependencyId: updatedDep.id,
-                    isAvailable: true,
-                    reason: null,
-                });
-            } else {
-                results.push({
-                    modId: dep.depObj?.modId,
-                    dependencyId: dep.id,
-                    newerDependencyId: updatedDep.id,
-                    isAvailable: false,
-                    reason: `Dependency ${dep.id} is not available (status ${updatedDep.status} was not found in ${statusesToSearchFor.join(`, `)})`,
-                });
-            }
-        }
-
-        return results;
-    }
+    //this method should check to see if all dependencies are satisfied for a given game version id and status.
+    /*public async checkDependencies(gameVersionId: number, statusesToSearchFor: Status[]) { //: Promise<DependencyCheckResults[]> {
+        return null; // TODO: implement this function
+    }*/
 
     public toRawAPIResponse() {
         return {
@@ -424,13 +323,10 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     }
 
     public async toAPIResponse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<ModVersionAPIPublicResponse|null> {
-        let dependencies = await this.getLiveDependencies(gameVersionId, statusesToSearchFor);
+        let dependencies = await this.getDependencyObjs(gameVersionId, statusesToSearchFor);
         if (!dependencies) {
-            dependencies = this.getRawDependencies();
-            if (!dependencies) {
-                Logger.error(`Failed to find dependencies for ${this.id}`);
-                return null;
-            }
+            Logger.debugWarn(`Failed to find dependencies for ${this.id}`);
+            return null;
         }
 
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
@@ -464,12 +360,4 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             updatedAt: this.updatedAt,
         };
     }
-}
-
-export type DependencyCheckResults = {
-    modId: number|null;
-    dependencyId: number;
-    newerDependencyId: number|null;
-    isAvailable: boolean;
-    reason: string|null;
 }

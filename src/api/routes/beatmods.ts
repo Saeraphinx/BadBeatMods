@@ -203,7 +203,7 @@ export class BeatModsRoutes {
         let dependencies: (BeatModsMod | string)[] = [];
         let mVDeps: ModVersion[] = [];
         if (gameVersion) {
-            let intmVDeps = await modVersion.getLiveDependencies(gameVersion.id, [Status.Verified]);
+            let intmVDeps = await modVersion.getDependencyObjs(gameVersion.id, [Status.Verified]);
             if (!intmVDeps) {
                 return null;
             }

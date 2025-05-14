@@ -354,7 +354,7 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
     let author = await DatabaseHelper.database.Users.findOne({ where: { id: modVersion.authorId } });
     let gameVersions = await modVersion.getSupportedGameVersions();
     let dependancies: string[] = [];
-    let resolvedDependancies = await modVersion.getLiveDependencies(gameVersions[0].id, [Status.Verified, Status.Unverified]);
+    let resolvedDependancies = await modVersion.getDependencyObjs(gameVersions[0].id, [Status.Verified, Status.Unverified]);
 
     if (!author) {
         return Logger.error(`Author not found for mod version ${modVersion.id}`);

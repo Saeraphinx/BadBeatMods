@@ -2,7 +2,7 @@ import path from "path";
 import { exit } from "process";
 import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
 import { Logger } from "./Logger.ts";
-import { SemVer } from "semver";
+import { SemVer, valid, validRange } from "semver";
 import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
 import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
@@ -12,7 +12,7 @@ import { Mod } from "./database/models/Mod.ts";
 import { ModVersion } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
-import { updateRoles } from "./database/ValueUpdater.ts";
+import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -38,7 +38,7 @@ export class DatabaseManager {
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
     public serverAdmin: User;
-    public umzug: Umzug<QueryInterface>;
+    public umzug: Umzug<Sequelize>;
 
     constructor() {
         Logger.log(`Loading DatabaseManager...`);
@@ -65,7 +65,7 @@ export class DatabaseManager {
                 glob: `./build/shared/migrations/*.js`, // have to use the built versions because the source is not present in the final build
             },
             storage: new SequelizeStorage({sequelize: this.sequelize}),
-            context: this.sequelize.getQueryInterface(),
+            context: this.sequelize,
             logger: Logger
         });
     }
@@ -84,6 +84,7 @@ export class DatabaseManager {
             await this.migrate();
         }
         this.loadTables();
+        let helper = new DatabaseHelper(this);
 
         if (Config.database.dialect === `postgres`) {
             if (Config.database.alter === true) {
@@ -95,7 +96,7 @@ export class DatabaseManager {
             alter: Config.database.alter,
         }).then(async () => {
             Logger.log(`DatabaseManager Loaded.`);
-            new DatabaseHelper(this, false);
+            helper.init(false);
 
             await DatabaseHelper.refreshAllCaches().then(() => {
                 Logger.log(`DatabaseHelper Loaded.`);
@@ -674,6 +675,15 @@ export class DatabaseManager {
             await Promise.all(promises);
         });
 
+        this.ModVersions.afterSync(async () => {
+            let modVersions = await this.ModVersions.findAll();
+            let promises = [];
+            for (let modVersion of modVersions) {
+                promises.push(updateDependencies(modVersion, modVersions));
+            }
+            await Promise.all(promises);
+        });
+
 
         this.Mods.afterValidate(async (mod) => {
             await Mod.checkForExistingMod(mod.name).then((existingMod) => {
@@ -758,19 +768,20 @@ export class DatabaseManager {
             if (modVersion.dependencies.length > 0) {
                 //dedupe dependencies
                 modVersion.dependencies = [...new Set(modVersion.dependencies)];
-                let dependencies = await ModVersion.findAll({ where: { id: modVersion.dependencies } });
-                if (dependencies.length != modVersion.dependencies.length) {
-                    throw new Error(`Invalid dependencies found.`);
+                let parentIds = modVersion.dependencies.map((dep) => dep.parentId);
+                let versions = modVersion.dependencies.map((dep) => dep.sv);
+                if ([...new Set(parentIds)].length != modVersion.dependencies.length) {
+                    throw new Error(`ModVersion cannot have duplicate dependencies.`);
                 }
-
-                for (let dependency of dependencies) {
-                    if (dependency.modId == modVersion.modId) {
-                        throw new Error(`ModVersion cannot depend on itself.`);
-                    }
-
-                    /*if (!dependency.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds[0])) {
-                        throw new Error(`Dependent cannot depend on a ModVersion that does not support the earliest supported Game Version of the dependent.`); // see sorting above
-                    }*/
+                let parentMods = await Mod.findAll({ where: { id: parentIds } });
+                if (parentMods.length == 0) {
+                    throw new Error(`No valid parent mods found.`);
+                }
+                if (parentMods.length != parentIds.length) {
+                    throw new Error(`Invalid or duplicate parent mod(s) found.`);
+                }
+                if (versions.every(v => validRange(v) == null)) {
+                    throw new Error(`Invalid SemVer version(s) found.`);
                 }
             }
 

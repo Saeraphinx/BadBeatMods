@@ -8,7 +8,8 @@ import { Migration, Platform, SupportedGames } from "../Database.ts";
 */
 
 export const up: Migration = async ({ context: sequelize }) => {
-    await sequelize.createTable(`users`, {
+    let query = sequelize.getQueryInterface();
+    await query.createTable(`users`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -56,7 +57,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         deletedAt: DataTypes.DATE,
     });
 
-    await sequelize.createTable(`gameVersions`, {
+    await query.createTable(`gameVersions`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -83,7 +84,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         deletedAt: DataTypes.DATE,
     });
 
-    await sequelize.createTable(`mods`, {
+    await query.createTable(`mods`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -148,7 +149,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         deletedAt: DataTypes.DATE
     });
 
-    await sequelize.createTable(`modVersions`, {
+    await query.createTable(`modVersions`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -216,7 +217,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         deletedAt: DataTypes.DATE,
     });
 
-    await sequelize.createTable(`editApprovalQueues`, {
+    await query.createTable(`editApprovalQueues`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -255,7 +256,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         deletedAt: DataTypes.DATE,
     });
 
-    await sequelize.createTable(`motds`, {
+    await query.createTable(`motds`, {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -310,10 +311,11 @@ export const up: Migration = async ({ context: sequelize }) => {
 };
 
 export const down: Migration = async ({ context: sequelize }) => {
-    await sequelize.dropTable(`users`);
-    await sequelize.dropTable(`gameVersions`);
-    await sequelize.dropTable(`mods`);
-    await sequelize.dropTable(`modVersions`);
-    await sequelize.dropTable(`editApprovalQueues`);
-    await sequelize.dropTable(`motds`);
+    let query = sequelize.getQueryInterface();
+    await query.dropTable(`users`);
+    await query.dropTable(`gameVersions`);
+    await query.dropTable(`mods`);
+    await query.dropTable(`modVersions`);
+    await query.dropTable(`editApprovalQueues`);
+    await query.dropTable(`motds`);
 };

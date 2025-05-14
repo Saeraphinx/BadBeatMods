@@ -114,23 +114,31 @@ describe.sequential(`Versions - Hooks`, async () => {
             ...defaultVersionData,
             modId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
-            dependencies: [testVersion.id],
+            dependencies: [{
+                parentId: testVersion.modId,
+                sv: `^${testVersion.modVersion}`,
+            }],
         });
         expect(modVersion).toBeDefined();
     });
 
-    test(`able to deduplicate dependencies`, async () => {
+    test(`does not allow duplicate dependencies`, async () => {
         let testVersion = await db.ModVersions.create({
             ...defaultVersionData,
         });
-        let modVersion = await db.ModVersions.create({
+        let modVersion = db.ModVersions.create({
             ...defaultVersionData,
             modId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
-            dependencies: [testVersion.id, testVersion.id],
+            dependencies: [{
+                parentId: testVersion.modId,
+                sv: `^${testVersion.modVersion}`,
+            },{
+                parentId: testVersion.modId,
+                sv: `^${testVersion.modVersion}`,
+            }],
         });
-        expect(modVersion).toBeDefined();
-        expect(modVersion.dependencies).toHaveLength(1);
+        await expect(modVersion).rejects.toThrow();
     });
 
     test(`does not allow invalid dependencies`, async () => {
@@ -139,20 +147,32 @@ describe.sequential(`Versions - Hooks`, async () => {
                 ...defaultVersionData,
                 modId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
+                // @ts-expect-error
                 dependencies: [999],
             });
         }).rejects.toThrow();
-    });
 
-    test(`does not allow for dependency on another version of the same mod`, async () => {
-        let testVersion = await db.ModVersions.create({
-            ...defaultVersionData,
-        });
         await expect(async () => {
             await db.ModVersions.create({
                 ...defaultVersionData,
+                modId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
-                dependencies: [testVersion.id],
+                dependencies: [{
+                    parentId: 123456789,
+                    sv: `^1.0.0`,
+                }],
+            });
+        }).rejects.toThrow();
+
+        await expect(async () => {
+            await db.ModVersions.create({
+                ...defaultVersionData,
+                modId: testMod2.id,
+                modVersion: new SemVer(`1.0.0`),
+                dependencies: [{
+                    parentId: testMod1.id,
+                    sv: `not valid semver`,
+                }],
             });
         }).rejects.toThrow();
     });
@@ -162,7 +182,10 @@ describe.sequential(`Versions - Hooks`, async () => {
             ...defaultVersionData,
         });
 
-        modVersion.dependencies = [modVersion.id];
+        modVersion.dependencies = [{
+            parentId: modVersion.id,
+            sv: `^${modVersion.modVersion}`,
+        }];
         await expect(modVersion.save()).rejects.toThrow();
     });
 
