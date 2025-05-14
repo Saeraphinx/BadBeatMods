@@ -72,12 +72,12 @@ export class BulkActionsRoutes {
 
             let modVersionIds = Validator.zDBIDArray.safeParse(req.body.modVersionIds);
             if (!modVersionIds.success) {
-                res.status(400).send({ message: `Invalid mod version IDs`});
+                res.status(400).send({ message: `Invalid version IDs`});
                 return;
             }
 
             if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, false, false) == false) {
-                res.status(404).send({ message: `One or more mod versions not found`});
+                res.status(404).send({ message: `One or more versions not found`});
                 return;
             }
 
@@ -91,7 +91,7 @@ export class BulkActionsRoutes {
 
             for (let modVersion of modVersions) {
                 let outObj = await modVersion.addGameVersionId(gameVersion.id, session.user).catch((err) => {
-                    Logger.error(`Error adding game version ${gameVersion.id} to mod version ${modVersion.id}: ${err}`);
+                    Logger.error(`Error adding game version ${gameVersion.id} to version ${modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.id);
                     return null;
                 });
@@ -176,7 +176,7 @@ export class BulkActionsRoutes {
             }
 
             if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, true, true) == false) {
-                res.status(404).send({ message: `One or more mod versions not found`});
+                res.status(404).send({ message: `One or more versions not found`});
                 return;
             }
 
@@ -216,7 +216,7 @@ export class BulkActionsRoutes {
 
             for (let modVersion of modVersionFiltered) {
                 let outObj = await modVersion.modVersion.addGameVersionId(gameVersion2.id, session.user).catch((err) => {
-                    Logger.error(`Error adding game version ${gameVersion2.id} to mod version ${modVersion.modVersion.id}: ${err}`);
+                    Logger.error(`Error adding game version ${gameVersion2.id} to version ${modVersion.modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.modVersion.id);
                     return null;
                 });

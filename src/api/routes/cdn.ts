@@ -47,7 +47,7 @@ export class CDNRoutes {
                         res.set(`Content-Disposition`, `attachment;`);
                     }
                     modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                        Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                        Logger.error(`Failed to increment download count for version ${modVersion.id}: ${err}`);
                     });
                 } else {
                     res.set(`Content-Disposition`, `attachment;`);
@@ -87,7 +87,7 @@ export class CDNRoutes {
                     fileName = `${mod.name} v${modVersion.modVersion}.zip`;
                 }
                 modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                    Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                    Logger.error(`Failed to increment download count for version ${modVersion.id}: ${err}`);
                 });
             }
 

@@ -21,7 +21,7 @@ export class VersionsRoutes {
             for (let gameName of deduplicatedArray) {
                 games.push({ gameName, default: DatabaseHelper.cache.gameVersions.find(v => v.gameName === gameName && v.defaultVersion === true) });
             }
-            return res.status(200).send({ games });
+            return res.status(200).send(games);
         });
 
         this.router.get(`/versions`, async (req, res) => {
@@ -45,7 +45,7 @@ export class VersionsRoutes {
                 }
             });
 
-            return res.status(200).send({ versions });
+            return res.status(200).send(versions);
         });
 
         this.router.post(`/versions`, async (req, res) => {
@@ -86,7 +86,7 @@ export class VersionsRoutes {
             }).then((version) => {
                 Logger.log(`Version ${version.gameName} ${version.version} added by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`gameVersions`);
-                return res.status(200).send({ version });
+                return res.status(200).send(version);
             }).catch((error) => {
                 Logger.error(`Error creating version: ${error}`);
                 return res.status(500).send({ message: `Error creating version: ${error}` });
@@ -102,7 +102,7 @@ export class VersionsRoutes {
             
             let defaultVersion = await GameVersion.getDefaultVersionObject(gameName.data);
 
-            return res.status(200).send({ defaultVersion });
+            return res.status(200).send(defaultVersion);
         });
 
         this.router.post(`/versions/default`, async (req, res) => {

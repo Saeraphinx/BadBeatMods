@@ -100,13 +100,13 @@ export class CreateModRoutes {
                 if (iconIsValid) {
                     (icon as UploadedFile).mv(filePath);
                 }
-                Logger.log(`Mod ${mod.name} created by ${session.user.username}.`);
+                Logger.log(`Project ${mod.name} created by ${session.user.username}.`);
                 sendModLog(mod, session.user, WebhookLogType.Text_Created);
                 return res.status(200).send({ mod });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating project.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating project: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });
@@ -142,7 +142,7 @@ export class CreateModRoutes {
             let file = req.files?.file;
 
             if (!modId.success) {
-                return res.status(400).send({ message: `Invalid modId.` });
+                return res.status(400).send({ message: `Invalid project ID.` });
             }
 
             if (!reqBody.success) {
@@ -151,15 +151,15 @@ export class CreateModRoutes {
 
             let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
-                return res.status(404).send({ message: `Mod not found.` });
+                return res.status(404).send({ message: `Project not found.` });
             }
 
             if (!mod.authorIds.includes(session.user.id)) {
-                return res.status(401).send({ message: `You cannot upload to this mod.` });
+                return res.status(401).send({ message: `You cannot upload to this project.` });
             }
 
             if (mod.status === Status.Removed) {
-                return res.status(401).send({ message: `This mod has been denied and removed` });
+                return res.status(401).send({ message: `This project has been denied and removed` });
             }
 
             if ((await Validator.validateIDArray(reqBody.data.supportedGameVersionIds, `gameVersions`, false, false)) == false) {
@@ -167,7 +167,7 @@ export class CreateModRoutes {
             }
 
             if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `mods`, true, true)) == false) {
-                return res.status(400).send({ message: `Invalid dependency.` });
+                return res.status(400).send({ message: `Invalid dependencies.` });
             }
 
             if (!file || Array.isArray(file)) {
@@ -176,7 +176,7 @@ export class CreateModRoutes {
 
             if (file.truncated || file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
                 if (validateAdditionalGamePermissions(session, mod.gameName, UserRoles.LargeFiles)) {
-                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for mod ${mod.name} (${mod.id}).`);
+                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for project ${mod.name} (${mod.id}).`);
                     // let it slide. truncated will catch anything above the limit
                 } else {
                     return res.status(413).send({ message: `File too large. Max size is ${Config.server.fileUploadLimitMB}MB.` });
@@ -231,9 +231,9 @@ export class CreateModRoutes {
                 sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, mod);
                 return res.status(200).send({ modVersion: retVal });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating version.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating version: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });
