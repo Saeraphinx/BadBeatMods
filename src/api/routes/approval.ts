@@ -496,20 +496,20 @@ export class ApprovalRoutes {
             });
 
             if (!modId) {
-                return res.status(404).send({ message: `Mod ID not found.` });
+                return res.status(404).send({ message: `Project ID not found.` });
             }
             
             let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId } });
 
             if (!mod) {
-                return res.status(500).send({ message: `Mod not found.` });
+                return res.status(500).send({ message: `Project not found.` });
             }
 
 
             switch (edit.objectTableName) {
                 case `mods`:
                     if (!edit.isMod()) {
-                        Logger.error(`Edit ${editId.data} is not a mod edit, despite the table name being "mods".`);
+                        Logger.error(`Edit ${editId.data} is not a project edit, despite the table name being "mods".`);
                         return res.status(500).send({ message: `Invalid edit.` });
                     }
 
@@ -546,7 +546,7 @@ export class ApprovalRoutes {
                     break;
                 case `modVersions`:
                     if (!edit.isModVersion()) {
-                        Logger.error(`Edit ${editId.data} is not a mod version edit, despite the table name being "modVersions".`);
+                        Logger.error(`Edit ${editId.data} is not a version edit, despite the table name being "modVersions".`);
                         return res.status(500).send({ message: `Invalid edit.` });
                     }
                     
