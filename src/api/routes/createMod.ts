@@ -21,7 +21,7 @@ export class CreateModRoutes {
     }
 
     private async loadRoutes() {
-        this.router.post(`/mods/create`, async (req, res) => {
+        this.router.post([`/mods/create`, `/projects/create`], async (req, res) => {
             // #swagger.tags = ['Mods']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -45,7 +45,7 @@ export class CreateModRoutes {
                 return;
             }
 
-            let reqBody = Validator.zCreateMod.safeParse(req.body);
+            let reqBody = Validator.zCreateProject.safeParse(req.body);
             let icon = req.files?.icon;
             let iconIsValid = false;
 
@@ -95,14 +95,14 @@ export class CreateModRoutes {
                 iconFileName: iconIsValid ? `${(icon as UploadedFile).md5}${path.extname((icon as UploadedFile).name)}` : `default.png`,
                 lastUpdatedById: session.user.id,
                 status: Status.Private,
-            }).then(async (mod) => {
+            }).then(async (project) => {
                 DatabaseHelper.refreshCache(`mods`);
                 if (iconIsValid) {
                     (icon as UploadedFile).mv(filePath);
                 }
-                Logger.log(`Project ${mod.name} created by ${session.user.username}.`);
-                sendModLog(mod, session.user, WebhookLogType.Text_Created);
-                return res.status(200).send({ mod });
+                Logger.log(`Project ${project.name} created by ${session.user.username}.`);
+                sendModLog(project, session.user, WebhookLogType.Text_Created);
+                return res.status(200).send({ project: project });
             }).catch((error) => {
                 let message = `Error creating project.`;
                 message = Utils.parseErrorMessage(error);
@@ -111,7 +111,7 @@ export class CreateModRoutes {
             });
         });
 
-        this.router.post(`/mods/:modIdParam/upload`, async (req, res) => {
+        this.router.post([`/mods/:modIdParam/upload`, `/projects/:modIdParam/upload`], async (req, res) => {
             // #swagger.tags = ['Mods']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -138,7 +138,7 @@ export class CreateModRoutes {
             }
             
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let reqBody = Validator.zUploadModVersion.safeParse(req.body);
+            let reqBody = Validator.zCreateVersion.safeParse(req.body);
             let file = req.files?.file;
 
             if (!modId.success) {
@@ -229,7 +229,7 @@ export class CreateModRoutes {
                 DatabaseHelper.refreshCache(`modVersions`);
                 let retVal = await modVersion.toRawAPIResponse();
                 sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, mod);
-                return res.status(200).send({ modVersion: retVal });
+                return res.status(200).send({ version: retVal });
             }).catch((error) => {
                 let message = `Error creating version.`;
                 message = Utils.parseErrorMessage(error);

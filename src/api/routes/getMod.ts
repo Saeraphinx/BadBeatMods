@@ -64,6 +64,7 @@ export class GetModRoutes {
             }
                 
             let mods: {project: ProjectAPIPublicResponse, version: VersionAPIPublicResponse | null}[] = [];
+            let preLength = undefined;
             if (gameVersion === null) {
                 let modDb = DatabaseHelper.cache.projects.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
 
@@ -85,7 +86,7 @@ export class GetModRoutes {
                 }
             } else {
                 let modsFromDB = await gameVersion.getSupportedMods(reqQuery.data.platform, statuses);
-                let preLength = modsFromDB.length;
+                preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
                     let mod = retMod.mod.toAPIResponse();
@@ -116,7 +117,7 @@ export class GetModRoutes {
                 }
             }
 
-            return res.status(200).send(mods);
+            return res.status(200).send({ mods: mods, preLength: preLength });
         });
 
         this.router.get(`/mods/:projectIdParam`, async (req, res) => {

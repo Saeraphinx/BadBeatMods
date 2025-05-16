@@ -99,11 +99,11 @@ export class AuthRoutes {
             // #swagger.tags = ['Auth']
             let state = req.query[`state`];
             if (!state) {
-                return res.status(400).send({ error: `Invalid parameters.` });
+                return res.status(400).send({ message: `Invalid parameters.` });
             }
             let stateObj = this.validStates.find((s) => s.stateId === state && s.ip === req.ip);
             if (!stateObj) {
-                return res.status(400).send({ error: `Invalid state.` });
+                return res.status(400).send({ message: `Invalid state.` });
             }
             this.validStates = this.validStates.filter((s) => s.stateId !== state);
 

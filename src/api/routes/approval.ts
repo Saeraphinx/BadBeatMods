@@ -514,7 +514,7 @@ export class ApprovalRoutes {
                     }
 
                     // parameter validation for mods
-                    let reqBodym = Validator.zUpdateMod.safeParse(req.body);
+                    let reqBodym = Validator.zUpdateProject.safeParse(req.body);
                     if (!reqBodym.success) {
                         return res.status(400).send({ message: `Invalid parameters.`, errors: reqBodym.error.issues });
                     }
@@ -551,7 +551,7 @@ export class ApprovalRoutes {
                     }
                     
                     // parameter validation for modVersions
-                    let reqBodyv = Validator.zUpdateModVersion.safeParse(req.body);
+                    let reqBodyv = Validator.zUpdateVersion.safeParse(req.body);
                     if (!reqBodyv.success) {
                         return res.status(400).send({ message: `Invalid parameters.`, errors: reqBodyv.error.issues });
                     }

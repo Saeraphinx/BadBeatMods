@@ -22,7 +22,7 @@ import { Luma } from './discord/classes/Luma.ts';
 
 import { CreateModRoutes } from './api/routes/createMod.ts';
 import { GetModRoutes } from './api/routes/getMod.ts';
-import { UpdateModRoutes } from './api/routes/updateMod.ts';
+import { UpdateProjectRoutes } from './api/routes/updateMod.ts';
 import { AuthRoutes } from './api/routes/auth.ts';
 import { VersionsRoutes } from './api/routes/versions.ts';
 import { ImportRoutes } from './api/routes/import.ts';
@@ -217,7 +217,7 @@ function init() {
     }
     new CreateModRoutes(apiRouter);
     new GetModRoutes(apiRouter);
-    new UpdateModRoutes(apiRouter);
+    new UpdateProjectRoutes(apiRouter);
     new ApprovalRoutes(apiRouter);
     new AuthRoutes(apiRouter);
     new ImportRoutes(apiRouter);

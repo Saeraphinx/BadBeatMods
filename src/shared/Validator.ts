@@ -81,7 +81,7 @@ export class Validator {
             return false;
         }
     });
-    public static readonly zCreateMod = ZodMod.pick({
+    public static readonly zCreateProject = ZodMod.pick({
         name: true,
         summary: true,
         description: true,
@@ -90,14 +90,14 @@ export class Validator {
         gameName: true,
     }).required().strict();
 
-    public static readonly zUploadModVersion = z.object({
+    public static readonly zCreateVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray,
         modVersion: ZodModVersion.shape.modVersion,
         dependencies: ZodModVersion.shape.dependencies.optional(),
         platform: ZodModVersion.shape.platform,
     }).strict();
 
-    public static readonly zUpdateMod = z.object({
+    public static readonly zUpdateProject = z.object({
         name: z.string().min(3).max(64).optional(),
         summary: z.string().min(3).max(100).optional(),
         description: z.string().min(3).max(4096).optional(),
@@ -107,7 +107,7 @@ export class Validator {
         authorIds: ZodDBIDArray.optional(),
     }).strict();
 
-    public static readonly zUpdateModVersion = z.object({
+    public static readonly zUpdateVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray.optional(),
         modVersion: z.string().refine(valid, { message: `Invalid SemVer` }).optional(),
         dependencies: z.array(z.object({
@@ -128,6 +128,12 @@ export class Validator {
         status: z.enum([`all`, Status.Verified, Status.Unverified, Status.Pending]).default(Status.Verified),
         platform: ZodPlatform.default(Platform.UniversalPC),
     });
+
+    public static readonly zEditUserRoles = z.object({
+        userId: ZodDBID,
+        gameName: ZodGameName,
+        role: this.zUserRoles
+    }).strict();
 
     public static readonly zCreateMOTD = z.object({
         gameName: ZodGameName.default(SupportedGames.BeatSaber),
