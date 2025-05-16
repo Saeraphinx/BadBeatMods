@@ -187,7 +187,7 @@ export class BulkActionsRoutes {
                     modIdsToIgnore.push(mv.modId); // do not process these mod ids further on down the line
                     return false;
                 }
-                return mv.supportedGameVersionIds.includes(gameVersion1.id) && (mv.status == Status.Verified || mv.status == Status.Unverified);
+                return mv.supportedGameVersionIds.includes(gameVersion1.id) && (mv.status == Status.Verified || mv.status == Status.Unverified || mv.status == Status.Pending);
             });
 
             let modVersionFiltered:{modId:number, modVersion:ModVersion}[] = [];
