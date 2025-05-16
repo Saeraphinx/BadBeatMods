@@ -38,16 +38,16 @@ export class CDNRoutes {
                     return;
                 }
                 let hash = path.basename(file).replace(path.extname(file), ``);
-                let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
+                let modVersion = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
                 if (modVersion) {
-                    let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                    let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                     if (mod) {
                         res.set(`Content-Disposition`, `attachment; filename="${mod.name} v${modVersion.modVersion}.zip"`);
                     } else {
                         res.set(`Content-Disposition`, `attachment;`);
                     }
                     modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                        Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                        Logger.error(`Failed to increment download count for version ${modVersion.id}: ${err}`);
                     });
                 } else {
                     res.set(`Content-Disposition`, `attachment;`);
@@ -80,14 +80,14 @@ export class CDNRoutes {
             }
             let hash = req.params.hash;
             let fileName = `${hash}.zip`;
-            let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
+            let modVersion = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
             if (modVersion) {
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                 if (mod) {
                     fileName = `${mod.name} v${modVersion.modVersion}.zip`;
                 }
                 modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                    Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                    Logger.error(`Failed to increment download count for version ${modVersion.id}: ${err}`);
                 });
             }
 

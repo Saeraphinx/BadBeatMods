@@ -1,30 +1,29 @@
 import { test, expect, beforeAll, afterAll, beforeEach, describe, afterEach, vi } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, Mod, ModVersion, Status, SupportedGames, Platform, ModVersionInfer, User, DatabaseHelper, UserRoles, EditQueue, ModInfer } from '../../src/shared/Database.ts';
+import { Categories, DatabaseManager, GameVersion, Status, SupportedGames, Platform, User, DatabaseHelper, UserRoles, EditQueue, Version, VersionInfer, Project, ProjectInfer } from '../../src/shared/Database.ts';
 import { UniqueConstraintError } from 'sequelize';
 // eslint-disable-next-line quotes
 import { projects, users } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
-import e from 'express';
 
 
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?:string) => {}),
-        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
+        sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendModVersionLog: vi.fn(async (modVersion: VersionInfer, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
+        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
     };
 });
 
 describe.sequential(`Versions - Hooks`, async () => {
     let db: DatabaseManager;
-    let testMod1: Mod;
-    let testMod2: Mod;
+    let testMod1: Project;
+    let testMod2: Project;
     let testModGV: GameVersion[];
-    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         db = new DatabaseManager();
@@ -43,7 +42,7 @@ describe.sequential(`Versions - Hooks`, async () => {
                 }
             ]);
 
-            testMod1 = await db.Mods.create({
+            testMod1 = await db.Projects.create({
                 ...projects[0],
                 gameName: SupportedGames.BeatSaber,
                 status: projects[0].status as Status,
@@ -53,7 +52,7 @@ describe.sequential(`Versions - Hooks`, async () => {
                 updatedAt: new Date(projects[0].updatedAt),
             });
             testModGV = await db.GameVersions.findAll({ where: { gameName: testMod1.gameName } });
-            testMod2 = await db.Mods.create({
+            testMod2 = await db.Projects.create({
                 ...projects[1],
                 gameName: SupportedGames.BeatSaber,
                 status: projects[0].status as Status,
@@ -63,7 +62,7 @@ describe.sequential(`Versions - Hooks`, async () => {
                 updatedAt: new Date(projects[0].updatedAt),
             });
             defaultVersionData = {
-                modId: testMod1.id,
+                projectId: testMod1.id,
                 authorId: 1,
                 modVersion: new SemVer(`0.0.1`),
                 platform: Platform.UniversalPC,
@@ -91,7 +90,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 
     beforeEach(async () => {
-        await db.ModVersions.truncate();
+        await db.Versions.truncate();
     });
 
     test(`able to create mod w/o dependencies`, async () => {
@@ -100,22 +99,22 @@ describe.sequential(`Versions - Hooks`, async () => {
             modId: testMod1.id,
             modVersion: new SemVer(`1.0.0`),
         });*/
-        let testVersion = await db.ModVersions.create({
+        let testVersion = await db.Versions.create({
             ...defaultVersionData,
         });
         expect(testVersion).toBeDefined();
     });
 
     test(`able to create mod w/ dependencies`, async () => {
-        let testVersion = await db.ModVersions.create({
+        let testVersion = await db.Versions.create({
             ...defaultVersionData,
         });
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
-            modId: testMod2.id,
+            projectId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
             dependencies: [{
-                parentId: testVersion.modId,
+                parentId: testVersion.projectId,
                 sv: `^${testVersion.modVersion}`,
             }],
         });
@@ -123,18 +122,18 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 
     test(`does not allow duplicate dependencies`, async () => {
-        let testVersion = await db.ModVersions.create({
+        let testVersion = await db.Versions.create({
             ...defaultVersionData,
         });
-        let modVersion = db.ModVersions.create({
+        let modVersion = db.Versions.create({
             ...defaultVersionData,
-            modId: testMod2.id,
+            projectId: testMod2.id,
             modVersion: new SemVer(`1.0.0`),
             dependencies: [{
-                parentId: testVersion.modId,
+                parentId: testVersion.projectId,
                 sv: `^${testVersion.modVersion}`,
             },{
-                parentId: testVersion.modId,
+                parentId: testVersion.projectId,
                 sv: `^${testVersion.modVersion}`,
             }],
         });
@@ -143,9 +142,9 @@ describe.sequential(`Versions - Hooks`, async () => {
 
     test(`does not allow invalid dependencies`, async () => {
         await expect(async () => {
-            await db.ModVersions.create({
+            await db.Versions.create({
                 ...defaultVersionData,
-                modId: testMod2.id,
+                projectId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
                 // @ts-expect-error
                 dependencies: [999],
@@ -153,9 +152,9 @@ describe.sequential(`Versions - Hooks`, async () => {
         }).rejects.toThrow();
 
         await expect(async () => {
-            await db.ModVersions.create({
+            await db.Versions.create({
                 ...defaultVersionData,
-                modId: testMod2.id,
+                projectId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
                 dependencies: [{
                     parentId: 123456789,
@@ -165,9 +164,9 @@ describe.sequential(`Versions - Hooks`, async () => {
         }).rejects.toThrow();
 
         await expect(async () => {
-            await db.ModVersions.create({
+            await db.Versions.create({
                 ...defaultVersionData,
-                modId: testMod2.id,
+                projectId: testMod2.id,
                 modVersion: new SemVer(`1.0.0`),
                 dependencies: [{
                     parentId: testMod1.id,
@@ -178,7 +177,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 
     test(`does not allow for dependency on self`, async () => {
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
         });
 
@@ -196,7 +195,7 @@ describe.sequential(`Versions - Hooks`, async () => {
         expect(firstVersion.version).toBe(`1.0.0`);
         expect(secondVersion.version).toBe(`1.1.0`);
 
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
             modVersion: new SemVer(`1.0.0`),
             supportedGameVersionIds: [secondVersion.id, firstVersion.id],
@@ -210,7 +209,7 @@ describe.sequential(`Versions - Hooks`, async () => {
 
     test(`does not allow invalid game versions`, async () => {
         await expect(async () => {
-            await db.ModVersions.create({
+            await db.Versions.create({
                 ...defaultVersionData,
                 modVersion: new SemVer(`1.0.0`),
                 supportedGameVersionIds: [1, 999],
@@ -221,7 +220,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     test(`removes duplicate game versions`, async () => {
         let firstVersion = testModGV[0];
 
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
             modVersion: new SemVer(`1.0.0`),
             supportedGameVersionIds: [firstVersion.id, firstVersion.id],
@@ -234,7 +233,7 @@ describe.sequential(`Versions - Hooks`, async () => {
 
     test(`requires at least one game version`, async () => {
         await expect(async () => {
-            await db.ModVersions.create({
+            await db.Versions.create({
                 ...defaultVersionData,
                 modVersion: new SemVer(`1.0.0`),
                 supportedGameVersionIds: [],
@@ -243,7 +242,7 @@ describe.sequential(`Versions - Hooks`, async () => {
     });
 
     test(`removes "v" from version string`, async () => {
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
             modVersion: new SemVer(`v1.0.0`),
             supportedGameVersionIds: [testModGV[0].id],
@@ -257,12 +256,12 @@ describe.sequential(`Versions - Permissions`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
     let testUser2: User;
-    let testMod1: Mod;
-    let testMod2: Mod;
+    let testMod1: Project;
+    let testMod2: Project;
     let testGv1: GameVersion;
     let testGv2: GameVersion;
-    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`> = {
-        modId: 1,
+    let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`> = {
+        projectId: 1,
         authorId: 1,
         modVersion: new SemVer(`0.0.1`),
         platform: Platform.UniversalPC,
@@ -303,7 +302,7 @@ describe.sequential(`Versions - Permissions`, async () => {
             version: `1.1.0`,
             defaultVersion: false,
         });
-        testMod1 = await db.Mods.create({
+        testMod1 = await db.Projects.create({
             ...projects[0],
             gameName: SupportedGames.BeatSaber,
             status: Status.Verified,
@@ -312,7 +311,7 @@ describe.sequential(`Versions - Permissions`, async () => {
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),
         });
-        testMod2 = await db.Mods.create({
+        testMod2 = await db.Projects.create({
             ...projects[1],
             gameName: SupportedGames.BeatSaber,
             status: Status.Verified,
@@ -329,7 +328,7 @@ describe.sequential(`Versions - Permissions`, async () => {
     });
 
     afterEach(async () => {
-        db.ModVersions.truncate();
+        db.Versions.truncate();
         testUser1 = await testUser1.reload();
         testUser2 = await testUser2.reload();
         // Do not restore data for the NR user.
@@ -358,15 +357,15 @@ describe.sequential(`Versions - Permissions`, async () => {
         [Status.Removed, true, UserRoles.GameManager],
         [Status.Removed, false, null],
     ])(`%s isAllowedToView %s for %s`, async (status, expected, role) => {
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
-            modId: testMod1.id,
+            projectId: testMod1.id,
             modVersion: new SemVer(`1.0.0`),
             authorId: testUser1.id,
             status: status as Status,
         });
 
-        vi.spyOn(Mod.prototype, `isAllowedToView`);
+        vi.spyOn(Project.prototype, `isAllowedToView`);
         let testUser: User | undefined;
         let shouldCheckPerGame = false;
         if (role === "author") {
@@ -401,16 +400,16 @@ describe.sequential(`Versions - Permissions`, async () => {
         [UserRoles.GameManager, false],
         [null, false],
     ])(`isAllowedToEdit for %s is %s`, async (role, expected) => {
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
-            modId: testMod1.id,
+            projectId: testMod1.id,
             modVersion: new SemVer(`1.0.0`),
             authorId: testUser1.id,
         });
 
         let testUser;
-        vi.spyOn(Mod.prototype, `isAllowedToView`);
-        vi.spyOn(ModVersion.prototype, `isAllowedToView`);
+        vi.spyOn(Project.prototype, `isAllowedToView`);
+        vi.spyOn(Version.prototype, `isAllowedToView`);
         let shouldCheckPerGame = false;
         if (role === "author") {
             testUser = testUser1;
@@ -424,8 +423,8 @@ describe.sequential(`Versions - Permissions`, async () => {
         let isAllowed = await modVersion.isAllowedToEdit(testUser);
         expect(isAllowed).toEqual(expected); // check sitewide roles
         if (isAllowed) {
-            expect(ModVersion.prototype.isAllowedToView).toHaveBeenCalledTimes(1);
-            expect(Mod.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
+            expect(Version.prototype.isAllowedToView).toHaveBeenCalledTimes(1);
+            expect(Project.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
         }
 
         if (shouldCheckPerGame) {
@@ -436,8 +435,8 @@ describe.sequential(`Versions - Permissions`, async () => {
             isAllowed = await modVersion.isAllowedToEdit(testUser);
             expect(isAllowed).toEqual(expected); // check per game roles
             if (isAllowed) {
-                expect(ModVersion.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
-                expect(Mod.prototype.isAllowedToView).toHaveBeenCalledTimes(4);
+                expect(Version.prototype.isAllowedToView).toHaveBeenCalledTimes(2);
+                expect(Project.prototype.isAllowedToView).toHaveBeenCalledTimes(4);
             }
         }
     });
@@ -447,11 +446,11 @@ describe.sequential(`Versions - Editing`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
     let testUser2: User;
-    let testMod1: Mod;
-    let testMod2: Mod;
+    let testMod1: Project;
+    let testMod2: Project;
     let testGv1: GameVersion;
     let testGv2: GameVersion;
-    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
     let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
 
     beforeAll(async () => {
@@ -479,7 +478,7 @@ describe.sequential(`Versions - Editing`, async () => {
             version: `1.1.0`,
             defaultVersion: false,
         });
-        testMod1 = await db.Mods.create({
+        testMod1 = await db.Projects.create({
             ...projects[0],
             gameName: SupportedGames.BeatSaber,
             status: Status.Verified,
@@ -488,7 +487,7 @@ describe.sequential(`Versions - Editing`, async () => {
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),
         });
-        testMod2 = await db.Mods.create({
+        testMod2 = await db.Projects.create({
             ...projects[1],
             gameName: SupportedGames.BeatSaber,
             status: Status.Verified,
@@ -498,7 +497,7 @@ describe.sequential(`Versions - Editing`, async () => {
             updatedAt: new Date(projects[0].updatedAt),
         });
         defaultVersionData = {
-            modId: testMod1.id,
+            projectId: testMod1.id,
             authorId: 1,
             modVersion: new SemVer(`0.0.1`),
             platform: Platform.UniversalPC,
@@ -521,7 +520,7 @@ describe.sequential(`Versions - Editing`, async () => {
     });
 
     beforeEach(async () => {
-        await db.ModVersions.truncate();
+        await db.Versions.truncate();
         testUser1 = await testUser1.reload();
         testUser2 = await testUser2.reload();
     });
@@ -540,7 +539,7 @@ describe.sequential(`Versions - Editing`, async () => {
         [Status.Verified, Status.Unverified, WebhookLogType.VerificationRevoked],
         [Status.Verified, Status.Removed, WebhookLogType.VerificationRevoked],
     ])(`status %s -> %s should send %s log`, async (currStatus, newStatus, expectedLogType) => {
-        let modVersion = await db.ModVersions.create({
+        let modVersion = await db.Versions.create({
             ...defaultVersionData,
             status: currStatus,
         });

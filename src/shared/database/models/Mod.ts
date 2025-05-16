@@ -2,16 +2,16 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
-import { ModVersion } from "./ModVersion.ts";
+import { Categories, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Version } from "./ModVersion.ts";
 import { User } from "./User.ts";
 import path from "path";
 import fs from "fs";
 import { Config } from "../../Config.ts";
 
-export type ModInfer = InferAttributes<Mod>;
-export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` | `statusHistory` }>>
-export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod>> {
+export type ProjectInfer = InferAttributes<Project>;
+export type ProjectEdit = Partial<Pick<Project, `name` | `summary` | `description` | `category` | `gitUrl` | `authorIds` | `gameName`>>;
+export class Project extends Model<InferAttributes<Project>, InferCreationAttributes<Project>> {
     declare readonly id: CreationOptional<number>;
     declare name: string;
     declare summary: string;
@@ -95,9 +95,9 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return false;
     }
 
-    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
-        let versions = DatabaseHelper.cache.modVersions.filter((version) => {
-            if (version.modId !== this.id) {
+    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<Version | null> {
+        let versions = DatabaseHelper.cache.versions.filter((version) => {
+            if (version.projectId !== this.id) {
                 return false;
             }
 
@@ -130,7 +130,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return latest;
     }
 
-    public async edit(object: ModApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Mod}> {
+    public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Project}> {
         if (this.status !== Status.Verified && this.status !== Status.Unverified) {
             await this.update({ ...object, lastUpdatedById: submitter.id });
             sendModLog(this, submitter, WebhookLogType.Text_Updated);
@@ -172,7 +172,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return {isEditObj: true, newEdit: true, edit: edit};
     }
 
-    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true): Promise<Mod> {
+    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true): Promise<Project> {
         let prevStatus = this.status;
         this.status = status;
         this.lastUpdatedById = user.id;
@@ -228,16 +228,16 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     }
 
     public static async checkForExistingMod(name: string) {
-        let mod = await DatabaseHelper.database.Mods.findOne({ where: { name: name } });
+        let mod = await DatabaseHelper.database.Projects.findOne({ where: { name: name } });
         return mod;
     }
 
     public static async countExistingMods(name: string) {
-        let count = await DatabaseHelper.database.Mods.count({ where: { name: name } });
+        let count = await DatabaseHelper.database.Projects.count({ where: { name: name } });
         return count;
     }
 
-    public toAPIResponse(): ModAPIPublicResponse {
+    public toAPIResponse(): ProjectAPIPublicResponse {
         return {
             id: this.id,
             name: this.name,

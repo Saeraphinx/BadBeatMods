@@ -8,8 +8,8 @@ import { SequelizeStorage, Umzug } from "umzug";
 import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
 import { EditQueue } from "./database/models/EditQueue.ts";
 import { GameVersion } from "./database/models/GameVersion.ts";
-import { Mod } from "./database/models/Mod.ts";
-import { ModVersion } from "./database/models/ModVersion.ts";
+import { Project } from "./database/models/Mod.ts";
+import { Version } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
 import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
@@ -32,8 +32,8 @@ export type Migration = typeof DatabaseManager.prototype.umzug._types.migration;
 export class DatabaseManager {
     public sequelize: Sequelize;
     public Users: ModelStatic<User>;
-    public ModVersions: ModelStatic<ModVersion>;
-    public Mods: ModelStatic<Mod>;
+    public Versions: ModelStatic<Version>;
+    public Projects: ModelStatic<Project>;
     public GameVersions: ModelStatic<GameVersion>;
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
@@ -300,7 +300,7 @@ export class DatabaseManager {
         });
         // #endregion
         // #region Mods
-        this.Mods = Mod.init({
+        this.Projects = Project.init({
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
@@ -392,14 +392,14 @@ export class DatabaseManager {
         });
         // #endregion
         // #region ModVersions
-        this.ModVersions = ModVersion.init({
+        this.Versions = Version.init({
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
                 autoIncrement: true,
                 unique: true,
             },
-            modId: {
+            projectId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
@@ -675,8 +675,8 @@ export class DatabaseManager {
             await Promise.all(promises);
         });
 
-        this.ModVersions.afterSync(async () => {
-            let modVersions = await this.ModVersions.findAll();
+        this.Versions.afterSync(async () => {
+            let modVersions = await this.Versions.findAll();
             let promises = [];
             for (let modVersion of modVersions) {
                 promises.push(updateDependencies(modVersion, modVersions));
@@ -685,8 +685,8 @@ export class DatabaseManager {
         });
 
 
-        this.Mods.afterValidate(async (mod) => {
-            await Mod.checkForExistingMod(mod.name).then((existingMod) => {
+        this.Projects.afterValidate(async (mod) => {
+            await Project.checkForExistingMod(mod.name).then((existingMod) => {
                 if (existingMod) {
                     if (existingMod.id != mod.id) {
                         throw new Error(`Mod already exists.`);
@@ -699,14 +699,14 @@ export class DatabaseManager {
             }
         });
 
-        this.ModVersions.afterValidate(async (modVersion) => {
-            let parentMod = await Mod.findByPk(modVersion.modId);
+        this.Versions.afterValidate(async (modVersion) => {
+            let parentMod = await Project.findByPk(modVersion.projectId);
 
             if (!parentMod) {
                 throw new Error(`ModVersion must have a valid modId.`);
             }
 
-            await ModVersion.checkForExistingVersion(modVersion.modId, modVersion.modVersion, modVersion.platform).then((existingVersion) => {
+            await Version.checkForExistingVersion(modVersion.projectId, modVersion.modVersion, modVersion.platform).then((existingVersion) => {
                 if (existingVersion) {
                     if (existingVersion.id != modVersion.id) {
                         throw new Error(`Edit would cause a duplicate version.`);
@@ -773,7 +773,7 @@ export class DatabaseManager {
                 if ([...new Set(parentIds)].length != modVersion.dependencies.length) {
                     throw new Error(`ModVersion cannot have duplicate dependencies.`);
                 }
-                let parentMods = await Mod.findAll({ where: { id: parentIds } });
+                let parentMods = await Project.findAll({ where: { id: parentIds } });
                 if (parentMods.length == 0) {
                     throw new Error(`No valid parent mods found.`);
                 }

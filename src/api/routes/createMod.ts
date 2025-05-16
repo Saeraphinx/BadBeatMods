@@ -21,7 +21,7 @@ export class CreateModRoutes {
     }
 
     private async loadRoutes() {
-        this.router.post(`/mods/create`, async (req, res) => {
+        this.router.post([`/mods/create`, `/projects/create`], async (req, res) => {
             // #swagger.tags = ['Mods']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -45,7 +45,7 @@ export class CreateModRoutes {
                 return;
             }
 
-            let reqBody = Validator.zCreateMod.safeParse(req.body);
+            let reqBody = Validator.zCreateProject.safeParse(req.body);
             let icon = req.files?.icon;
             let iconIsValid = false;
 
@@ -83,7 +83,7 @@ export class CreateModRoutes {
                 }
             }
 
-            DatabaseHelper.database.Mods.create({
+            DatabaseHelper.database.Projects.create({
                 name: reqBody.data.name,
                 summary: reqBody.data.summary,
                 description: reqBody.data.description,
@@ -95,23 +95,23 @@ export class CreateModRoutes {
                 iconFileName: iconIsValid ? `${(icon as UploadedFile).md5}${path.extname((icon as UploadedFile).name)}` : `default.png`,
                 lastUpdatedById: session.user.id,
                 status: Status.Private,
-            }).then(async (mod) => {
+            }).then(async (project) => {
                 DatabaseHelper.refreshCache(`mods`);
                 if (iconIsValid) {
                     (icon as UploadedFile).mv(filePath);
                 }
-                Logger.log(`Mod ${mod.name} created by ${session.user.username}.`);
-                sendModLog(mod, session.user, WebhookLogType.Text_Created);
-                return res.status(200).send({ mod });
+                Logger.log(`Project ${project.name} created by ${session.user.username}.`);
+                sendModLog(project, session.user, WebhookLogType.Text_Created);
+                return res.status(200).send({ project: project });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating project.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating project: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });
 
-        this.router.post(`/mods/:modIdParam/upload`, async (req, res) => {
+        this.router.post([`/mods/:modIdParam/upload`, `/projects/:modIdParam/upload`], async (req, res) => {
             // #swagger.tags = ['Mods']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -138,28 +138,28 @@ export class CreateModRoutes {
             }
             
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let reqBody = Validator.zUploadModVersion.safeParse(req.body);
+            let reqBody = Validator.zCreateVersion.safeParse(req.body);
             let file = req.files?.file;
 
             if (!modId.success) {
-                return res.status(400).send({ message: `Invalid modId.` });
+                return res.status(400).send({ message: `Invalid project ID.` });
             }
 
             if (!reqBody.success) {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
-                return res.status(404).send({ message: `Mod not found.` });
+                return res.status(404).send({ message: `Project not found.` });
             }
 
             if (!mod.authorIds.includes(session.user.id)) {
-                return res.status(401).send({ message: `You cannot upload to this mod.` });
+                return res.status(401).send({ message: `You cannot upload to this project.` });
             }
 
             if (mod.status === Status.Removed) {
-                return res.status(401).send({ message: `This mod has been denied and removed` });
+                return res.status(401).send({ message: `This project has been denied and removed` });
             }
 
             if ((await Validator.validateIDArray(reqBody.data.supportedGameVersionIds, `gameVersions`, false, false)) == false) {
@@ -167,7 +167,7 @@ export class CreateModRoutes {
             }
 
             if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `mods`, true, true)) == false) {
-                return res.status(400).send({ message: `Invalid dependency.` });
+                return res.status(400).send({ message: `Invalid dependencies.` });
             }
 
             if (!file || Array.isArray(file)) {
@@ -176,7 +176,7 @@ export class CreateModRoutes {
 
             if (file.truncated || file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
                 if (validateAdditionalGamePermissions(session, mod.gameName, UserRoles.LargeFiles)) {
-                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for mod ${mod.name} (${mod.id}).`);
+                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for project ${mod.name} (${mod.id}).`);
                     // let it slide. truncated will catch anything above the limit
                 } else {
                     return res.status(413).send({ message: `File too large. Max size is ${Config.server.fileUploadLimitMB}MB.` });
@@ -213,8 +213,8 @@ export class CreateModRoutes {
                 file.mv(filePath);
             }
 
-            DatabaseHelper.database.ModVersions.create({
-                modId: modId.data,
+            DatabaseHelper.database.Versions.create({
+                projectId: modId.data,
                 authorId: session.user.id,
                 status: Status.Private,
                 supportedGameVersionIds: reqBody.data.supportedGameVersionIds,
@@ -229,11 +229,11 @@ export class CreateModRoutes {
                 DatabaseHelper.refreshCache(`modVersions`);
                 let retVal = await modVersion.toRawAPIResponse();
                 sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, mod);
-                return res.status(200).send({ modVersion: retVal });
+                return res.status(200).send({ version: retVal });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating version.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating version: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });

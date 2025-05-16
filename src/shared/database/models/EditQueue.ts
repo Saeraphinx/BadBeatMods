@@ -3,15 +3,15 @@ import { sendEditLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { Logger } from "../../Logger.ts";
 import { DatabaseHelper, Status } from "../DBHelper.ts";
 import { User } from "./User.ts";
-import { Mod, ModApproval, ModInfer } from "./Mod.ts";
-import { ModVersion, ModVersionApproval, ModVersionInfer } from "./ModVersion.ts";
+import { Project, ProjectEdit, ProjectInfer } from "./Mod.ts";
+import { Version, VersionEdit, VersionInfer } from "./ModVersion.ts";
 
 export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAttributes<EditQueue>> {
     declare readonly id: CreationOptional<number>;
     declare submitterId: number;
     declare objectId: number;
     declare objectTableName: `modVersions` | `mods`;
-    declare object: ModVersionApproval | ModApproval;
+    declare object: VersionEdit | ProjectEdit;
 
     declare approverId: CreationOptional<number> | null;
     declare approved: boolean | null; // just use null as a 3rd bit 5head
@@ -19,7 +19,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public isModVersion(): this is EditQueue & { objectTableName: `modVersions`, object: ModVersionApproval } {
+    public isModVersion(): this is EditQueue & { objectTableName: `modVersions`, object: VersionEdit } {
         let hasModVersionKeys = `modVersion` in this.object ||
             `platform` in this.object ||
             `supportedGameVersionIds` in this.object ||
@@ -27,7 +27,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         return this.objectTableName === `modVersions` && hasModVersionKeys;
     }
 
-    public isMod(): this is EditQueue & { objTableName: `mods`, object: ModApproval } {
+    public isMod(): this is EditQueue & { objTableName: `mods`, object: ProjectEdit } {
         let hasModKeys = `name` in this.object ||
             `summary` in this.object ||
             `description` in this.object ||
@@ -38,16 +38,16 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
         return this.objectTableName === `mods` && hasModKeys;
     }
 
-    public async approve(approver: User, bypassApproval: boolean = false): Promise<Mod | ModVersion | undefined> {
+    public async approve(approver: User, bypassApproval: boolean = false): Promise<Project | Version | undefined> {
         if (typeof this.approved == `boolean`) {
             return;
         }
         
-        let record: Mod | ModVersion | undefined = undefined;
-        let original: ModInfer | ModVersionInfer | undefined = undefined;
+        let record: Project | Version | undefined = undefined;
+        let original: ProjectInfer | VersionInfer | undefined = undefined;
 
         if (this.objectTableName == `modVersions` && `modVersion` in this.object) {
-            let modVersion = await DatabaseHelper.database.ModVersions.findByPk(this.objectId);
+            let modVersion = await DatabaseHelper.database.Versions.findByPk(this.objectId);
             if (modVersion) {
                 original = modVersion.toJSON();
                 modVersion.modVersion = this.object.modVersion || modVersion.modVersion;
@@ -63,7 +63,7 @@ export class EditQueue extends Model<InferAttributes<EditQueue>, InferCreationAt
                 record = await modVersion.save();
             }
         } else if (this.objectTableName == `mods` && `name` in this.object) {
-            let mod = await DatabaseHelper.database.Mods.findByPk(this.objectId);
+            let mod = await DatabaseHelper.database.Projects.findByPk(this.objectId);
             if (mod) {
                 original = mod.toJSON();
                 mod.name = this.object.name || mod.name;
