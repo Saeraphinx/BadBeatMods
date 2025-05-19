@@ -20,15 +20,19 @@ export class AuthRoutes {
 
     private async loadRoutes() {
         this.router.get(`/auth`, async (req, res) => {
-            // #swagger.tags = ['Auth']
-            // #swagger.summary = 'Get logged in user information.'
-            // #swagger.description = 'Get user information.'
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Auth']
+            #swagger.summary = 'Get logged in user information.'
+            #swagger.description = 'Get user information.'
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.responses[200] = { description: 'Returns user information.' }
-            // #swagger.responses[401] = { description: 'Unauthorized.' }
+            }]
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/UserResponse'
+            }
+            #swagger.responses[401] = { description: 'Unauthorized.' }
+            */
             let session = await validateSession(req, res, false);
             if (!session.user) {
                 return;
@@ -87,7 +91,9 @@ export class AuthRoutes {
         ));
 
         this.router.get(`/auth/github`, async (req, res, next) => {
-            // #swagger.tags = ['Auth']
+            /*
+            #swagger.tags = ['Auth']
+            */
             let state = this.prepAuth(req, undefined, 10);
             if (!state) {
                 return res.status(400).send({ error: `Invalid parameters.` });

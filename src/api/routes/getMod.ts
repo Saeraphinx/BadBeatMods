@@ -18,7 +18,7 @@ export class GetModRoutes {
             // #swagger.tags = ['Mods']
             // #swagger.summary = 'Get all mods for a specified version.'
             // #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
-            // #swagger.responses[200] = {'description':'Returns all mods.','schema':{'mods':[{'mod':{'$ref':'#/components/schemas/ModAPIPublicResponse'},'latest':{'$ref':'#/components/schemas/ModVersionAPIPublicResponse'}}]}}
+            // #swagger.responses[200] = {'description':'Returns all mods.','schema':{'mods':[{'mod':{'$ref':'#/components/schemas/ProjectAPIPublicResponse'},'latest':{'$ref':'#/components/schemas/VersionAPIPublicResponse'}}]}}
             // #swagger.responses[400] = { description: 'Invalid gameVersion.' }
             // #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
             // #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.', type: 'string' }

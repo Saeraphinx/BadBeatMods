@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Categories, DatabaseHelper, GameVersion, Version, Platform, Status, SupportedGames, User, Project, PostType, UserRoles, EditQueue } from "./Database.ts";
 import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
+import { ApprovalAction } from "../api/routes/approval.ts";
 
 //generic types that I use a lot
 const ZodDBID = z.number({coerce: true}).int().positive();
@@ -156,6 +157,12 @@ export class Validator {
         gameName: ZodGameName,
         version: z.string(),
     }).required();
+
+    public static readonly zApproveObject = z.object({
+        id: ZodDBID,
+        action: z.nativeEnum(ApprovalAction),
+        reason: z.string().optional(),
+    }).strict();
 
     public static async validateIDArray(ids: number[]|undefined|null, tableName:TableNames, allowEmpty: boolean = false, allowNull = true): Promise<boolean> {
         if (!Array.isArray(ids) && allowNull === false) {

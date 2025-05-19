@@ -22,16 +22,24 @@ export class CreateModRoutes {
 
     private async loadRoutes() {
         this.router.post([`/mods/create`, `/projects/create`], async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+            /*
+            #swagger.start
+            #swagger.path = '/projects/create'
+            #swagger.method = 'post'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Create a mod.'
-            // #swagger.description = 'Create a mod.'
-            /* #swagger.requestBody = {
-                schema: {
-                    $ref: '#/definitions/CreateMod'
+            }]
+            #swagger.summary = 'Create a mod.'
+            #swagger.description = 'Create a mod.'
+            #swagger.requestBody = {
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zCreateProject'
+                        }
+                    }
                 }
             }
             #swagger.parameters['icon'] = {
@@ -39,7 +47,9 @@ export class CreateModRoutes {
                 type: 'file',
                 description: 'Mod icon.',
                 required: false
-            } */
+            }
+            #swagger.end
+            */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
@@ -112,17 +122,20 @@ export class CreateModRoutes {
         });
 
         this.router.post([`/mods/:modIdParam/upload`, `/projects/:modIdParam/upload`], async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+            /*
+            #swagger.start
+            #swagger.path = '/projects/{modIdParam}/upload'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Upload a mod version.'
-            // #swagger.description = 'Upload a mod version.'
-            // #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.summary = 'Upload a mod version.'
+            #swagger.description = 'Upload a mod version.'
+            #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
+            #swagger.requestBody = {
                 schema: {
-                    $ref: '#/definitions/CreateEditModVersion'
+                    $ref: '#/definitions/zUpdateVersion'
                 }
             }
             #swagger.parameters['file'] = {

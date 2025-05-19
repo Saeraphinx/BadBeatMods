@@ -2,6 +2,7 @@
 import { Categories, Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
+import { ApprovalAction } from './routes/approval.ts';
 type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
@@ -322,7 +323,7 @@ const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
     }
 };
 // #endregion
-// #region API Public Schemas
+// #region DB API Public Schemas
 const UserAPIPublicResponse: OpenAPIV3_1.SchemaObject = UserDBObject;
 const GameVersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = GameVersionDBObject;
 const ProjectAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
@@ -361,7 +362,12 @@ const VersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
         zipHash: VersionDBObject.properties!.zipHash,
         contentHashes: VersionDBObject.properties!.contentHashes,
         status: VersionDBObject.properties!.status,
-        dependencies: VersionDBObject.properties!.dependencies,
+        dependencies: {
+            type: `array`,
+            items: {
+                type: `number`,
+            }
+        },
         supportedGameVersions: {
             type: `array`,
             items: { allOf: [{ $ref: `#/components/schemas/GameVersionAPIPublicResponse` }] },
@@ -373,7 +379,7 @@ const VersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
 };
 // #endregion
 // #region General API Schemas
-const APIStatus:OpenAPIV3_1.SchemaObject = {
+const APIStatus: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
         message: {
@@ -495,6 +501,21 @@ const zOAuth2Callback: SchemaObject = {
         }
     }
 };
+const zApproveObject: SchemaObject = {
+    type: `object`,
+    required: [`action`],
+    properties: {
+        action: {
+            type: `string`,
+            enum: Object.values(ApprovalAction),
+            description: `The action to take.`
+        },
+        reason: {
+            type: `string`,
+            description: `The reason for the action.`,
+        },
+    }
+}
 // #endregion
 // #region Full API Responses
 const ServerMessageResponse: OpenAPIV3_1.ResponseObject = {
@@ -530,12 +551,86 @@ const ServerMessageResponseWithErrorStringArray: OpenAPIV3_1.ResponseObject = {
         }
     }
 };
-// #endregion
 
+const ApprovalQueueResponse: OpenAPIV3_1.ResponseObject = {
+    description: `A list of items in the approval queue.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                minProperties: 1,
+                maxProperties: 1,
+                properties: {
+                    projects: {
+                        type: `array`,
+                        items: {
+                            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                        }
+                    },
+                    versions: {
+                        type: `array`,
+                        items: {
+                            type: `object`,
+                            properties: {
+                                project: {
+                                    $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                                },
+                                version: {
+                                    $ref: `#/components/schemas/VersionDBObject`
+                                }
+                            }
+                        }
+                    },
+                    edits: {
+                        type: `array`,
+                        items: {
+                            type: `object`,
+                            properties: {
+                                project: {
+                                    '$ref': `#/components/schemas/ProjectAPIPublicResponse`
+                                },
+                                original: {
+                                    '$ref': `#/components/schemas/VersionDBObject`
+                                },
+                                edit: {
+                                    '$ref': `#/components/schemas/EditApprovalQueueDBObject`
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+const UserResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns user information.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/UserAPIPublicResponse`
+            }
+        }
+    }
+};
+// #endregion
+// #region Full API Request Bodies
+const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
+    description: ``,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/zApproveObject`
+            }
+        }
+    }
+};
+// #endregion
 const doc = {
     info: {
         title: `BadBeatMods API`,
-        description: `This isn't really fully complete, but its better than absolutely nothing.\n\nThis API documentation is automatically generated and therefor may not be 100% accurate and may be missing a few fields. For example, request bodies are not fully fleshed out, and may not be accurate. Full documentation is still currently a work in progress.`,
+        description: `This isn't really fully complete, but its better than absolutely nothing.\n\nThis API documentation is automatically generated and therefor may not be 100% accurate and may be missing a few fields. For example, request bodies are not fully fleshed out, and may not be accurate. Full documentation is still currently a work in progress.\n\nAll errors that originate from the server will have a \`message\` field. Errors that come from input validation will sometimes also have an \`errors\` field. This has been omiitted from the documentation of most endpoints for brevity. These follow the \`ServerMessage\` schema.`,
         version: `0.0.1`,
     },
     servers: [
@@ -584,12 +679,19 @@ const doc = {
             zUpdateVersion,
             zOAuth2Callback,
             zUpdateUserRoles,
+            zApproveObject: zApproveObject,
+            VersionDBObject,
             EditApprovalQueueDBObject,
             ServerMessage
         },
         "responses": {
             ServerMessage: ServerMessageResponse,
             ServerMessageWithErrorStringArray: ServerMessageResponseWithErrorStringArray,
+            ApprovalQueueResponse: ApprovalQueueResponse,
+            UserResponse: UserResponse,
+        },
+        "requestBodies": {
+            ApproveObjectBody: ApproveObjectBody,
         }
     }
 };

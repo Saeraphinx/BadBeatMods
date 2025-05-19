@@ -307,19 +307,19 @@ export class AdminRoutes {
             #swagger.description = 'Add a role to a user.'
             #swagger.requestBody = {
                 required: true,
-                schema: {
-                    $ref: '#/definitions/zEditUserRoles'
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zUpdateUserRoles'
+                        }
+                    }
                 }
             }
             #swagger.responses[200] = {
                 $ref: '#/components/responses/ServerMessage'
             }
-            #swagger.responses[400] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
-            #swagger.responses[404] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
+            #swagger.responses[400]
+            #swagger.responses[404]
             */
 
             let reqBody = Validator.zEditUserRoles.safeParse(req.body);
@@ -469,19 +469,17 @@ export class AdminRoutes {
             #swagger.description = 'Remove a role from a user.'
             #swagger.requestBody = {
                 required: true,
-                schema: {
-                    $ref: '#/components/schema/zEditUserRoles'
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zUpdateUserRoles'
+                        }
+                    }
                 }
             }
-            #swagger.responses[200] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
-            #swagger.responses[400] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
-            #swagger.responses[404] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
+            #swagger.responses[200]
+            #swagger.responses[400]
+            #swagger.responses[404]
             */
 
             let reqBody = Validator.zEditUserRoles.safeParse(req.body);
@@ -629,15 +627,9 @@ export class AdminRoutes {
             #swagger.responses[200] = {
                 $ref: '#/components/responses/ServerMessage'
             }
-            #swagger.responses[400] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
-            #swagger.responses[404] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
-            #swagger.responses[500] = {
-                $ref: '#/components/responses/ServerMessage'
-            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.responses[500]
             */
             let modVersionId = Validator.zDBID.safeParse(req.body.versionId);
             let newModId = Validator.zDBID.safeParse(req.body.newModId);

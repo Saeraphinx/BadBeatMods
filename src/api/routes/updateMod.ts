@@ -32,7 +32,7 @@ export class UpdateProjectRoutes {
                 description: 'Mod data',
                 required: true,
                 schema: {
-                    $ref: '#/definitions/EditMod'
+                    $ref: '#/definitions/zUpdateProject'
                 }
             }
             */
@@ -185,7 +185,7 @@ export class UpdateProjectRoutes {
                 description: 'Mod version data',
                 required: true,
                 schema: {
-                    $ref: '#/definitions/CreateEditModVersion'
+                    $ref: '#/definitions/zUpdateVersion'
                 }
             }
             */
