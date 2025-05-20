@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, EditQueue, ModVersion, Status, UserRoles } from '../../shared/Database.ts';
+import { DatabaseHelper, EditQueue, Version, Status, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { Op } from 'sequelize';
@@ -72,16 +72,16 @@ export class BulkActionsRoutes {
 
             let modVersionIds = Validator.zDBIDArray.safeParse(req.body.modVersionIds);
             if (!modVersionIds.success) {
-                res.status(400).send({ message: `Invalid mod version IDs`});
+                res.status(400).send({ message: `Invalid version IDs`});
                 return;
             }
 
             if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, false, false) == false) {
-                res.status(404).send({ message: `One or more mod versions not found`});
+                res.status(404).send({ message: `One or more versions not found`});
                 return;
             }
 
-            let modVersions = await DatabaseHelper.database.ModVersions.findAll({ where: { id: modVersionIds.data } });
+            let modVersions = await DatabaseHelper.database.Versions.findAll({ where: { id: modVersionIds.data } });
 
             let results = {
                 editIds: [] as number[],
@@ -91,7 +91,7 @@ export class BulkActionsRoutes {
 
             for (let modVersion of modVersions) {
                 let outObj = await modVersion.addGameVersionId(gameVersion.id, session.user).catch((err) => {
-                    Logger.error(`Error adding game version ${gameVersion.id} to mod version ${modVersion.id}: ${err}`);
+                    Logger.error(`Error adding game version ${gameVersion.id} to version ${modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.id);
                     return null;
                 });
@@ -176,33 +176,33 @@ export class BulkActionsRoutes {
             }
 
             if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, true, true) == false) {
-                res.status(404).send({ message: `One or more mod versions not found`});
+                res.status(404).send({ message: `One or more versions not found`});
                 return;
             }
 
             let modIdsToIgnore: number[] = []; // mod versions that are in the exclude list
-            let modVersions = await DatabaseHelper.database.ModVersions.findAll();
+            let modVersions = await DatabaseHelper.database.Versions.findAll();
             modVersions = modVersions.filter((mv) => {
                 if (modVersionIds.data.includes(mv.id)) {
-                    modIdsToIgnore.push(mv.modId); // do not process these mod ids further on down the line
+                    modIdsToIgnore.push(mv.projectId); // do not process these mod ids further on down the line
                     return false;
                 }
                 return mv.supportedGameVersionIds.includes(gameVersion1.id) && (mv.status == Status.Verified || mv.status == Status.Unverified);
             });
 
-            let modVersionFiltered:{modId:number, modVersion:ModVersion}[] = [];
+            let modVersionFiltered:{modId:number, modVersion:Version}[] = [];
             for (let modVersion of modVersions) {
-                if (modIdsToIgnore.includes(modVersion.modId)) {
+                if (modIdsToIgnore.includes(modVersion.projectId)) {
                     continue; // skip mod versions that are in the exclude list
                 }
-                let existing = modVersionFiltered.find((mv) => mv.modId === modVersion.modId);
+                let existing = modVersionFiltered.find((mv) => mv.modId === modVersion.projectId);
                 if (existing) {
                     if (modVersion.modVersion.compare(existing.modVersion.modVersion) == 1) {
-                        modVersionFiltered = modVersionFiltered.filter((mv) => mv.modId !== modVersion.modId);
-                        modVersionFiltered.push({modId: modVersion.modId, modVersion: modVersion});
+                        modVersionFiltered = modVersionFiltered.filter((mv) => mv.modId !== modVersion.projectId);
+                        modVersionFiltered.push({modId: modVersion.projectId, modVersion: modVersion});
                     }
                 } else {
-                    modVersionFiltered.push({modId: modVersion.modId, modVersion: modVersion});
+                    modVersionFiltered.push({modId: modVersion.projectId, modVersion: modVersion});
                 }
             }
 
@@ -216,7 +216,7 @@ export class BulkActionsRoutes {
 
             for (let modVersion of modVersionFiltered) {
                 let outObj = await modVersion.modVersion.addGameVersionId(gameVersion2.id, session.user).catch((err) => {
-                    Logger.error(`Error adding game version ${gameVersion2.id} to mod version ${modVersion.modVersion.id}: ${err}`);
+                    Logger.error(`Error adding game version ${gameVersion2.id} to version ${modVersion.modVersion.id}: ${err}`);
                     //results.errorIds.push(modVersion.modVersion.id);
                     return null;
                 });
@@ -314,11 +314,11 @@ export class BulkActionsRoutes {
             for (let edit of edits) {
                 try {
                     let isMod = `name` in edit.object;
-                    let modId = isMod ? edit.objectId : await DatabaseHelper.database.ModVersions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
+                    let modId = isMod ? edit.objectId : await DatabaseHelper.database.Versions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
                         if (!modVersion) {
                             return null;
                         } else {
-                            return modVersion.modId;
+                            return modVersion.projectId;
                         }
                     });
 
@@ -327,7 +327,7 @@ export class BulkActionsRoutes {
                         continue;
                     }
             
-                    let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId } });
+                    let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId } });
                     if (!mod) {
                         results.errorIds.push(edit.id);
                         continue;

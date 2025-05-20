@@ -1,5 +1,5 @@
 import { APIEmbed, APIMessage, Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
-import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database.ts";
+import { DatabaseHelper, EditQueue, Project, ProjectEdit, ProjectInfer, Version, VersionEdit, VersionInfer, Status, User } from "./Database.ts";
 import { Config } from "./Config.ts";
 import { Logger } from "./Logger.ts";
 import { SemVer } from "semver";
@@ -58,7 +58,7 @@ async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, lo
     }, logType);
 }
 
-export async function sendModLog(mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
+export async function sendModLog(mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let color = 0x00FF00;
 
@@ -117,9 +117,9 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
     sendEmbedToWebhooks(embed, logType);
 }
 
-export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?: string) {
+export async function sendModVersionLog(modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
-    let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+    let mod = modObj ? modObj : await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
     let color = 0x00FF00;
 
     if (!mod) {
@@ -181,21 +181,21 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
     sendEmbedToWebhooks(embed, logType);
 }
 
-export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) {
+export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let color = 0x00FF00;
 
     let modId = edit.objectTableName === `mods` ? edit.objectId : null;
     let modVersion;
     if (!modId) {
-        modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+        modVersion = DatabaseHelper.mapCache.versions.get(edit.objectId);
         if (!modVersion) {
             return Logger.error(`Mod version not found for edit ${edit.id}`);
         }
-        modId = modVersion.modId;
+        modId = modVersion.projectId;
     }
 
-    let mod = DatabaseHelper.mapCache.mods.get(modId);
+    let mod = DatabaseHelper.mapCache.projects.get(modId);
     if (!mod) {
         return Logger.error(`Mod not found for edit ${edit.id}`);
     }
@@ -248,7 +248,7 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
 }
 
 //#region Generate Embeds
-async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number, options: {
+async function generateModEmbed(mod: Project, userMakingChanges: User, color: number, options: {
     title?: string,
     useSummary?: boolean,
     minimal?: boolean,
@@ -345,7 +345,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
     }
 }
 
-async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMakingChanges: User, color: number, options: {
+async function generateModVersionEmbed(mod: Project, modVersion: Version, userMakingChanges: User, color: number, options: {
     title?: string,
     minimal?: boolean,
     reason?: string,
@@ -369,9 +369,9 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
     }
 
     for (let dependancy of resolvedDependancies) {
-        let dependancyMod = await DatabaseHelper.database.Mods.findOne({ where: { id: dependancy.modId } });
+        let dependancyMod = await DatabaseHelper.database.Projects.findOne({ where: { id: dependancy.projectId } });
         if (!dependancyMod) {
-            return Logger.warn(`Dependancy mod ${dependancy.modId} not found for mod version ${modVersion.id}`);
+            return Logger.warn(`Dependancy mod ${dependancy.projectId} not found for mod version ${modVersion.id}`);
         }
         dependancies.push(`${dependancyMod.name} v${dependancy.modVersion.raw}`);
     }
@@ -462,7 +462,7 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
     }
 }
 
-async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: User, color: number, originalObj?: ModInfer | ModVersionInfer, options: {
+async function generateEditEmbed(edit: EditQueue, mod:Project, userMakingChanges: User, color: number, originalObj?: ProjectInfer | VersionInfer, options: {
     title?: string,
     description?: string,
     minimal?: boolean,
@@ -486,7 +486,7 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
     if (originalObj) {
         original = originalObj;
     } else {
-        original = edit.objectTableName === `mods` ? mod : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+        original = edit.objectTableName === `mods` ? mod : DatabaseHelper.mapCache.versions.get(edit.objectId);
     }
     if (!original) {
         return Logger.error(`Original not found for edit ${edit.id}`);
@@ -495,7 +495,7 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
     let description = ``;
 
     if (edit.isMod() && `name` in original) {
-        for (let key of Object.keys(edit.object) as (keyof ModApproval)[]) {
+        for (let key of Object.keys(edit.object) as (keyof ProjectEdit)[]) {
             let editProp = edit.object[key];
             let originalProp = original[key];
             if (Array.isArray(editProp) && Array.isArray(originalProp)) {
@@ -534,7 +534,7 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
             }
         }
     } else if (edit.isModVersion() && `platform` in original) {
-        for (let key of Object.keys(edit.object) as (keyof ModVersionApproval)[]) {
+        for (let key of Object.keys(edit.object) as (keyof VersionEdit)[]) {
             let editProp = edit.object[key];
             let originalProp = original[key];
             if (Array.isArray(editProp) && Array.isArray(originalProp)) {

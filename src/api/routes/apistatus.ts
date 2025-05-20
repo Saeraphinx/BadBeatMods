@@ -20,20 +20,25 @@ export class StatusRoutes {
         });
 
         this.router.get(`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay`, async (req, res) => {
-            //#swagger.tags = ['Status']
-            //#swagger.summary = 'Get API status.'
-            //#swagger.description = 'Get API status.'
             /*
+            #swagger.tags = ['Status']
+            #swagger.summary = 'Get API status.'
+            #swagger.description = 'Get API status.'
             #swagger.responses[200] = {
                 description: 'Returns API status.',
-                schema: { $ref: '#/components/schemas/APIStatus' }
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/APIStatus'
+                        }
+                    }
+                }
             }
-            */
-            /* #swagger.security = [{
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            //#swagger.responses[500] = { description: 'Internal server error.', schema: { message: 'Internal server error.' } }
+            }]
+            */
 
             let session = await validateSession(req, res, false, null, false);
             let response = this.generateStatusResponse(session.user);
