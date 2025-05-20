@@ -15,15 +15,45 @@ export class GetModRoutes {
 
     private async loadRoutes() {
         this.router.get(`/mods`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Get all mods for a specified version.'
-            // #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
-            // #swagger.responses[200] = {'description':'Returns all mods.','schema':{'mods':[{'mod':{'$ref':'#/components/schemas/ProjectAPIPublicResponse'},'latest':{'$ref':'#/components/schemas/VersionAPIPublicResponse'}}]}}
-            // #swagger.responses[400] = { description: 'Invalid gameVersion.' }
-            // #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
-            // #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.', type: 'string' }
-            // #swagger.parameters['status'] = { description: 'The status of the mod. Available status are: \'verified\'. Typing anything other than that will show you unverified mods too.', type: 'string' }
-            // #swagger.parameters['platform'] = { description: 'The platform of the mod. Available platforms are: \'oculuspc\', \'universalpc\', \'steampc\'', type: 'string' }
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Get all mods for a specified version.'
+            #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
+            #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
+            #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). This parameter is required for dependency resolution to work.', type: 'string' }
+            #swagger.parameters['status'] = { description: 'The mod status. (ex. \'all\', \'verified\', \'unverified\', \'pending\')', type: 'string' }
+            #swagger.parameters['platform'] = { description: 'The platform. (ex. \'pc\', \'oculus\')', type: 'string' }
+            #swagger.responses[200] = {
+                description: 'Returns the mods.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                mods: {
+                                    $ref: '#/components/schemas/ProjectVersionPair'
+                                },
+                                total: {
+                                    type: 'number',
+                                    description: 'The total number of mods before checking dependencies.',
+                                },
+                                invalidCount: {
+                                    type: 'number',
+                                    description: 'The number of mods that were removed due to missing dependencies.',
+                                },
+                                invalidIds: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'number',
+                                        description: 'The IDs of the mods that were removed due to missing dependencies.',
+                                    },
+                                },
+                            },
+                        }
+                    }
+                }
+            }
+            */
             let reqQuery = Validator.zGetMods.safeParse(req.query);
             if (!reqQuery.success) {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqQuery.error.issues });
@@ -65,6 +95,7 @@ export class GetModRoutes {
                 
             let mods: {project: ProjectAPIPublicResponse, version: VersionAPIPublicResponse | null}[] = [];
             let preLength = undefined;
+            let invalidIds: number[] = [];
             if (gameVersion === null) {
                 let modDb = DatabaseHelper.cache.projects.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
 
@@ -93,18 +124,21 @@ export class GetModRoutes {
                     let latest = await retMod.latest.toAPIResponse(gameVersion.id, statuses);
                     mods.push({ project: mod, version: latest });
                 }
-
+                
                 mods = mods.filter((mod) => {
                     if (!mod?.version) {
+                        invalidIds.push(mod.project.id);
                         return false;
                     }
 
                     if (!mod?.version?.dependencies) {
+                        invalidIds.push(mod.project.id);
                         return false;
                     }
 
                     for (let dependency of mod.version.dependencies) {
                         if (!mods.find((mod) => mod?.version?.id === dependency)) {
+                            invalidIds.push(mod.project.id);
                             return false;
                         }
                     }
@@ -117,7 +151,12 @@ export class GetModRoutes {
                 }
             }
 
-            return res.status(200).send({ mods: mods, preLength: preLength });
+            return res.status(200).send({
+                mods: mods,
+                total: mods.length,
+                invalidConut: preLength ? preLength - mods.length : null,
+                invalidIds: invalidIds,
+            });
         });
 
         this.router.get(`/mods/:projectIdParam`, async (req, res) => {

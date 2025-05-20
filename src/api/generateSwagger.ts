@@ -516,6 +516,17 @@ const zApproveObject: SchemaObject = {
         },
     }
 }
+const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        project: {
+            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+        },
+        version: {
+            $ref: `#/components/schemas/VersionAPIPublicResponse`,
+        }
+    }
+}
 // #endregion
 // #region Full API Responses
 const ServerMessageResponse: OpenAPIV3_1.ResponseObject = {
@@ -614,6 +625,17 @@ const UserResponse: OpenAPIV3_1.ResponseObject = {
         }
     }
 };
+
+const ProjectVersionPairResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a project and version pair (e.g. a mod).`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/ProjectVersionPair`
+            }
+        }
+    }
+};
 // #endregion
 // #region Full API Request Bodies
 const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
@@ -668,6 +690,7 @@ const doc = {
             }
         },
         "@schemas": {
+            ProjectVersionPair: ProjectVersionPair,
             ProjectAPIPublicResponse,
             VersionAPIPublicResponse,
             UserAPIPublicResponse,
@@ -689,6 +712,7 @@ const doc = {
             ServerMessageWithErrorStringArray: ServerMessageResponseWithErrorStringArray,
             ApprovalQueueResponse: ApprovalQueueResponse,
             UserResponse: UserResponse,
+            ProjectVersionPairResponse: ProjectVersionPairResponse,
         },
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,

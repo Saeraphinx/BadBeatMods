@@ -205,7 +205,7 @@
           },
           {
             "name": "gameVersion",
-            "description": "The game version (ex. '1.29.1', '1.40.0'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.",
+            "description": "The game version (ex. '1.29.1', '1.40.0'). This parameter is required for dependency resolution to work.",
             "in": "query",
             "schema": {
               "type": "string"
@@ -213,7 +213,7 @@
           },
           {
             "name": "status",
-            "description": "The status of the mod. Available status are: 'verified'. Typing anything other than that will show you unverified mods too.",
+            "description": "The mod status. (ex. 'all', 'verified', 'unverified', 'pending')",
             "in": "query",
             "schema": {
               "type": "string"
@@ -221,7 +221,7 @@
           },
           {
             "name": "platform",
-            "description": "The platform of the mod. Available platforms are: 'oculuspc', 'universalpc', 'steampc'",
+            "description": "The platform. (ex. 'pc', 'oculus')",
             "in": "query",
             "schema": {
               "type": "string"
@@ -230,60 +230,37 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns all mods.",
+            "description": "Returns the mods.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "mods": {
+                      "$ref": "#/components/schemas/ProjectVersionPair"
+                    },
+                    "total": {
+                      "type": "number",
+                      "description": "The total number of mods before checking dependencies."
+                    },
+                    "invalidCount": {
+                      "type": "number",
+                      "description": "The number of mods that were removed due to missing dependencies."
+                    },
+                    "invalidIds": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "mod": {
-                            "$ref": "#/components/schemas/ProjectAPIPublicResponse"
-                          },
-                          "latest": {
-                            "$ref": "#/components/schemas/VersionAPIPublicResponse"
-                          }
-                        }
+                        "type": "number",
+                        "description": "The IDs of the mods that were removed due to missing dependencies."
                       }
                     }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              },
-              "application/xml": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "mods": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "mod": {
-                            "$ref": "#/components/schemas/ProjectAPIPublicResponse"
-                          },
-                          "latest": {
-                            "$ref": "#/components/schemas/VersionAPIPublicResponse"
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid gameVersion."
+            "description": "Bad Request"
           }
         }
       }
@@ -527,7 +504,7 @@
           {
             "name": "icon",
             "in": "formData",
-            "description": "Mod icon.",
+            "description": "Project icon.",
             "required": false,
             "schema": {
               "type": "file"
@@ -550,6 +527,76 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/zCreateProject"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectIdParam}/create": {
+      "post": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Upload a version.",
+        "description": "Upload a new version to a project.",
+        "parameters": [
+          {
+            "name": "projectIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Project ID."
+          },
+          {
+            "name": "file",
+            "in": "formData",
+            "description": "Mod zip file.",
+            "required": true,
+            "schema": {
+              "type": "file"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProjectVersionPairResponse",
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/zUpdateVersion"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/zUpdateVersion"
               }
             }
           }
@@ -2532,6 +2579,16 @@
             }
           }
         }
+      },
+      "ProjectVersionPairResponse": {
+        "description": "Returns a project and version pair (e.g. a mod).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProjectVersionPair"
+            }
+          }
+        }
       }
     },
     "requestBodies": {
@@ -2547,6 +2604,17 @@
       }
     },
     "schemas": {
+      "ProjectVersionPair": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/ProjectAPIPublicResponse"
+          },
+          "version": {
+            "$ref": "#/components/schemas/VersionAPIPublicResponse"
+          }
+        }
+      },
       "ProjectAPIPublicResponse": {
         "type": "object",
         "properties": {
