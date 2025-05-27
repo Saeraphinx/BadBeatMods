@@ -159,19 +159,25 @@ export class GetModRoutes {
             });
         });
 
-        this.router.get(`/mods/:projectIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get([`/mods/:projectIdParam`, `/projects/:projectIdParam`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/projects/{projectIdParam}'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get a specific mod by ID.'
-            // #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
-            // #swagger.responses[200] = { description: 'Returns the mod.' }
-            // #swagger.responses[400] = { description: 'Invalid mod id.' }
-            // #swagger.responses[404] = { description: 'Mod not found.' }
-            // #swagger.parameters['modIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod info.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get a specific mod by ID.'
+            #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
+            #swagger.parameters['modIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { description: 'Return the raw mod info. Alters the return type.', type: 'boolean' }
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionsPairResponse' }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
             let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
             if (!projectId.success) {

@@ -265,59 +265,6 @@
         }
       }
     },
-    "/mods/{projectIdParam}": {
-      "get": {
-        "tags": [
-          "Mods"
-        ],
-        "summary": "Get a specific mod by ID.",
-        "description": "Get a specific mod by ID. This will also return every version of the mod.",
-        "parameters": [
-          {
-            "name": "projectIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "modIdParam",
-            "in": "path",
-            "description": "The mod ID.",
-            "required": true,
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "raw",
-            "description": "Return the raw mod info.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the mod."
-          },
-          "400": {
-            "description": "Invalid mod id."
-          },
-          "404": {
-            "description": "Mod not found."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
     "/modversions/{modVersionIdParam}": {
       "get": {
         "tags": [
@@ -493,6 +440,116 @@
         }
       }
     },
+    "/projects/{projectIdParam}": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get a specific mod by ID.",
+        "description": "Get a specific mod by ID. This will also return every version of the mod.",
+        "parameters": [
+          {
+            "name": "projectIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modIdParam",
+            "in": "path",
+            "description": "The mod ID.",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "raw",
+            "description": "Return the raw mod info. Alters the return type.",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProjectVersionsPairResponse",
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Mods"
+        ],
+        "description": "Update a mod.",
+        "parameters": [
+          {
+            "name": "projectIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Project ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "description": "Mod data",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/zUpdateProject"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/zUpdateProject"
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/create": {
       "post": {
         "tags": [
@@ -597,64 +654,6 @@
             "application/xml": {
               "schema": {
                 "$ref": "#/components/schemas/zUpdateVersion"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/projects/{projectIdParam}": {
-      "patch": {
-        "tags": [
-          "Mods"
-        ],
-        "description": "Update a mod.",
-        "parameters": [
-          {
-            "name": "projectIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Project ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ],
-        "requestBody": {
-          "description": "Mod data",
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/zUpdateProject"
-              }
-            },
-            "application/xml": {
-              "schema": {
-                "$ref": "#/components/schemas/zUpdateProject"
               }
             }
           }
@@ -2586,6 +2585,27 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ProjectVersionPair"
+            }
+          }
+        }
+      },
+      "ProjectVersionsPairResponse": {
+        "description": "Returns a project and version pair (e.g. a mod). `versions` is a list of all visible versions for a project.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "project": {
+                  "$ref": "#/components/schemas/ProjectAPIPublicResponse"
+                },
+                "versions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VersionAPIPublicResponse"
+                  }
+                }
+              }
             }
           }
         }

@@ -636,6 +636,28 @@ const ProjectVersionPairResponse: OpenAPIV3_1.ResponseObject = {
         }
     }
 };
+
+const ProjectVersionsPairResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a project and version pair (e.g. a mod). \`versions\` is a list of all visible versions for a project.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                properties: {
+                    project: {
+                        $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                    },
+                    versions: {
+                        type: `array`,
+                        items: {
+                            $ref: `#/components/schemas/VersionAPIPublicResponse`
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
 // #endregion
 // #region Full API Request Bodies
 const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
@@ -713,6 +735,7 @@ const doc = {
             ApprovalQueueResponse: ApprovalQueueResponse,
             UserResponse: UserResponse,
             ProjectVersionPairResponse: ProjectVersionPairResponse,
+            ProjectVersionsPairResponse: ProjectVersionsPairResponse,
         },
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,
