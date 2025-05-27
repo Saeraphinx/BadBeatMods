@@ -96,7 +96,7 @@ export class Validator {
 
     public static readonly zUpdateMod = z.object({
         name: z.string().min(3).max(64).optional(),
-        summary: z.string().min(3).max(100).optional(),
+        summary: z.string().min(3).max(160).optional(),
         description: z.string().min(3).max(4096).optional(),
         category: ZodCategory.optional(),
         gitUrl: z.string().min(5).max(256).url().optional(),
