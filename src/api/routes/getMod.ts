@@ -16,7 +16,7 @@ export class GetModRoutes {
     private async loadRoutes() {
         this.router.get(`/mods`, async (req, res) => {
             /*
-            #swagger.tags = ['Mods']
+            #swagger.tags = ['Getting Mods']
             #swagger.summary = 'Get all mods for a specified version.'
             #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
             #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
@@ -164,15 +164,15 @@ export class GetModRoutes {
             #swagger.start
             #swagger.path = '/projects/{projectIdParam}'
             #swagger.method = 'get'
-            #swagger.tags = ['Mods']
+            #swagger.tags = ['Getting Mods']
             #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
             #swagger.summary = 'Get a specific mod by ID.'
             #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
-            #swagger.parameters['modIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
-            #swagger.parameters['raw'] = { description: 'Return the raw mod info. Alters the return type.', type: 'boolean' }
+            #swagger.parameters['projectIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
             #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionsPairResponse' }
             #swagger.responses[400]
             #swagger.responses[404]
@@ -235,65 +235,89 @@ export class GetModRoutes {
             return res.status(200).send({ project: raw ? project : project.toAPIResponse(), versions: returnVal });
         });
 
-        this.router.get(`/modversions/:modVersionIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get([`/modversions/:versionIdParam`, `/versions/:versionIdParam`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/versions/{versionIdParam}'
+            #swagger.method = 'get'
+            #swagger.tags = ['Getting Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get a specific mod version by ID.'
-            // #swagger.description = 'Get a specific mod version by ID.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Invalid mod version id.' }
-            // #swagger.responses[404] = { description: 'Mod version not found.' }
-            // #swagger.parameters['modVersionIdParam'] = { in: 'path', description: 'The mod version ID.', type: 'number', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get a specific version by ID.'
+            #swagger.description = 'Get a specific version by ID.'
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionPairResponse' }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.parameters['versionIdParam'] = { in: 'path', description: 'The version ID.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
+            let versionId = Validator.zDBID.safeParse(req.params.versionIdParam);
             let raw = req.query.raw;
-            if (!modVersionId.success) {
+            if (!versionId.success) {
                 return res.status(400).send({ message: `Invalid mod version id.` });
             }
 
-            let modVersion = DatabaseHelper.mapCache.versions.get(modVersionId.data);
-            if (!modVersion) {
+            let version = DatabaseHelper.mapCache.versions.get(versionId.data);
+            if (!version) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
+            let project = DatabaseHelper.mapCache.projects.get(version.projectId);
             
-            if (!await modVersion.isAllowedToView(session.user, mod)) {
+            if (!await version.isAllowedToView(session.user, project)) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
             if (raw === `true`) {
-                return res.status(200).send({ project: mod ? mod.toAPIResponse() : undefined, version: modVersion.toRawAPIResponse() });
+                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: version.toRawAPIResponse() });
             } else {
-                return res.status(200).send({ project: mod ? mod.toAPIResponse() : undefined, version: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
+                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
             }
         });
 
-        this.router.get(`/multi/modversions`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get(`/multi/versions`, async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/multi/versions'
+            #swagger.method = 'get'
+            #swagger.tags = ['Getting Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get multiple mod versions by ID.'
-            // #swagger.description = 'Get multiple mod versions by ID.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Invalid mod version id.' }
-            // #swagger.responses[404] = { description: 'Mod version not found.' }
-            // #swagger.parameters['id'] = { in: 'query', description: 'The mod version IDs.', type: 'array', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get multiple mod versions by ID.'
+            #swagger.description = 'Get multiple mod versions by ID.'
+            #swagger.parameters['id'] = { in: 'query', description: 'The mod version IDs. Can be specified multiple times.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.responses[200] = {
+                description: 'Returns the version and the parent project.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/ProjectVersionPairResponse'
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
-            let modVersionIds = Validator.zDBIDArray.safeParse(req.query.id);
+            let versionIds = Validator.zDBIDArray.safeParse(req.query.id);
             let raw = req.query.raw;
-            if (!modVersionIds.success) {
+            if (!versionIds.success) {
                 return res.status(400).send({ message: `Invalid mod version id.` });
             }
 
-            let dedupedIds = Array.from(new Set(modVersionIds.data));
+            let dedupedIds = Array.from(new Set(versionIds.data));
 
             let retVal: {project: ProjectAPIPublicResponse, version: any}[] = [];
             for (const id of dedupedIds) {
@@ -323,15 +347,28 @@ export class GetModRoutes {
 
         // #region Hashes
         this.router.get(`/hashlookup`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
-            // #swagger.description = 'Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Missing hash.' }
-            // #swagger.responses[404] = { description: 'Hash not found.' }
-            // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
-            // #swagger.parameters['status'] = { description: 'Only show mods with these statuses.', type: 'string' }
+            /*
+            #swagger.tags = ['Getting Mods']
+            #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
+            #swagger.description = 'Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.'
+            #swagger.responses[200] = { description: 'Returns the mod version.', 
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/VersionAPIPublicResponse'
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.parameters['status'] = { description: 'Only show versions with these statuses.', type: 'string' }
+            */
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
             const raw = Validator.zBool.safeParse(req.query.raw).data;
             const status = Validator.zStatus.safeParse(req.query.status).data;
@@ -377,7 +414,7 @@ export class GetModRoutes {
         });
 
         this.router.get(`/multi/hashlookup`, async (req, res) => {
-            // #swagger.tags = ['Mods']
+            // #swagger.tags = ['Getting Mods']
             // #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
             // #swagger.description = 'Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.'
             // #swagger.responses[200] = { description: 'Returns the mod version.' }

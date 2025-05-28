@@ -671,6 +671,16 @@ const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
     }
 };
 // #endregion
+// #region Full API Parameters
+const rawParameter: OpenAPIV3_1.ParameterObject = {
+    name: `raw`,
+    in: `query`,
+    description: `If set to true, the response will be altered to return a non-processed version of the object. The resulting response will not have the same structure as the public response. This parameter is used for debugging purposes.`,
+    required: false,
+    schema: {
+        type: `boolean`,
+    }
+};
 const doc = {
     info: {
         title: `BadBeatMods API`,
@@ -689,7 +699,7 @@ const doc = {
     //schemes: [`https`, `http`],
     tags: [
         { name: `Status`, description: `Status related endpoints` },
-        { name: `Mods`, description: `Mod related endpoints` },
+        { name: `Getting Mods`, description: `For getting projects & versions` },
         { name: `Versions`, description: `Version Management` },
         { name: `MOTD`, description: `Message of the Day related endpoints` },
         { name: `Approval`, description: `Approval related endpoints` },
@@ -739,7 +749,10 @@ const doc = {
         },
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,
-        }
+        },
+        "parameters": {
+            raw: rawParameter,
+        },
     }
 };
 

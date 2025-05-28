@@ -16,8 +16,8 @@
       "description": "Status related endpoints"
     },
     {
-      "name": "Mods",
-      "description": "Mod related endpoints"
+      "name": "Getting Mods",
+      "description": "For getting projects & versions"
     },
     {
       "name": "Versions",
@@ -190,7 +190,7 @@
     "/mods": {
       "get": {
         "tags": [
-          "Mods"
+          "Getting Mods"
         ],
         "summary": "Get all mods for a specified version.",
         "description": "Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.",
@@ -265,55 +265,10 @@
         }
       }
     },
-    "/modversions/{modVersionIdParam}": {
+    "/multi/versions": {
       "get": {
         "tags": [
-          "Mods"
-        ],
-        "summary": "Get a specific mod version by ID.",
-        "description": "Get a specific mod version by ID.",
-        "parameters": [
-          {
-            "name": "modVersionIdParam",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The mod version ID."
-          },
-          {
-            "name": "raw",
-            "description": "Return the raw mod depedendcies without attempting to resolve them.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the mod version."
-          },
-          "400": {
-            "description": "Invalid mod version id."
-          },
-          "404": {
-            "description": "Mod version not found."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
-    "/multi/modversions": {
-      "get": {
-        "tags": [
-          "Mods"
+          "Getting Mods"
         ],
         "summary": "Get multiple mod versions by ID.",
         "description": "Get multiple mod versions by ID.",
@@ -321,19 +276,14 @@
           {
             "name": "id",
             "in": "query",
-            "description": "The mod version IDs.",
+            "description": "The mod version IDs. Can be specified multiple times.",
             "required": true,
             "schema": {
-              "type": "array"
+              "type": "number"
             }
           },
           {
-            "name": "raw",
-            "description": "Return the raw mod depedendcies without attempting to resolve them.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
+            "$ref": "#/components/parameters/raw"
           }
         ],
         "responses": {
@@ -358,7 +308,7 @@
     "/hashlookup": {
       "get": {
         "tags": [
-          "Mods"
+          "Getting Mods"
         ],
         "summary": "Get a specific mod version that has a file with the specified hash.",
         "description": "Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.",
@@ -405,7 +355,7 @@
     "/multi/hashlookup": {
       "get": {
         "tags": [
-          "Mods"
+          "Getting Mods"
         ],
         "summary": "Get a specific mod version that has a file with the specified hash.",
         "description": "Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.",
@@ -443,7 +393,7 @@
     "/projects/{projectIdParam}": {
       "get": {
         "tags": [
-          "Mods"
+          "Getting Mods"
         ],
         "summary": "Get a specific mod by ID.",
         "description": "Get a specific mod by ID. This will also return every version of the mod.",
@@ -454,16 +404,8 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "modIdParam",
-            "in": "path",
-            "description": "The mod ID.",
-            "required": true,
-            "schema": {
-              "type": "number"
-            }
+            },
+            "description": "The mod ID."
           },
           {
             "name": "raw",
@@ -548,6 +490,52 @@
             }
           }
         }
+      }
+    },
+    "/versions/{versionIdParam}": {
+      "get": {
+        "tags": [
+          "Getting Mods"
+        ],
+        "summary": "Get a specific version by ID.",
+        "description": "Get a specific version by ID.",
+        "parameters": [
+          {
+            "name": "versionIdParam",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The version ID."
+          },
+          {
+            "name": "raw",
+            "description": "Return the raw mod depedendcies without attempting to resolve them.",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProjectVersionPairResponse",
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/projects/create": {
@@ -2620,6 +2608,17 @@
               "$ref": "#/components/schemas/zApproveObject"
             }
           }
+        }
+      }
+    },
+    "parameters": {
+      "raw": {
+        "name": "raw",
+        "in": "query",
+        "description": "If set to true, the response will be altered to return a non-processed version of the object. The resulting response will not have the same structure as the public response. This parameter is used for debugging purposes.",
+        "required": false,
+        "schema": {
+          "type": "boolean"
         }
       }
     },
