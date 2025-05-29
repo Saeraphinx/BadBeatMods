@@ -35,7 +35,7 @@ export class UserRoutes {
             // #swagger.summary = 'Get user information.'
             // #swagger.description = 'Get user information.'
             // #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
-            // #swagger.responses[200] = { description: 'Returns user information.' }
+            // #swagger.responses[200] = { description: 'Returns user information.', content: { 'application/json': { schema: { $ref: '#/components/schemas/UserAPIPublicResponse' } } } }
             // #swagger.responses[404] = { description: 'User not found.' }
             // #swagger.responses[400] = { description: 'Invalid parameters.' }
             let id = Validator.zDBID.safeParse(req.params.id);
