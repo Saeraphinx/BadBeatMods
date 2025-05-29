@@ -20,7 +20,7 @@ export class ImportRoutes {
 
     constructor(router: Router) {
         this.router = router;
-        this.loadRoutes();
+        //this.loadRoutes();
     }
 
     private async loadRoutes() {

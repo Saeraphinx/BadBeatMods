@@ -16,16 +16,12 @@
       "description": "Status related endpoints"
     },
     {
-      "name": "Getting Mods",
-      "description": "For getting projects & versions"
+      "name": "Mods",
+      "description": ""
     },
     {
       "name": "Versions",
       "description": "Version Management"
-    },
-    {
-      "name": "MOTD",
-      "description": "Message of the Day related endpoints"
     },
     {
       "name": "Approval",
@@ -190,7 +186,7 @@
     "/mods": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get all mods for a specified version.",
         "description": "Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.",
@@ -268,7 +264,7 @@
     "/multi/versions": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get multiple mod versions by ID.",
         "description": "Get multiple mod versions by ID.",
@@ -288,13 +284,23 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the mod version."
+            "description": "Returns the version and the parent project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectVersionPair"
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid mod version id."
+            "description": "Bad Request"
           },
           "404": {
-            "description": "Mod version not found."
+            "description": "Not Found"
           }
         },
         "security": [
@@ -308,7 +314,7 @@
     "/hashlookup": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get a specific mod version that has a file with the specified hash.",
         "description": "Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.",
@@ -323,16 +329,11 @@
             }
           },
           {
-            "name": "raw",
-            "description": "Return the raw mod depedendcies without attempting to resolve them.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
+            "$ref": "#/components/parameters/raw"
           },
           {
             "name": "status",
-            "description": "Only show mods with these statuses.",
+            "description": "Only show versions with these statuses.",
             "in": "query",
             "schema": {
               "type": "string"
@@ -341,13 +342,23 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the mod version."
+            "description": "Returns the mod version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VersionAPIPublicResponse"
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Missing hash."
+            "description": "Bad Request"
           },
           "404": {
-            "description": "Hash not found."
+            "description": "Not Found"
           }
         }
       }
@@ -355,22 +366,23 @@
     "/multi/hashlookup": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get a specific mod version that has a file with the specified hash.",
         "description": "Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.",
         "parameters": [
           {
-            "name": "status",
+            "name": "hash",
+            "description": "The hash to look up. Can be repeated",
+            "required": true,
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "hash",
-            "description": "The hash to look up.",
-            "required": true,
+            "name": "status",
+            "description": "Only show versions with these statuses.",
             "in": "query",
             "schema": {
               "type": "string"
@@ -393,7 +405,7 @@
     "/projects/{projectIdParam}": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get a specific mod by ID.",
         "description": "Get a specific mod by ID. This will also return every version of the mod.",
@@ -408,12 +420,7 @@
             "description": "The mod ID."
           },
           {
-            "name": "raw",
-            "description": "Return the raw mod info. Alters the return type.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
+            "$ref": "#/components/parameters/raw"
           }
         ],
         "responses": {
@@ -439,7 +446,7 @@
         "tags": [
           "Mods"
         ],
-        "description": "Update a mod.",
+        "description": "Edit a project.",
         "parameters": [
           {
             "name": "projectIdParam",
@@ -453,7 +460,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Project updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Project edit submitted for approval.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -475,7 +499,7 @@
           }
         ],
         "requestBody": {
-          "description": "Mod data",
+          "description": "Project data",
           "required": true,
           "content": {
             "application/json": {
@@ -495,7 +519,7 @@
     "/versions/{versionIdParam}": {
       "get": {
         "tags": [
-          "Getting Mods"
+          "Mods"
         ],
         "summary": "Get a specific version by ID.",
         "description": "Get a specific version by ID.",
@@ -510,12 +534,7 @@
             "description": "The version ID."
           },
           {
-            "name": "raw",
-            "description": "Return the raw mod depedendcies without attempting to resolve them.",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
+            "$ref": "#/components/parameters/raw"
           }
         ],
         "responses": {
@@ -648,36 +667,50 @@
         }
       }
     },
-    "/mods/{modIdParam}/icon": {
+    "/projects/{projectIdParam}/icon": {
       "post": {
         "tags": [
           "Mods"
         ],
         "summary": "Update a mod icon.",
-        "description": "Update a mod icon.",
+        "description": "Update a mod icon. (Note: This endpoint does not work on the API documentation page.)",
         "parameters": [
           {
-            "name": "modIdParam",
+            "name": "projectIdParam",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Mod ID."
+            }
           },
           {
             "name": "icon",
             "in": "formData",
             "description": "Mod icon.",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "file"
+            }
+          },
+          {
+            "name": "modIdParam",
+            "description": "Mod ID.",
+            "in": "query",
+            "schema": {
+              "type": "number"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Icon updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -700,7 +733,7 @@
         ]
       }
     },
-    "/modversion/{modVersionIdParam}": {
+    "/version/{versionIdParam}": {
       "patch": {
         "tags": [
           "Mods"
@@ -708,18 +741,42 @@
         "description": "Update a mod version.",
         "parameters": [
           {
-            "name": "modVersionIdParam",
+            "name": "versionIdParam",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Mod Version ID"
+            }
+          },
+          {
+            "name": "modVersionIdParam",
+            "description": "Mod Version ID",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Mod version updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionEditResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Mod version edit submitted for approval.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditApprovalQueueResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -758,25 +815,33 @@
         }
       }
     },
-    "/mods/{modIdParam}/submit": {
+    "/projects/{projectIdParam}/submit": {
       "post": {
         "tags": [
           "Mods"
         ],
-        "description": "",
+        "description": "Submit a mod for approval.",
         "parameters": [
           {
-            "name": "modIdParam",
+            "name": "projectIdParam",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Project ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Mod submitted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -799,25 +864,33 @@
         ]
       }
     },
-    "/modVersions/{modVersionIdParam}/submit": {
+    "/versions/{versionIdParam}/submit": {
       "post": {
         "tags": [
           "Mods"
         ],
-        "description": "",
+        "description": "Submit a version for approval.",
         "parameters": [
           {
-            "name": "modVersionIdParam",
+            "name": "versionIdParam",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Version ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Mod version submitted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionEditResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -848,7 +921,37 @@
         "description": "Get all edits.",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Edits found successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "edits": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EditApprovalQueueResponse"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "security": [
@@ -878,7 +981,22 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Edit found successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "edit": {
+                      "$ref": "#/components/schemas/EditApprovalQueueResponse"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -1193,22 +1311,6 @@
                 "gameVersionId": 1
               }
             }
-          }
-        }
-      }
-    },
-    "/beatmods/importAll": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -1845,86 +1947,6 @@
             }
           }
         }
-      }
-    },
-    "/motd": {
-      "get": {
-        "tags": [
-          "MOTD"
-        ],
-        "description": "",
-        "parameters": [
-          {
-            "name": "gameName",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "MOTD"
-        ],
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
-    "/motd/{id}": {
-      "delete": {
-        "tags": [
-          "MOTD"
-        ],
-        "description": "",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ]
       }
     },
     "/user": {
@@ -3555,6 +3577,42 @@
             ],
             "description": "The date the object was deleted from the database.",
             "example": "2023-10-01T00:00:00.000Z"
+          }
+        }
+      },
+      "ProjectEditResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The message to be displayed."
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectAPIPublicResponse"
+          }
+        }
+      },
+      "VersionEditResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The message to be displayed."
+          },
+          "version": {
+            "$ref": "#/components/schemas/VersionDBObject"
+          }
+        }
+      },
+      "EditApprovalQueueResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The message to be displayed."
+          },
+          "edit": {
+            "$ref": "#/components/schemas/EditApprovalQueueDBObject"
           }
         }
       },

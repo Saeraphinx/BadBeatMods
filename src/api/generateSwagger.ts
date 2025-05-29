@@ -3,6 +3,7 @@ import { Categories, Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
 import { ApprovalAction } from './routes/approval.ts';
+import fs from 'fs';
 type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
@@ -430,6 +431,45 @@ const ServerMessage: OpenAPIV3_1.SchemaObject = {
     }
 };
 // #endregion
+// #region Edit Sucess Schemas
+const ProjectEditResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        project: {
+            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+        },
+    },
+};
+
+const VersionEditResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        version: {
+            $ref: `#/components/schemas/VersionDBObject`
+        },
+    },
+};
+
+const EditApprovalQueueResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        edit: {
+            $ref: `#/components/schemas/EditApprovalQueueDBObject`
+        },
+    },
+};
 // #region Validator Object Schemas
 const zCreateProject: SchemaObject = {
     type: `object`,
@@ -528,6 +568,7 @@ const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
     }
 }
 // #endregion
+
 // #region Full API Responses
 const ServerMessageResponse: OpenAPIV3_1.ResponseObject = {
     description: `A simple message from the server. Indicates anything from a successful operation to an error message. Most, if not all, endpoints will return this in the event of an error.`,
@@ -681,6 +722,7 @@ const rawParameter: OpenAPIV3_1.ParameterObject = {
         type: `boolean`,
     }
 };
+// #endregion
 const doc = {
     info: {
         title: `BadBeatMods API`,
@@ -699,9 +741,9 @@ const doc = {
     //schemes: [`https`, `http`],
     tags: [
         { name: `Status`, description: `Status related endpoints` },
-        { name: `Getting Mods`, description: `For getting projects & versions` },
+        { name: `Mods`, description: `` },
         { name: `Versions`, description: `Version Management` },
-        { name: `MOTD`, description: `Message of the Day related endpoints` },
+        //{ name: `MOTD`, description: `Message of the Day related endpoints` },
         { name: `Approval`, description: `Approval related endpoints` },
         { name: `Users`, description: `User related endpoints` },
         { name: `Admin`, description: `Admin related endpoints` },
@@ -737,6 +779,9 @@ const doc = {
             zApproveObject: zApproveObject,
             VersionDBObject,
             EditApprovalQueueDBObject,
+            ProjectEditResponse,
+            VersionEditResponse,
+            EditApprovalQueueResponse,
             ServerMessage
         },
         "responses": {
@@ -764,10 +809,10 @@ const routes = [
     `./routes/updateMod.ts`,
     `./routes/auth.ts`,
     `./routes/versions.ts`,
-    `./routes/import.ts`,
+    //`./routes/import.ts`,
     `./routes/admin.ts`,
     `./routes/approval.ts`,
-    `./routes/motd.ts`,
+    //`./routes/motd.ts`,
     `./routes/users.ts`,
     `./routes/apistatus.ts`,
     `./routes/bulkActions.ts`,

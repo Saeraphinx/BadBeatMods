@@ -40,6 +40,7 @@ import fullApi from './api/swagger_full.json' with { type: "json" };
 // eslint-disable-next-line quotes
 import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
+import { OpenAPIV3_1 } from 'openapi-types';
 function init() {
     console.log(`Starting setup...`);
     if (process.env.NODE_ENV === `test`) {
@@ -246,12 +247,24 @@ function init() {
             res.json(publicApi);
         });
 
+        type HTTPMethod = OpenAPIV3_1.HttpMethods;
         apiRouter.use(`/docs`, swaggerUi.serve, swaggerUi.setup(undefined, {
             explorer: true,
             swaggerOptions: {
+                /*operationsSorter: (a: any, b: typeof a) => {
+                    //console.log(a);
+                    let methodOrder = { 'get': 0, 'post': 1, 'put': 2, 'delete': 4, 'patch': 3, 'head': 5, 'options': 6, 'trace': 7 };
+                    let method = methodOrder[a.get(`method`) as HTTPMethod] - methodOrder[b.get(`method`) as HTTPMethod];
+                    if (method !== 0) {
+                        return method;
+                    }
+                    let path = a.get(`path`).localeCompare(b.get(`path`));
+                    if (path !== 0) {
+                        return path;
+                    }
+                    return 0;
+                },*/
                 docExpansion: `list`,
-                defaultModelExpandDepth: 2,
-                defaultModelsExpandDepth: 2,
                 urls: [
                     {
                         url: `${Config.server.url}${Config.server.apiRoute}/swagger/full.json`,

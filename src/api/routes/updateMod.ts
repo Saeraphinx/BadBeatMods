@@ -19,26 +19,51 @@ export class UpdateProjectRoutes {
 
     // Routes with optional parameters will return a 400 if the parameter is present but invalid
     private async loadRoutes() {
-        // #region Update Mod
+        // #region Update Project
         this.router.patch(`/projects/:projectIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.description = `Update a mod.`
-            // #swagger.parameters['projectIdParam'] = { description: 'Project ID', type: 'integer' }
-            /* #swagger.requestBody = {
-                description: 'Mod data',
+            }]
+            #swagger.description = `Edit a project.`
+            #swagger.parameters['projectIdParam'] = { description: 'Project ID', type: 'integer' }
+            #swagger.requestBody = {
+                description: 'Project data',
                 required: true,
                 schema: {
-                    $ref: '#/definitions/zUpdateProject'
+                    $ref: '#/components/schemas/zUpdateProject'
                 }
             }
+            #swagger.responses[200] = {
+                description: 'Project updated successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/ProjectEditResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[202] = {
+                description: 'Project edit submitted for approval.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/EditApprovalQueueResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[500]
             */
-            let modId = Validator.zDBID.safeParse(req.params.projectIdParam);
+            let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
             let reqBody = Validator.zUpdateProject.safeParse(req.body);
-            if (!modId.success) {
+            if (!projectId.success) {
                 return res.status(400).send({ message: `Invalid modId.` });
             }
             if (!reqBody.success) {
@@ -54,13 +79,13 @@ export class UpdateProjectRoutes {
                 return res.status(400).send({ message: `No changes provided.` });
             }
 
-            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
-            if (!mod) {
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: projectId.data } });
+            if (!project) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            let isGameChange = reqBody.data.gameName && reqBody.data.gameName !== mod.gameName;
-            if (mod.isAllowedToEdit(session.user, isGameChange) == false) {
+            let isGameChange = reqBody.data.gameName && reqBody.data.gameName !== project.gameName;
+            if (project.isAllowedToEdit(session.user, isGameChange) == false) {
                 return res.status(401).send({ message: `You cannot edit this mod.` });
             }
 
@@ -71,25 +96,25 @@ export class UpdateProjectRoutes {
                 }
             }
 
-            mod.edit({
-                name: reqBody.data.name || mod.name,
-                summary: reqBody.data.summary || mod.summary,
-                description: reqBody.data.description || mod.description,
-                gameName: reqBody.data.gameName || mod.gameName,
-                gitUrl: reqBody.data.gitUrl || mod.gitUrl,
-                authorIds: reqBody.data.authorIds || mod.authorIds,
-                category: reqBody.data.category || mod.category,
-            }, session.user).then((mod) => {
-                if (mod.isEditObj) {
-                    if (mod.newEdit) {
-                        res.status(200).send({ message: `Edit ${mod.edit.id} (for ${mod.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: mod.edit });
+            project.edit({
+                name: reqBody.data.name || project.name,
+                summary: reqBody.data.summary || project.summary,
+                description: reqBody.data.description || project.description,
+                gameName: reqBody.data.gameName || project.gameName,
+                gitUrl: reqBody.data.gitUrl || project.gitUrl,
+                authorIds: reqBody.data.authorIds || project.authorIds,
+                category: reqBody.data.category || project.category,
+            }, session.user).then((project) => {
+                if (project.isEditObj) {
+                    if (project.newEdit) {
+                        res.status(202).send({ message: `Edit ${project.edit.id} (for ${project.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: project.edit });
                     } else {
-                        res.status(200).send({ message: `Edit ${mod.edit.id} (for ${mod.edit.objectId}) updated by ${session.user.id}.`, edit: mod.edit });
+                        res.status(202).send({ message: `Edit ${project.edit.id} (for ${project.edit.objectId}) updated by ${session.user.id}.`, edit: project.edit });
                     }
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return;
                 } else {
-                    res.status(200).send({ message: `Mod updated.`, project: mod.mod });
+                    res.status(200).send({ message: `Mod updated.`, project: project.mod.toAPIResponse() });
                     DatabaseHelper.refreshCache(`mods`);
                 }
             }).catch((error) => {
@@ -98,26 +123,41 @@ export class UpdateProjectRoutes {
             });
         });
 
-        this.router.post(`/mods/:modIdParam/icon`, async (req, res) => {
+        this.router.post(`/projects/:projectIdParam/icon`, async (req, res) => {
             /* #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            /* #swagger.parameters['icon'] = {
+            }]
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Update a mod icon.'
+            #swagger.description = 'Update a mod icon. (Note: This endpoint does not work on the API documentation page.)'
+            #swagger.parameters['icon'] = {
                 in: 'formData',
                 type: 'file',
                 description: 'Mod icon.',
-                required: false
-            } */
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Update a mod icon.'
-            // #swagger.description = 'Update a mod icon.'
-            // #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
-            let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            if (!modId.success) {
+                required: true
+            }
+            #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
+            #swagger.responses[200] = {
+                description: 'Icon updated successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/ProjectEditResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.responses[413]
+            #swagger.responses[500]
+            */
+            let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
+            if (!projectId.success) {
                 return res.status(400).send({ message: `Invalid modId.` });
             }
-            let gameName = DatabaseHelper.getGameNameFromModId(modId.data);
+            let gameName = DatabaseHelper.getGameNameFromModId(projectId.data);
             if (!gameName) {
                 return res.status(400).send({ message: `Invalid modId.` });
             }
@@ -126,8 +166,8 @@ export class UpdateProjectRoutes {
                 return;
             }
 
-            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
-            if (!mod) {
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: projectId.data } });
+            if (!project) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
@@ -156,43 +196,71 @@ export class UpdateProjectRoutes {
             if (filePath.startsWith(`${path.resolve(Config.storage.iconsDir)}`) == false) {
                 return res.status(400).send({ message: `Invalid icon.` });
             }
-            let oldFileName = mod.iconFileName;
-            mod.iconFileName = `${icon.md5}${path.extname(icon.name)}`;
-            mod.save().then((mod) => {
+            let oldFileName = project.iconFileName;
+            project.iconFileName = `${icon.md5}${path.extname(icon.name)}`;
+            project.save().then((project) => {
                 icon.mv(filePath, (error) => {
                     if (error) {
                         Logger.error(`Error moving icon: ${error}`);
-                        mod.iconFileName = oldFileName;
-                        mod.save();
+                        project.iconFileName = oldFileName;
+                        project.save();
                         return res.status(500).send({ message: `Error moving icon.` });
                     }
-                    res.status(200).send({ message: `Icon updated.`, project: mod });
+                    res.status(200).send({ message: `Icon updated.`, project: project.toAPIResponse() });
                 });
             });
         });
         // #endregion Update Mod
 
-        // #region Update Mod Version
-        this.router.patch(`/modversion/:modVersionIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        // #region Update Version
+        this.router.patch(`/version/:versionIdParam`, async (req, res) => {
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.description = `Update a mod version.`
-            // #swagger.parameters['modVersionIdParam'] = { description: 'Mod Version ID', type: 'integer' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.description = `Update a mod version.`
+            #swagger.parameters['modVersionIdParam'] = { description: 'Mod Version ID', type: 'integer' }
+            #swagger.requestBody = {
                 description: 'Mod version data',
                 required: true,
                 schema: {
-                    $ref: '#/definitions/zUpdateVersion'
+                    $ref: '#/components/schemas/zUpdateVersion'
                 }
             }
+            #swagger.responses[200] = {
+                description: 'Mod version updated successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/VersionEditResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[202] = {
+                description: 'Mod version edit submitted for approval.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/EditApprovalQueueResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[500]
             */
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
+            let versionId = Validator.zDBID.safeParse(req.params.versionIdParam);
+            if (!versionId.success) {
+                return res.status(400).send({ message: `Invalid modVersionId.` });
+            }
             let reqBody = Validator.zUpdateVersion.safeParse(req.body);
 
-            if (!modVersionId.success) {
+            if (!versionId.success) {
                 return res.status(400).send({ message: `Invalid modVersionId.` });
             }
             if (!reqBody.success) {
@@ -208,17 +276,17 @@ export class UpdateProjectRoutes {
                 return res.status(400).send({ message: `No changes provided.` });
             }
 
-            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
-            if (!modVersion) {
+            let version = await DatabaseHelper.database.Versions.findOne({ where: { id: versionId.data } });
+            if (!version) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
-            if (!mod) {
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: version.projectId } });
+            if (!project) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            if (await modVersion.isAllowedToEdit(session.user, mod) == false) {
+            if (await version.isAllowedToEdit(session.user, project) == false) {
                 return res.status(401).send({ message: `You cannot edit this mod.` });
             }
 
@@ -234,22 +302,22 @@ export class UpdateProjectRoutes {
                 }
             }
 
-            modVersion.edit({
-                supportedGameVersionIds: reqBody.data.supportedGameVersionIds || modVersion.supportedGameVersionIds,
-                modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : modVersion.modVersion,
-                dependencies: reqBody.data.dependencies || modVersion.dependencies,
-                platform: reqBody.data.platform || modVersion.platform,
-            }, session.user).then((modVersion) => {
-                if (modVersion.isEditObj) {
-                    if (modVersion.newEdit) {
-                        res.status(200).send({ message: `Edit ${modVersion.edit.id} (for ${modVersion.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: modVersion.edit });
+            version.edit({
+                supportedGameVersionIds: reqBody.data.supportedGameVersionIds || version.supportedGameVersionIds,
+                modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : version.modVersion,
+                dependencies: reqBody.data.dependencies || version.dependencies,
+                platform: reqBody.data.platform || version.platform,
+            }, session.user).then((version) => {
+                if (version.isEditObj) {
+                    if (version.newEdit) {
+                        res.status(202).send({ message: `Edit ${version.edit.id} (for ${version.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: version.edit });
                     } else {
-                        res.status(200).send({ message: `Edit ${modVersion.edit.id} (for ${modVersion.edit.objectId}) updated by ${session.user.id}.`, edit: modVersion.edit });
+                        res.status(202).send({ message: `Edit ${version.edit.id} (for ${version.edit.objectId}) updated by ${session.user.id}.`, edit: version.edit });
                     }
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return;
                 } else {
-                    res.status(200).send({ message: `Mod version updated.`, version: modVersion });
+                    res.status(200).send({ message: `Mod version updated.`, version: version.version.toRawAPIResponse() });
                     DatabaseHelper.refreshCache(`modVersions`);
                 }
             }).catch((error) => {
@@ -259,32 +327,53 @@ export class UpdateProjectRoutes {
         });
         // #endregion Update Mod Version
         // #region Submit to Approval
-        this.router.post(`/mods/:modIdParam/submit`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.post(`/projects/:projectIdParam/submit`, async (req, res) => {
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
+            }]
+            #swagger.description = `Submit a mod for approval.`
+            #swagger.parameters['projectIdParam'] = { description: 'Project ID', type: 'integer' }
+            #swagger.responses[200] = {
+                description: 'Mod submitted successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/ProjectEditResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[500]
+            */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
 
-            let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
-            if (!mod) {
+            let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
+            if (!projectId.success) {
+                return res.status(400).send({ message: `Invalid modId.` });
+            }
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: projectId.data } });
+            if (!project) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            if (!mod.authorIds.includes(session.user.id)) {
+            if (!project.authorIds.includes(session.user.id)) {
                 return res.status(401).send({ message: `You cannot submit this mod.` });
             }
 
-            if (mod.status !== Status.Private) {
+            if (project.status !== Status.Private) {
                 return res.status(400).send({ message: `Mod is already submitted.` });
             }
 
-            mod.setStatus(Status.Pending, session.user, `Mod submitted for verification by ${session.user.username}`).then((project) => {
+            project.setStatus(Status.Pending, session.user, `Mod submitted for verification by ${session.user.username}`).then((project) => {
                 res.status(200).send({ message: `Mod submitted.`, project: project });
                 DatabaseHelper.refreshCache(`mods`);
             }).catch((error) => {
@@ -296,38 +385,56 @@ export class UpdateProjectRoutes {
             });
         });
 
-        this.router.post(`/modVersions/:modVersionIdParam/submit`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.post(`/versions/:versionIdParam/submit`, async (req, res) => {
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
+            }]
+            #swagger.description = `Submit a version for approval.`
+            #swagger.parameters['versionIdParam'] = { description: 'Version ID', type: 'integer' }
+            #swagger.responses[200] = {
+                description: 'Mod version submitted successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/VersionEditResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[500]
+            */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
 
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
-            if (!modVersion) {
+            let versionId = Validator.zDBID.safeParse(req.params.versionIdParam);
+            let version = await DatabaseHelper.database.Versions.findOne({ where: { id: versionId.data } });
+            if (!version) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
-            if (!mod) {
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: version.projectId } });
+            if (!project) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
 
-            if (!mod.authorIds.includes(session.user.id)) {
+            if (!project.authorIds.includes(session.user.id)) {
                 return res.status(401).send({ message: `You cannot submit this mod version.` });
             }
 
-            if (modVersion.status !== Status.Private) {
+            if (version.status !== Status.Private) {
                 return res.status(400).send({ message: `Mod version is already submitted.` });
             }
 
-            modVersion.setStatus(Status.Pending, session.user, `Version submitted for approval by ${session.user.username}`).then((modVersion) => {
-                res.status(200).send({ message: `Mod version submitted.`, modVersion });
+            version.setStatus(Status.Pending, session.user, `Version submitted for approval by ${session.user.username}`).then((version) => {
+                res.status(200).send({ message: `Mod version submitted.`, version: version });
                 DatabaseHelper.refreshCache(`modVersions`);
             }).catch((error) => {
                 res.status(500).send({ message: `Error submitting mod version: ${error}` });
@@ -337,12 +444,36 @@ export class UpdateProjectRoutes {
         // #endregion Submit
         // #region Edits
         this.router.get(`/edits`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.description = `Get all edits.`
+            }]
+            #swagger.description = `Get all edits.`
+            #swagger.responses[200] = {
+                description: 'Edits found successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string' },
+                                edits: {
+                                    type: 'array',
+                                    items: { $ref: '#/components/schemas/EditApprovalQueueResponse' }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[500]
+            */
+            
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
@@ -368,13 +499,29 @@ export class UpdateProjectRoutes {
         });
 
         this.router.get(`/edits/:editIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.description = `Get an edit.`
-            // #swagger.parameters['editIdParam'] = { description: 'Edit ID', type: 'integer' }
+            }]
+            #swagger.description = `Get an edit.`
+            #swagger.parameters['editIdParam'] = { description: 'Edit ID', type: 'integer' }
+            #swagger.responses[200] = {
+                description: 'Edit found successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string' },
+                                edit: { $ref: '#/components/schemas/EditApprovalQueueResponse' }
+                            }
+                        }
+                    }
+                }
+            }
+            */
             let editId = Validator.zDBID.safeParse(req.params.editIdParam);
             if (!editId.success) {
                 return res.status(400).send({ message: `Invalid editId.` });

@@ -119,11 +119,11 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return false;
     }
 
-    public async edit(object: VersionEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: Version}> {
+    public async edit(object: VersionEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, version: Version}> {
         if (this.status !== Status.Verified) {
             this.update({...object, lastUpdatedById: submitter.id});
             sendModVersionLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, modVersion: this};
+            return {isEditObj: false, version: this};
         }
     
         // check if there is already a pending edit

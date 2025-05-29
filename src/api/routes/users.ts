@@ -20,7 +20,7 @@ export class UserRoutes {
             }] */
             // #swagger.summary = 'Get logged in user information.'
             // #swagger.description = 'Get user information.'
-            // #swagger.responses[200] = { description: 'Returns user information.' }
+            // #swagger.responses[200] = { description: 'Returns user information.', content: { 'application/json': { schema: { $ref: '#/components/schemas/UserAPIPublicResponse' } } } }
             // #swagger.responses[401] = { description: 'Unauthorized.' }
             // #swagger.responses[500] = { description: 'Internal server error.' }
             let session = await validateSession(req, res, false);

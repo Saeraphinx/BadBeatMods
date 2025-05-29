@@ -16,7 +16,7 @@ export class GetModRoutes {
     private async loadRoutes() {
         this.router.get(`/mods`, async (req, res) => {
             /*
-            #swagger.tags = ['Getting Mods']
+            #swagger.tags = ['Mods']
             #swagger.summary = 'Get all mods for a specified version.'
             #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
             #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
@@ -164,7 +164,7 @@ export class GetModRoutes {
             #swagger.start
             #swagger.path = '/projects/{projectIdParam}'
             #swagger.method = 'get'
-            #swagger.tags = ['Getting Mods']
+            #swagger.tags = ['Mods']
             #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
@@ -240,7 +240,7 @@ export class GetModRoutes {
             #swagger.start
             #swagger.path = '/versions/{versionIdParam}'
             #swagger.method = 'get'
-            #swagger.tags = ['Getting Mods']
+            #swagger.tags = ['Mods']
             #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
@@ -284,7 +284,7 @@ export class GetModRoutes {
             #swagger.start
             #swagger.path = '/multi/versions'
             #swagger.method = 'get'
-            #swagger.tags = ['Getting Mods']
+            #swagger.tags = ['Mods']
             #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
@@ -300,7 +300,7 @@ export class GetModRoutes {
                         schema: {
                             type: 'array',
                             items: {
-                                $ref: '#/components/schemas/ProjectVersionPairResponse'
+                                $ref: '#/components/schemas/ProjectVersionPair'
                             }
                         }
                     }
@@ -348,10 +348,10 @@ export class GetModRoutes {
         // #region Hashes
         this.router.get(`/hashlookup`, async (req, res) => {
             /*
-            #swagger.tags = ['Getting Mods']
+            #swagger.tags = ['Mods']
             #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
             #swagger.description = 'Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.'
-            #swagger.responses[200] = { description: 'Returns the mod version.', 
+            #swagger.responses[200] = { description: 'Returns the mod version.',
                 content: {
                     'application/json': {
                         schema: {
@@ -414,13 +414,16 @@ export class GetModRoutes {
         });
 
         this.router.get(`/multi/hashlookup`, async (req, res) => {
-            // #swagger.tags = ['Getting Mods']
-            // #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
-            // #swagger.description = 'Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Missing hash.' }
-            // #swagger.responses[404] = { description: 'Hash not found.' }
-            // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
+            #swagger.description = 'Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.'
+            #swagger.parameters['hash'] = { description: 'The hash to look up. Can be repeated', type: 'string', required: true }
+            #swagger.parameters['status'] = { description: 'Only show versions with these statuses.', type: 'string' }
+            #swagger.responses[200] = { description: 'Returns the mod version.' }
+            #swagger.responses[400] = { description: 'Missing hash.' }
+            #swagger.responses[404] = { description: 'Hash not found.' }
+            */
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
             const status = Validator.zStatus.safeParse(req.query.status).data;
 
