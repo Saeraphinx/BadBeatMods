@@ -59,19 +59,24 @@ for (let version of fakeData.versions) {
     });
 }
 
+type ProjectVersionPair = {
+    project: ProjectAPIPublicResponse;
+    version: VersionAPIPublicResponse;
+};
+
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
+        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
         sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
     };
 });
 // #endregion
 
 describe.sequential(`API`, async () => {
-    let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
+    let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
     let defaultModData: Omit<ProjectInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
@@ -128,8 +133,8 @@ describe.sequential(`API`, async () => {
             const actual = await importOriginal();
             return {
                 ...actual,
-                sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType) => {}),
-                sendModVersionLog: vi.fn(async (modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project) => {}),
+                sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType) => {}),
+                sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project) => {}),
                 sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
             };
         });
@@ -193,13 +198,10 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            expect(() => {
-                let mods = response.body.mods;
-                for (let currentMod of response.body.mods) {
-                    expect(currentMod).toHaveProperty(`mod`);
-                    expect(currentMod).toHaveProperty(`latest`);
-                }
-            }).toBeTruthy();
+            for (let currentMod of response.body.mods) {
+                expect(currentMod).toHaveProperty(`project`);
+                expect(currentMod).toHaveProperty(`version`);
+            }
         });
 
         test(`/mods - gv only`, async () => {
@@ -209,14 +211,13 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
-            for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
-                expect(currentMod).toHaveProperty(`mod`);
-                expect(currentMod).toHaveProperty(`latest`);
-                let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
-                expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
-                expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+            let mods = response.body.mods as ProjectVersionPair[];
+            for (let currentMod of mods) {
+                expect(currentMod).toHaveProperty(`project`);
+                expect(currentMod).toHaveProperty(`version`);
+                let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+                expect(dependancies.length).toBe(currentMod.version.dependencies.length);
+                expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
             }
         });
 
@@ -227,15 +228,14 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
-            for (let cmod of response.body.mods) {
-                let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
-                expect(currentMod).toHaveProperty(`mod`);
-                expect(currentMod).toHaveProperty(`latest`);
-                let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
-                expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
-                expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-                expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
+            let mods = response.body.mods as ProjectVersionPair[];
+            for (let currentMod of mods) {
+                expect(currentMod).toHaveProperty(`project`);
+                expect(currentMod).toHaveProperty(`version`);
+                let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+                expect(dependancies.length).toBe(currentMod.version.dependencies.length);
+                expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+                expect(currentMod.version.platform).toBe(Platform.UniversalPC);
             }
         });
 
@@ -269,14 +269,13 @@ describe.sequential(`API`, async () => {
             const response = await api.get(`/hashlookup?hash=${contentHash}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`modVersions`);
-            expect(response.body.modVersions).toBeInstanceOf(Array);
-            expect(response.body.modVersions.length).toBe(1);
-            let apimv = response.body.modVersions[0];
+            expect(response.body).toBeInstanceOf(Array);
+            expect(response.body.length).toBe(1);
+            let apimv = response.body[0];
             expect(apimv).toHaveProperty(`id`);
-            expect(apimv).toHaveProperty(`modId`);
+            expect(apimv).toHaveProperty(`projectId`);
             expect(apimv.id).toBe(modVersion.id);
-            expect(apimv.modId).toBe(modVersion.projectId);
+            expect(apimv.projectId).toBe(modVersion.projectId);
         });
 
         test(`/hashlookup - ziphash`, async () => {
@@ -285,14 +284,13 @@ describe.sequential(`API`, async () => {
             const response = await api.get(`/hashlookup?hash=${zipHash}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`modVersions`);
-            expect(response.body.modVersions).toBeInstanceOf(Array);
-            expect(response.body.modVersions.length).toBe(1);
-            let apimv = response.body.modVersions[0];
+            expect(response.body).toBeInstanceOf(Array);
+            expect(response.body.length).toBe(1);
+            let apimv = response.body[0];
             expect(apimv).toHaveProperty(`id`);
-            expect(apimv).toHaveProperty(`modId`);
+            expect(apimv).toHaveProperty(`projectId`);
             expect(apimv.id).toBe(modVersion.id);
-            expect(apimv.modId).toBe(modVersion.projectId);
+            expect(apimv.projectId).toBe(modVersion.projectId);
         });
 
         test(`/multi/hashlookup - contentHash`, async () => {
@@ -301,11 +299,10 @@ describe.sequential(`API`, async () => {
             const response = await api.get(`/multi/hashlookup?hash=${contentHash1}&hash=${contentHash2}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`hashes`);
-            expect(response.body.hashes).toBeInstanceOf(Object);
-            expect(Object.keys(response.body.hashes).length).toBe(2);
-            expect(response.body.hashes[contentHash1]).toBeDefined();
-            expect(response.body.hashes[contentHash2]).toBeDefined();
+            expect(response.body).toBeInstanceOf(Object);
+            expect(Object.keys(response.body).length).toBe(2);
+            expect(response.body[contentHash1]).toBeDefined();
+            expect(response.body[contentHash2]).toBeDefined();
         });
 
         test(`/multi/hashlookup - zipHash`, async () => {
@@ -314,11 +311,10 @@ describe.sequential(`API`, async () => {
             const response = await api.get(`/multi/hashlookup?hash=${zipHash1}&hash=${zipHash2}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`hashes`);
-            expect(response.body.hashes).toBeInstanceOf(Object);
-            expect(Object.keys(response.body.hashes).length).toBe(2);
-            expect(response.body.hashes[zipHash1]).toBeDefined();
-            expect(response.body.hashes[zipHash2]).toBeDefined();
+            expect(response.body).toBeInstanceOf(Object);
+            expect(Object.keys(response.body).length).toBe(2);
+            expect(response.body[zipHash1]).toBeDefined();
+            expect(response.body[zipHash2]).toBeDefined();
         });
     });
 
@@ -327,14 +323,14 @@ describe.sequential(`API`, async () => {
             shouldAuthenticateWithRole = false;
         });
 
-        test(`/mods/:modId - priavte as author`, async () => {
+        test(`/projects/:projectId - priavte as author`, async () => {
             shouldAuthenticateWithRole = UserRoles.LargeFiles; // this removes admin role
             const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [1],
             });
-            const response = await api.patch(`/mods/${newMod.id}`).send({
+            const response = await api.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod private author`,
                 summary: `Test Summary 2`,
                 description: `Test Description 2`,
@@ -344,40 +340,40 @@ describe.sequential(`API`, async () => {
             expect(response.status).toBe(200);
             const mod = response.body;
             expect(mod).toBeDefined();
-            expect(mod).toHaveProperty(`mod`);
-            expect(mod.mod).toHaveProperty(`name`);
-            expect(mod.mod.name).toBe(`Test Mod private author`);
+            expect(mod).toHaveProperty(`project`);
+            expect(mod.project).toHaveProperty(`name`);
+            expect(mod.project.name).toBe(`Test Mod private author`);
         });
 
-        test(`/mods/:modId - priavte as non-author`, async () => {
+        test(`/projects/:modId - priavte as non-author`, async () => {
             shouldAuthenticateWithRole = UserRoles.LargeFiles; // this removes admin role
             const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [2],
             });
-            const response = await api.patch(`/mods/${newMod.id}`).send({
+            const response = await api.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod 2`,
             });
             expect(response.status).toBe(401);
         });
 
-        test(`/mods/:modId - private as approver`, async () => {
+        test(`/projects/:modId - private as approver`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
             const newMod = await server.database.Projects.create({
                 ...defaultModData,
                 name: stuff.fakeName,
                 authorIds: [2],
             });
-            const response = await api.patch(`/mods/${newMod.id}`).send({
+            const response = await api.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod private approver`,
             });
             expect(response.status).toBe(200);
             const mod = response.body;
             expect(mod).toBeDefined();
-            expect(mod).toHaveProperty(`mod`);
-            expect(mod.mod).toHaveProperty(`name`);
-            expect(mod.mod.name).toBe(`Test Mod private approver`);
+            expect(mod).toHaveProperty(`project`);
+            expect(mod.project).toHaveProperty(`name`);
+            expect(mod.project.name).toBe(`Test Mod private approver`);
         });
     });
 
@@ -435,29 +431,29 @@ describe.sequential(`API`, async () => {
             let edits = response.body.edits;
             for (let edit of edits) {
                 expect(edit).toHaveProperty(`edit`);
-                expect(edit).toHaveProperty(`mod`);
+                expect(edit).toHaveProperty(`project`);
                 expect(edit).toHaveProperty(`original`);
                 expect(edit.edit).toHaveProperty(`id`);
-                expect(edit.mod).toHaveProperty(`id`);
+                expect(edit.project).toHaveProperty(`id`);
                 expect(edit.original).toHaveProperty(`id`);
             }
         });
 
         test(`/approval/:queuetype - versions`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/modVersions?gameName=${gnToCheck}`);
+            const response = await api.get(`/approval/versions?gameName=${gnToCheck}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`modVersions`);
-            expect(response.body.modVersions).toBeInstanceOf(Array);
-            expect(response.body.modVersions.length).toBeGreaterThan(0);
-            let modVersions = response.body.modVersions;
-            for (let version of modVersions) {
+            expect(response.body).toHaveProperty(`versions`);
+            expect(response.body.versions).toBeInstanceOf(Array);
+            expect(response.body.versions.length).toBeGreaterThan(0);
+            let versions = response.body.versions;
+            for (let version of versions) {
                 expect(version).toHaveProperty(`version`);
-                expect(version).toHaveProperty(`mod`);
-                expect(version.mod).toHaveProperty(`id`);
-                expect(version.version).toHaveProperty(`modId`);
-                expect(version.version.modId).toBe(version.mod.id);
+                expect(version).toHaveProperty(`project`);
+                expect(version.version).toHaveProperty(`id`);
+                expect(version.version).toHaveProperty(`projectId`);
+                expect(version.version.projectId).toBe(version.project.id);
                 expect(version.version).toHaveProperty(`status`);
                 expect(version.version.status).toBe(Status.Pending);
             }
@@ -465,21 +461,21 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - versions (w/ unverified)`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/modVersions?gameName=${gnToCheck}&includeUnverified=true`);
+            const response = await api.get(`/approval/versions?gameName=${gnToCheck}&includeUnverified=true`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`modVersions`);
-            expect(response.body.modVersions).toBeInstanceOf(Array);
-            expect(response.body.modVersions.length).toBeGreaterThan(0);
-            let modVersions = response.body.modVersions;
+            expect(response.body).toHaveProperty(`versions`);
+            expect(response.body.versions).toBeInstanceOf(Array);
+            expect(response.body.versions.length).toBeGreaterThan(0);
+            let versions = response.body.versions;
             let hasSeenUnverified = false;
             let hasSeenPending = false;
-            for (let version of modVersions) {
+            for (let version of versions) {
                 expect(version).toHaveProperty(`version`);
-                expect(version).toHaveProperty(`mod`);
-                expect(version.mod).toHaveProperty(`id`);
-                expect(version.version).toHaveProperty(`modId`);
-                expect(version.version.modId).toBe(version.mod.id);
+                expect(version).toHaveProperty(`project`);
+                expect(version.project).toHaveProperty(`id`);
+                expect(version.version).toHaveProperty(`projectId`);
+                expect(version.version.projectId).toBe(version.project.id);
                 expect(version.version).toHaveProperty(`status`);
                 expect(version.version.status).toBeOneOf([Status.Pending, Status.Unverified]);
                 if (version.version.status === Status.Unverified) {
@@ -494,40 +490,40 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - projects`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/mods?gameName=${gnToCheck}`);
+            const response = await api.get(`/approval/projects?gameName=${gnToCheck}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`mods`);
-            expect(response.body.mods).toBeInstanceOf(Array);
-            expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
-            for (let mod of mods) {
-                expect(mod).toHaveProperty(`name`);
-                expect(mod.name).toBeDefined();
-                expect(mod).toHaveProperty(`status`);
-                expect(mod.status).toBe(Status.Pending);
+            expect(response.body).toHaveProperty(`projects`);
+            expect(response.body.projects).toBeInstanceOf(Array);
+            expect(response.body.projects.length).toBeGreaterThan(0);
+            let projects = response.body.projects;
+            for (let project of projects) {
+                expect(project).toHaveProperty(`name`);
+                expect(project.name).toBeDefined();
+                expect(project).toHaveProperty(`status`);
+                expect(project.status).toBe(Status.Pending);
             }
         });
 
         test(`/approval/:queuetype - projects (w/ unverified)`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/mods?gameName=${gnToCheck}&includeUnverified=true`);
+            const response = await api.get(`/approval/projects?gameName=${gnToCheck}&includeUnverified=true`);
             expect(response.status).toBe(200);
             expect(response.body).toBeDefined();
-            expect(response.body).toHaveProperty(`mods`);
-            expect(response.body.mods).toBeInstanceOf(Array);
-            expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods;
+            expect(response.body).toHaveProperty(`projects`);
+            expect(response.body.projects).toBeInstanceOf(Array);
+            expect(response.body.projects.length).toBeGreaterThan(0);
+            let projects = response.body.projects;
             let hasSeenUnverified = false;
             let hasSeenPending = false;
-            for (let mod of mods) {
-                expect(mod).toHaveProperty(`name`);
-                expect(mod.name).toBeDefined();
-                expect(mod).toHaveProperty(`status`);
-                expect(mod.status).toBeOneOf([Status.Pending, Status.Unverified]);
-                if (mod.status === Status.Unverified) {
+            for (let project of projects) {
+                expect(project).toHaveProperty(`name`);
+                expect(project.name).toBeDefined();
+                expect(project).toHaveProperty(`status`);
+                expect(project.status).toBeOneOf([Status.Pending, Status.Unverified]);
+                if (project.status === Status.Unverified) {
                     hasSeenUnverified = true;
-                } else if (mod.status === Status.Pending) {
+                } else if (project.status === Status.Pending) {
                     hasSeenPending = true;
                 }
             }
@@ -567,7 +563,7 @@ describe.sequential(`API`, async () => {
                 [Status.Unverified, ApprovalAction.Remove, Status.Removed],
                 [Status.Verified, ApprovalAction.Remove, Status.Removed],
             ])('/approval/mod/:modIdParam/approve - %s %s -> %s', async (init, action, expected) => {
-                await testStatusChange(testMod, init, action, expected, sendModLog)();
+                await testStatusChange(testMod, init, action, expected, sendProjectLog)();
             })
 
             test.each([
@@ -581,7 +577,7 @@ describe.sequential(`API`, async () => {
                 [Status.Unverified, ApprovalAction.Remove, Status.Removed],
                 [Status.Verified, ApprovalAction.Remove, Status.Removed],
             ])('/approval/modversion/:modIdParam/approve - %s %s -> %s', async (init, action, expected) => {
-                await testStatusChange(testModVersion, init, action, expected, sendModVersionLog)();
+                await testStatusChange(testModVersion, init, action, expected, sendVersionLog)();
             })
         });
     });
@@ -592,22 +588,20 @@ async function testGetMod(statuses:Status[], statusString:string) {
     const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty(`mods`);
-    expect(response.body).toBeDefined();
-    expect(response.body.mods.length).toBeGreaterThan(0);
     expect(response.body.mods).toBeInstanceOf(Array);
-    let mods = response.body.mods;
-    for (let cmod of response.body.mods) {
-        let currentMod = cmod as { mod: ProjectAPIPublicResponse, latest: VersionAPIPublicResponse };
-        expect(currentMod).toHaveProperty(`mod`);
-        expect(currentMod).toHaveProperty(`latest`);
-        let dependancies = mods.filter((mod) => currentMod.latest.dependencies.includes(mod.latest.id));
-        expect(dependancies.length).toBe(currentMod.latest.dependencies.length);
-        expect(currentMod.latest.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-        expect(currentMod.latest.platform).toBe(Platform.UniversalPC);
-        expect(statuses.includes(currentMod.mod.status)).toBeTruthy();
-        expect(statuses.includes(currentMod.latest.status)).toBeTruthy();
-        if (seenStatuses.includes(currentMod.mod.status) === false) {
-            seenStatuses.push(currentMod.mod.status);
+    expect(response.body.mods.length).toBeGreaterThan(0);
+    let mods = response.body.mods as ProjectVersionPair[];
+    for (let currentMod of mods) {
+        expect(currentMod).toHaveProperty(`project`);
+        expect(currentMod).toHaveProperty(`version`);
+        let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+        expect(dependancies.length).toBe(currentMod.version.dependencies.length);
+        expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+        expect(currentMod.version.platform).toBe(Platform.UniversalPC);
+        expect(statuses.includes(currentMod.project.status)).toBeTruthy();
+        expect(statuses.includes(currentMod.version.status)).toBeTruthy();
+        if (seenStatuses.includes(currentMod.project.status) === false) {
+            seenStatuses.push(currentMod.version.status);
         }
     }
     for (let status of statuses) {
@@ -630,7 +624,7 @@ function testStatusChange(testMod:Project|Version, fromStatus:Status, action:App
         expect(response.status).toBe(200);
         expect(response.body).toBeDefined();
         expect(response.body).toHaveProperty(`message`);
-        expect(response.body.message).toBe(`${type == `mod` ? `Mod` : `ModVersion`} ${toStatus}.`);
+        expect(response.body.message).toBe(`${type == `project` ? `Project` : `Version`} ${toStatus}.`);
         expect(logAction).toHaveBeenCalled();
         await testMod.reload();
         expect(testMod.status).toBe(toStatus);

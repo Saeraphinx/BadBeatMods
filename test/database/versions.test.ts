@@ -12,8 +12,8 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: VersionInfer, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
+        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendVersionLog: vi.fn(async (version: VersionInfer, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
         sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
     };
 });
@@ -451,7 +451,7 @@ describe.sequential(`Versions - Editing`, async () => {
     let testGv1: GameVersion;
     let testGv2: GameVersion;
     let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
-    let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
+    let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
 
     beforeAll(async () => {
         db = new DatabaseManager();
@@ -546,8 +546,8 @@ describe.sequential(`Versions - Editing`, async () => {
 
         await modVersion.setStatus(newStatus, testUser1, `test`);
         expect(modVersion.status).toBe(newStatus);
-        expect(sendModVersionLog).toHaveBeenCalledTimes(2);
-        expect(sendModVersionLog).toHaveBeenNthCalledWith(1, modVersion, testUser1, WebhookLogType.Text_StatusChanged);
-        expect(sendModVersionLog).toHaveBeenNthCalledWith(2, modVersion, testUser1, expectedLogType, undefined, `test`);
+        expect(sendVersionLog).toHaveBeenCalledTimes(2);
+        expect(sendVersionLog).toHaveBeenNthCalledWith(1, modVersion, testUser1, WebhookLogType.Text_StatusChanged);
+        expect(sendVersionLog).toHaveBeenNthCalledWith(2, modVersion, testUser1, expectedLogType, undefined, `test`);
     });
 });

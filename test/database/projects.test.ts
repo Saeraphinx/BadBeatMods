@@ -9,8 +9,8 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
+        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
+        sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
         sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
     };
 });
@@ -304,7 +304,7 @@ describe.sequential(`Projects - Editing`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
     let defaultModData: Omit<ProjectInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
-    let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
+    let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
 
     beforeAll(async () => {
         db = new DatabaseManager();
@@ -370,8 +370,8 @@ describe.sequential(`Projects - Editing`, async () => {
 
         await mod.setStatus(newStatus, testUser1, `test`);
         expect(mod.status).toBe(newStatus);
-        expect(sendModLog).toHaveBeenCalledTimes(2);
-        expect(sendModLog).toHaveBeenNthCalledWith(1, mod, testUser1, WebhookLogType.Text_StatusChanged);
-        expect(sendModLog).toHaveBeenNthCalledWith(2, mod, testUser1, expectedLogType, `test`);
+        expect(sendProjectLog).toHaveBeenCalledTimes(2);
+        expect(sendProjectLog).toHaveBeenNthCalledWith(1, mod, testUser1, WebhookLogType.Text_StatusChanged);
+        expect(sendProjectLog).toHaveBeenNthCalledWith(2, mod, testUser1, expectedLogType, `test`);
     });
 });
