@@ -1,5 +1,5 @@
 import { Request, Express, Response, Router } from 'express';
-import { Categories, DatabaseHelper, GameVersion, Mod, ModVersion, Platform, SupportedGames, Status } from '../../shared/Database.ts';
+import { Categories, DatabaseHelper, GameVersion, Project, Version, Platform, SupportedGames, Status } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Config } from '../../shared/Config.ts';
 import { coerce } from 'semver';
@@ -139,9 +139,9 @@ export class BeatModsRoutes {
         if (gameVersion) {
             let mods = await gameVersion.getSupportedMods(Platform.UniversalPC, statuses);
             for (let mod of mods) {
-                let convertedMod = await this.convertToBeatmodsMod(mod.mod, mod.latest, gameVersion, true);
+                let convertedMod = await this.convertToBeatmodsMod(mod.project, mod.version, gameVersion, true);
                 if (!convertedMod) {
-                    Logger.debugWarn(`Failed to convert mod ${mod.mod.name} v${mod.latest.modVersion.raw} to BeatMods format.`, `getMod`);
+                    Logger.debugWarn(`Failed to convert mod ${mod.project.name} v${mod.version.modVersion.raw} to BeatMods format.`, `getMod`);
                     continue;
                 }
                 modArray.push(convertedMod);
@@ -178,9 +178,9 @@ export class BeatModsRoutes {
                 Logger.debugWarn(`Some mods were removed due to missing dependencies. (${modArray.length} out of ${preLength})`, `getMod`);
             }
         } else {
-            let modVersions = DatabaseHelper.cache.modVersions.filter((mV) => statuses.includes(mV.status));
+            let modVersions = DatabaseHelper.cache.versions.filter((mV) => statuses.includes(mV.status));
             for (let modVersion of modVersions) {
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                 if (!mod) {
                     continue;
                 }
@@ -199,9 +199,9 @@ export class BeatModsRoutes {
         return res.status(200).send(modArray);
     }
 
-    private async convertToBeatmodsMod(mod: Mod, modVersion: ModVersion, gameVersion: GameVersion|null, doResolution: boolean = true): Promise<BeatModsMod|null> {
+    private async convertToBeatmodsMod(mod: Project, modVersion: Version, gameVersion: GameVersion|null, doResolution: boolean = true): Promise<BeatModsMod|null> {
         let dependencies: (BeatModsMod | string)[] = [];
-        let mVDeps: ModVersion[] = [];
+        let mVDeps: Version[] = [];
         if (gameVersion) {
             let intmVDeps = await modVersion.getDependencyObjs(gameVersion.id, [Status.Verified]);
             if (!intmVDeps) {
@@ -223,7 +223,7 @@ export class BeatModsRoutes {
                     if (!dependency) {
                         return null;
                     }
-                    let dependencyMod = DatabaseHelper.mapCache.mods.get(dependency?.modId);
+                    let dependencyMod = DatabaseHelper.mapCache.projects.get(dependency?.projectId);
                     if (!dependencyMod) {
                         return null;
                     }

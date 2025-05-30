@@ -1,17 +1,17 @@
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
-import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Categories, Platform, DatabaseHelper, Status, ModAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
-import { ModVersion } from "./ModVersion.ts";
+import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
+import { Categories, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
 import fs from "fs";
 import { Config } from "../../Config.ts";
 
-export type ModInfer = InferAttributes<Mod>;
-export type ModApproval = Partial<InferAttributes<Mod, { omit: `id` | `createdAt` | `updatedAt` | `deletedAt` | `iconFileName` | `status` | `lastApprovedById` | `lastUpdatedById` | `statusHistory` }>>
-export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod>> {
+export type ProjectInfer = InferAttributes<Project>;
+export type ProjectEdit = Partial<Pick<Project, `name` | `summary` | `description` | `category` | `gitUrl` | `authorIds` | `gameName`>>;
+export class Project extends Model<InferAttributes<Project>, InferCreationAttributes<Project>> {
     declare readonly id: CreationOptional<number>;
     declare name: string;
     declare summary: string;
@@ -95,9 +95,9 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return false;
     }
 
-    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<ModVersion | null> {
-        let versions = DatabaseHelper.cache.modVersions.filter((version) => {
-            if (version.modId !== this.id) {
+    public async getLatestVersion(gameVersionId: number | undefined, platform: Platform | undefined, statusesToSearchFor: Status[]): Promise<Version | null> {
+        let versions = DatabaseHelper.cache.versions.filter((version) => {
+            if (version.projectId !== this.id) {
                 return false;
             }
 
@@ -106,11 +106,17 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             }
 
             // if the version is not for the correct game
-            if (!version.supportedGameVersionIds.includes(gameVersionId)) {
-                return false;
+            if (gameVersionId !== undefined && gameVersionId !== null) {
+                if (!version.supportedGameVersionIds.includes(gameVersionId)) {
+                    return false;
+                }
+            }
+            
+            if (platform === undefined || platform === null) {
+                // if no platform is specified, return all versions
+                return true;
             }
 
-            
             if (platform === Platform.UniversalQuest) {
                 return version.platform === Platform.UniversalQuest;
             } else {
@@ -130,11 +136,11 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
         return latest;
     }
 
-    public async edit(object: ModApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Mod}> {
+    public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, project: Project}> {
         if (this.status !== Status.Verified && this.status !== Status.Unverified) {
             await this.update({ ...object, lastUpdatedById: submitter.id });
-            sendModLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, mod: this};
+            sendProjectLog(this, submitter, WebhookLogType.Text_Updated);
+            return {isEditObj: false, project: this};
         }
 
         // check if there is already a pending edit
@@ -165,14 +171,14 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             await edit.approve(submitter, true);
             await this.reload();
             // no need to send log, as it is already sent in the approve method
-            return {isEditObj: false, mod: this};
+            return {isEditObj: false, project: this};
         }
         
         sendEditLog(edit, submitter, WebhookLogType.EditSubmitted, this);
         return {isEditObj: true, newEdit: true, edit: edit};
     }
 
-    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true): Promise<Mod> {
+    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true): Promise<Project> {
         let prevStatus = this.status;
         this.status = status;
         this.lastUpdatedById = user.id;
@@ -192,10 +198,10 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             throw error;
         }
         Logger.log(`Mod ${this.id} set to status ${status} by ${user.username}`);
-        sendModLog(this, user, WebhookLogType.Text_StatusChanged);
+        sendProjectLog(this, user, WebhookLogType.Text_StatusChanged);
 
         if (prevStatus == Status.Verified && status !== Status.Verified) {
-            sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
+            sendProjectLog(this, user, WebhookLogType.VerificationRevoked, reason);
             return this;
         }
         switch (status) {
@@ -205,19 +211,19 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
                 if (prevStatus == Status.Removed) {
                     //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
-                    sendModLog(this, user, WebhookLogType.RejectedUnverified, reason);
+                    sendProjectLog(this, user, WebhookLogType.RejectedUnverified, reason);
                 }
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Verified, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.Verified, reason) : null;
                 break;
             case Status.Removed:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Removed, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.Removed, reason) : null;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.SetToPending, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.SetToPending, reason) : null;
                 break;
         }
         return this;
@@ -228,16 +234,16 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
     }
 
     public static async checkForExistingMod(name: string) {
-        let mod = await DatabaseHelper.database.Mods.findOne({ where: { name: name } });
+        let mod = await DatabaseHelper.database.Projects.findOne({ where: { name: name } });
         return mod;
     }
 
     public static async countExistingMods(name: string) {
-        let count = await DatabaseHelper.database.Mods.count({ where: { name: name } });
+        let count = await DatabaseHelper.database.Projects.count({ where: { name: name } });
         return count;
     }
 
-    public toAPIResponse(): ModAPIPublicResponse {
+    public toAPIResponse(): ProjectAPIPublicResponse {
         return {
             id: this.id,
             name: this.name,

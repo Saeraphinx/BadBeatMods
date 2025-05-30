@@ -1,5 +1,5 @@
 import { APIEmbed, APIMessage, Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
-import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database.ts";
+import { DatabaseHelper, EditQueue, Project, ProjectEdit, ProjectInfer, Version, VersionEdit, VersionInfer, Status, User } from "./Database.ts";
 import { Config } from "./Config.ts";
 import { Logger } from "./Logger.ts";
 import { SemVer } from "semver";
@@ -58,7 +58,7 @@ async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, lo
     }, logType);
 }
 
-export async function sendModLog(mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
+export async function sendProjectLog(project: Project, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let color = 0x00FF00;
 
@@ -66,29 +66,29 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
     switch (logType) {
         case WebhookLogType.SetToPending:
             color = Colors.Purple;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Submitted for Approval - ${mod.name}`, minimal: false, reason: reason });
+            embed = await generateProjectEmbed(project, userMakingChanges, color, { title: `Project Submitted for Approval - ${project.name}`, minimal: false, reason: reason });
             break;
         case WebhookLogType.Verified:
             color = Colors.Green;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Approved - ${mod.name}`, minimal: true, reason: reason });
+            embed = await generateProjectEmbed(project, userMakingChanges, color, { title: `Project Approved - ${project.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.RejectedUnverified:
             color = Colors.Yellow;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Marked Unverified - ${mod.name}`, minimal: true, reason: reason });
+            embed = await generateProjectEmbed(project, userMakingChanges, color, { title: `Project Marked Unverified - ${project.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.VerificationRevoked:
             color = Colors.DarkRed;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Verification Revoked - ${mod.name}`, minimal: true, reason: reason });
+            embed = await generateProjectEmbed(project, userMakingChanges, color, { title: `Verification Revoked - ${project.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Removed:
             color = Colors.Red;
-            embed = await generateModEmbed(mod, userMakingChanges, color, { title: `Project Removed - ${mod.name}`, minimal: true, reason: reason });
+            embed = await generateProjectEmbed(project, userMakingChanges, color, { title: `Project Removed - ${project.name}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Updated by ${userMakingChanges.username}`,
+                content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Updated by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_StatusChanged:
@@ -96,14 +96,14 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Status changed to ${mod.status} by ${userMakingChanges.username}`,
+                content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Status changed to ${project.status} by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_Created:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}](<${Config.server.url}/mods/${mod.id}>)** - Created by ${userMakingChanges.username}`,
+                content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Created by ${userMakingChanges.username}`,
             }, logType);
             break;
         default:
@@ -111,62 +111,62 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
     }
      
     if (!embed) {
-        return Logger.error(`Failed to generate embed for mod ${mod.name}`);
+        return Logger.error(`Failed to generate embed for project ${project.name}`);
     }
 
     sendEmbedToWebhooks(embed, logType);
 }
 
-export async function sendModVersionLog(modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?: string) {
+export async function sendVersionLog(version: Version, userMakingChanges: User, logType: WebhookLogType, projectObj?: Project, reason?: string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
-    let mod = modObj ? modObj : await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+    let project = projectObj ? projectObj : await DatabaseHelper.database.Projects.findOne({ where: { id: version.projectId } });
     let color = 0x00FF00;
 
-    if (!mod) {
-        return Logger.error(`Mod not found for mod version ${modVersion.id}`);
+    if (!project) {
+        return Logger.error(`Project not found for version ${version.id}`);
     }
 
     let embed;
     switch (logType) {
         case WebhookLogType.SetToPending:
             color = Colors.Purple;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Submitted for Approval - ${mod.name} v${modVersion.modVersion.raw}`, minimal: false, reason: reason });
+            embed = await generateVersionEmbed(project, version, userMakingChanges, color, { title: `Version Submitted for Approval - ${project.name} v${version.modVersion.raw}`, minimal: false, reason: reason });
             break;
         case WebhookLogType.Verified:
             color = Colors.Green;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Approved - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
+            embed = await generateVersionEmbed(project, version, userMakingChanges, color, { title: `Version Approved - ${project.name} v${version.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.RejectedUnverified:
             color = Colors.Yellow;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Marked Unverified - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
+            embed = await generateVersionEmbed(project, version, userMakingChanges, color, { title: `Version Marked Unverified - ${project.name} v${version.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.VerificationRevoked:
             color = Colors.DarkRed;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Verification Revoked - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
+            embed = await generateVersionEmbed(project, version, userMakingChanges, color, { title: `Verification Revoked - ${project.name} v${version.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Removed:
             color = Colors.Red;
-            embed = await generateModVersionEmbed(mod, modVersion, userMakingChanges, color, { title: `Version Removed - ${mod.name} v${modVersion.modVersion.raw}`, minimal: true, reason: reason });
+            embed = await generateVersionEmbed(project, version, userMakingChanges, color, { title: `Version Removed - ${project.name} v${version.modVersion.raw}`, minimal: true, reason: reason });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Updated by ${userMakingChanges.username}`,
+                content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Updated by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_StatusChanged:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Status changed to ${modVersion.status} by ${userMakingChanges.username}`,
+                content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Status changed to ${version.status} by ${userMakingChanges.username}`,
             }, logType);
             break;
         case WebhookLogType.Text_Created:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name} v${modVersion.modVersion.raw}](<${Config.server.url}/mods/${mod.id}#${modVersion.id}>)** - Created by ${userMakingChanges.username}`,
+                content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Created by ${userMakingChanges.username}`,
             }, logType);
             break;
         default:
@@ -175,65 +175,65 @@ export async function sendModVersionLog(modVersion: ModVersion, userMakingChange
 
 
     if (!embed) {
-        return Logger.error(`Failed to generate embed for mod ${mod.name}`);
+        return Logger.error(`Failed to generate embed for mod ${project.name}`);
     }
 
     sendEmbedToWebhooks(embed, logType);
 }
 
-export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) {
+export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let color = 0x00FF00;
 
-    let modId = edit.objectTableName === `mods` ? edit.objectId : null;
-    let modVersion;
-    if (!modId) {
-        modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
-        if (!modVersion) {
-            return Logger.error(`Mod version not found for edit ${edit.id}`);
+    let projectId = edit.isProject() ? edit.objectId : null;
+    let version;
+    if (!projectId) {
+        version = DatabaseHelper.mapCache.versions.get(edit.objectId);
+        if (!version) {
+            return Logger.error(`Version not found for edit ${edit.id}`);
         }
-        modId = modVersion.modId;
+        projectId = version.projectId;
     }
 
-    let mod = DatabaseHelper.mapCache.mods.get(modId);
-    if (!mod) {
-        return Logger.error(`Mod not found for edit ${edit.id}`);
+    let project = DatabaseHelper.mapCache.projects.get(projectId);
+    if (!project) {
+        return Logger.error(`Project not found for edit ${edit.id}`);
     }
 
     let versionString = ``;
-    if (edit.objectTableName === `modVersions`) {
-        if (!modVersion) {
-            return Logger.error(`Mod version not found for edit ${edit.id}`);
+    if (edit.isVersion()) {
+        if (!version) {
+            return Logger.error(`Version not found for edit ${edit.id}`);
         }
-        versionString = ` v${modVersion.modVersion.raw}`;
+        versionString = ` v${version.modVersion.raw}`;
     }
 
     let embed;
     switch (logType) {
         case WebhookLogType.EditSubmitted:
             color = Colors.Purple;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Submitted for Approval - ${mod.name}${versionString}`, minimal: false });
+            embed = await generateEditEmbed(edit, project, userMakingChanges, color, originalObj, { title: `Edit Submitted for Approval - ${project.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.EditApproved:
             color = Colors.Green;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Approved - ${mod.name}${versionString}`, minimal: false });
+            embed = await generateEditEmbed(edit, project, userMakingChanges, color, originalObj, { title: `Edit Approved - ${project.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.EditRejected:
             color = Colors.Red;
-            embed = await generateEditEmbed(edit, mod, userMakingChanges, color, originalObj, { title: `Edit Rejected - ${mod.name}${versionString}`, minimal: false });
+            embed = await generateEditEmbed(edit, project, userMakingChanges, color, originalObj, { title: `Edit Rejected - ${project.name}${versionString}`, minimal: false });
             break;
         case WebhookLogType.Text_Updated:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}${versionString}](<${Config.server.url}/mods/${mod.id}>)** - Edit ${edit.id} updated by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>).`,
+                content: `**[${project.name}${versionString}](<${Config.server.url}/mods/${project.id}>)** - Edit ${edit.id} updated by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>).`,
             }, logType);
             break;
         case WebhookLogType.Text_EditBypassed:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
-                content: `**[${mod.name}${versionString}](<${Config.server.url}/mods/${mod.id}>)** - Edit ${edit.id} ${edit.approved ? `approved` : `rejected`} (bypassed by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>)).`,
+                content: `**[${project.name}${versionString}](<${Config.server.url}/mods/${project.id}>)** - Edit ${edit.id} ${edit.approved ? `approved` : `rejected`} (bypassed by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>)).`,
             }, logType);
             break;
         default:
@@ -248,7 +248,7 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
 }
 
 //#region Generate Embeds
-async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number, options: {
+async function generateProjectEmbed(project: Project, userMakingChanges: User, color: number, options: {
     title?: string,
     useSummary?: boolean,
     minimal?: boolean,
@@ -257,7 +257,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
 
     let authors: User[] = [];
-    for (let author of mod.authorIds) {
+    for (let author of project.authorIds) {
         let authorDb = await DatabaseHelper.database.Users.findOne({ where: { id: author } });
         if (!authorDb) {
             continue;
@@ -265,7 +265,7 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
         authors.push(authorDb);
     }
     if (authors.length === 0) {
-        return Logger.error(`No authors found for mod ${mod.name}`);
+        return Logger.error(`No authors found for project ${project.name}`);
     }
 
     if (options?.minimal) {
@@ -279,21 +279,21 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
         }
 
         return {
-            title: options.title ? options.title : `Mod: ${mod.name}`,
-            url: `${Config.server.url}/mods/${mod.id}`,
+            title: options.title ? options.title : `Project: ${project.name}`,
+            url: `${Config.server.url}/mods/${project.id}`,
             author: {
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
-            description: `${mod.summary} `,
+            description: `${project.summary} `,
             thumbnail: {
-                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+                url: `${Config.server.url}/cdn/icon/${project.iconFileName}`,
             },
             fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Mod ID: ${mod.id}`,
+                text: `Project ID: ${project.id}`,
                 icon_url: faviconUrl,
             },
         };
@@ -306,12 +306,12 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
             },
             {
                 name: `Category`,
-                value: `${mod.category} `,
+                value: `${project.category} `,
                 inline: true,
             },
             {
                 name: `Git URL`,
-                value: `${mod.gitUrl} `,
+                value: `${project.gitUrl} `,
                 inline: false,
             },
         ];
@@ -324,54 +324,54 @@ async function generateModEmbed(mod: Mod, userMakingChanges: User, color: number
         }
 
         return {
-            title: options?.title ? options.title : `Mod: ${mod.name}`,
-            url: `${Config.server.url}/mods/${mod.id}`,
-            description: options?.useSummary ? `${mod.summary} ` : `${mod.description.length > 100 ? mod.description.substring(0, 100) : mod.description} `,
+            title: options?.title ? options.title : `Project: ${project.name}`,
+            url: `${Config.server.url}/mods/${project.id}`,
+            description: options?.useSummary ? `${project.summary} ` : `${project.description.length > 100 ? project.description.substring(0, 100) : project.description} `,
             author: {
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
             thumbnail: {
-                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+                url: `${Config.server.url}/cdn/icon/${project.iconFileName}`,
             },
             fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Mod ID: ${mod.id}`,
+                text: `Project ID: ${project.id}`,
                 icon_url: faviconUrl,
             },
         };
     }
 }
 
-async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMakingChanges: User, color: number, options: {
+async function generateVersionEmbed(project: Project, version: Version, userMakingChanges: User, color: number, options: {
     title?: string,
     minimal?: boolean,
     reason?: string,
 } = {}): Promise<APIEmbed | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
-    let author = await DatabaseHelper.database.Users.findOne({ where: { id: modVersion.authorId } });
-    let gameVersions = await modVersion.getSupportedGameVersions();
+    let author = await DatabaseHelper.database.Users.findOne({ where: { id: version.authorId } });
+    let gameVersions = await version.getSupportedGameVersions();
     let dependancies: string[] = [];
-    let resolvedDependancies = await modVersion.getDependencyObjs(gameVersions[0].id, [Status.Verified, Status.Unverified]);
+    let resolvedDependancies = await version.getDependencyObjs(gameVersions[0].id, [Status.Verified, Status.Unverified]);
 
     if (!author) {
-        return Logger.error(`Author not found for mod version ${modVersion.id}`);
+        return Logger.error(`Author not found for version ${version.id}`);
     }
 
-    if (!mod) {
-        return Logger.error(`Mod not found for mod version ${modVersion.id}`);
+    if (!project) {
+        return Logger.error(`Project not found for version ${version.id}`);
     }
 
     if (!resolvedDependancies) {
-        return Logger.error(`Dependancies not found for mod version ${modVersion.id}`);
+        return Logger.error(`Dependencies not found for version ${version.id}`);
     }
 
     for (let dependancy of resolvedDependancies) {
-        let dependancyMod = await DatabaseHelper.database.Mods.findOne({ where: { id: dependancy.modId } });
+        let dependancyMod = await DatabaseHelper.database.Projects.findOne({ where: { id: dependancy.projectId } });
         if (!dependancyMod) {
-            return Logger.warn(`Dependancy mod ${dependancy.modId} not found for mod version ${modVersion.id}`);
+            return Logger.warn(`Dependancy project ${dependancy.projectId} not found for version ${version.id}`);
         }
         dependancies.push(`${dependancyMod.name} v${dependancy.modVersion.raw}`);
     }
@@ -387,21 +387,21 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
         }
 
         return {
-            title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
-            url: `${Config.server.url}/mods/${mod.id}#${modVersion.id}`,
-            description: `${mod.summary} `,
+            title: options.title ? `${options.title} ` : `Version: ${project.name} v${version.modVersion.raw}`,
+            url: `${Config.server.url}/mods/${project.id}#${version.id}`,
+            description: `${project.summary} `,
             author: {
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
             thumbnail: {
-                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+                url: `${Config.server.url}/cdn/icon/${project.iconFileName}`,
             },
             fields: fields,
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Mod ID: ${mod.id} | Mod Version ID: ${modVersion.id}`,
+                text: `Project ID: ${project.id} | Version ID: ${version.id}`,
                 icon_url: faviconUrl,
             },
         };
@@ -414,12 +414,12 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
             },
             {
                 name: `Platform`,
-                value: `${modVersion.platform} `,
+                value: `${version.platform} `,
                 inline: true,
             },
             {
                 name: `# of Files`,
-                value: `${modVersion.contentHashes.length} `,
+                value: `${version.contentHashes.length} `,
                 inline: true,
             },
             {
@@ -441,28 +441,28 @@ async function generateModVersionEmbed(mod: Mod, modVersion: ModVersion, userMak
             });
         }
         return {
-            title: options.title ? `${options.title} ` : `Mod Version: ${mod.name} v${modVersion.modVersion.raw}`,
-            url: `${Config.server.url}/mods/${mod.id}#${modVersion.id}`,
-            description: `${mod.summary} `,
+            title: options.title ? `${options.title} ` : `Version: ${project.name} v${version.modVersion.raw}`,
+            url: `${Config.server.url}/mods/${project.id}#${version.id}`,
+            description: `${project.summary} `,
             author: {
                 name: `${userMakingChanges.username} `,
                 icon_url: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`,
             },
             fields: fields,
             thumbnail: {
-                url: `${Config.server.url}/cdn/icon/${mod.iconFileName}`,
+                url: `${Config.server.url}/cdn/icon/${project.iconFileName}`,
             },
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Mod ID: ${mod.id} | Mod Version ID: ${modVersion.id}`,
+                text: `Project ID: ${project.id} | Version ID: ${version.id}`,
                 icon_url: faviconUrl,
             },
         };
     }
 }
 
-async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: User, color: number, originalObj?: ModInfer | ModVersionInfer, options: {
+async function generateEditEmbed(edit: EditQueue, project:Project, userMakingChanges: User, color: number, originalObj?: ProjectInfer | VersionInfer, options: {
     title?: string,
     description?: string,
     minimal?: boolean,
@@ -477,16 +477,16 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
         iconURL: userMakingChanges.username === `ServerAdmin` ? faviconUrl : `https://github.com/${userMakingChanges.username}.png`
     });
     embed.setFooter({
-        text: `Mod ID: ${mod.id} | Edit ID: ${edit.id}`,
+        text: `Project ID: ${project.id} | Edit ID: ${edit.id}`,
         iconURL: faviconUrl,
     });
-    embed.setTitle(options.title ? `${options.title} ` : `Edit: ${mod.name}`);
-    embed.setURL(`${Config.server.url}/mods/${mod.id}`);
+    embed.setTitle(options.title ? `${options.title} ` : `Edit: ${project.name}`);
+    embed.setURL(`${Config.server.url}/mods/${project.id}`);
     let original = undefined;
     if (originalObj) {
         original = originalObj;
     } else {
-        original = edit.objectTableName === `mods` ? mod : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+        original = edit.isProject() ? project : DatabaseHelper.mapCache.versions.get(edit.objectId);
     }
     if (!original) {
         return Logger.error(`Original not found for edit ${edit.id}`);
@@ -494,8 +494,8 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
 
     let description = ``;
 
-    if (edit.isMod() && `name` in original) {
-        for (let key of Object.keys(edit.object) as (keyof ModApproval)[]) {
+    if (edit.isProject() && `name` in original) {
+        for (let key of Object.keys(edit.object) as (keyof ProjectEdit)[]) {
             let editProp = edit.object[key];
             let originalProp = original[key];
             if (Array.isArray(editProp) && Array.isArray(originalProp)) {
@@ -533,8 +533,8 @@ async function generateEditEmbed(edit: EditQueue, mod:Mod, userMakingChanges: Us
                 description += `**${key}**: ${originalProp} -> ${editProp}\n`;
             }
         }
-    } else if (edit.isModVersion() && `platform` in original) {
-        for (let key of Object.keys(edit.object) as (keyof ModVersionApproval)[]) {
+    } else if (edit.isVersion() && `platform` in original) {
+        for (let key of Object.keys(edit.object) as (keyof VersionEdit)[]) {
             let editProp = edit.object[key];
             let originalProp = original[key];
             if (Array.isArray(editProp) && Array.isArray(originalProp)) {

@@ -1,7 +1,7 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { SupportedGames } from "../../Database.ts";
-import { Mod } from "./Mod.ts";
-import { ModVersion } from "./ModVersion.ts";
+import { Project } from "./Project.ts";
+import { Version } from "./Version.ts";
 import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper.ts";
 import { coerce } from "semver";
 
@@ -50,15 +50,15 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         return version;
     }
 
-    public async getSupportedMods(platform: Platform, statusesToSearchFor: Status[]): Promise<{mod: Mod, latest:ModVersion}[]> {
-        let mods = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == this.gameName && statusesToSearchFor.includes(mod.status));
+    public async getSupportedMods(platform: Platform, statusesToSearchFor: Status[]): Promise<{project: Project, version:Version}[]> {
+        let projects = DatabaseHelper.cache.projects.filter((p) => p.gameName == this.gameName && statusesToSearchFor.includes(p.status));
 
-        let supportedMods: {mod: Mod, latest:ModVersion}[] = [];
-        for (let mod of mods) {
-            // get the latest version for the mod, and if it exists, add it to the list of supported mods
-            let latest = await mod.getLatestVersion(this.id, platform, statusesToSearchFor);
+        let supportedMods: {project: Project, version:Version}[] = [];
+        for (let project of projects) {
+            // get the latest version for the project, and if it exists, add it to the list of supported projects
+            let latest = await project.getLatestVersion(this.id, platform, statusesToSearchFor);
             if (latest) {
-                supportedMods.push({mod, latest});
+                supportedMods.push({project: project, version: latest});
             }
         }
         return supportedMods;
