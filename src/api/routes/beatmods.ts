@@ -249,6 +249,7 @@ export class BeatModsRoutes {
             case Status.Private: // this should never happen
                 status = `declined`;
                 break;
+            case Status.Pending:
             case Status.Unverified:
                 status = `pending`;
                 break;
