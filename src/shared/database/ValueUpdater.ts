@@ -1,4 +1,3 @@
-import { ModelStatic } from "sequelize";
 import { Version } from "../Database.ts";
 import { Logger } from "../Logger.ts";
 import { Dependency, UserRoles } from "./DBHelper.ts";
@@ -79,18 +78,18 @@ function translateUserRole(oldRoleName: string): UserRoles[] {
 Yes. I'm aware this isn't the best solution, but I can't think of a better one and I think I can live with this for the time being.
 Maybe a different solution will come to mind later, but for now, this should work w/o issue.
 */
-export async function updateDependencies(modVersion: Version, mvdb: Version[]) {
-    if (modVersion.dependencies && modVersion.dependencies.length > 0 && modVersion.dependencies.every((dep) => typeof dep == `number`)) {
+export async function updateDependencies(version: Version, mvdb: Version[]) {
+    if (version.dependencies && version.dependencies.length > 0 && version.dependencies.every((dep) => typeof dep == `number`)) {
         let newDepVer:Dependency[] = [];
-        for (let dep of modVersion.dependencies) {
+        for (let dep of version.dependencies) {
             let mv = mvdb.find(d => d.id == dep);
             if (mv) {
                 newDepVer.push({parentId: mv.projectId, sv: `^${mv.modVersion}`});
             } else {
-                Logger.error(`Mod Version ${modVersion.id} has a dependency on a mod version that doesn't exist. Removing...`);
+                Logger.error(`Version ${version.id} has a dependency on a version that doesn't exist. Removing...`);
             }
         }
-        modVersion.dependencies = newDepVer;
-        await modVersion.save();
+        version.dependencies = newDepVer;
+        await version.save();
     }
 }

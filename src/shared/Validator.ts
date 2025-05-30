@@ -35,7 +35,7 @@ const ZodPostType = z.nativeEnum(PostType);
 const ZodUserRoles = z.nativeEnum(UserRoles);
 
 // from ./Database.ts
-const ZodMod = z.object({
+const ZodProject = z.object({
     id: ZodDBID,
     name: z.string().min(3).max(64),
     summary: z.string().min(3).max(160),
@@ -47,7 +47,7 @@ const ZodMod = z.object({
 });
 
 // from ./Database.ts
-const ZodModVersion = z.object({
+const ZodVersion = z.object({
     id: ZodDBID,
     modId: ZodDBID,
     supportedGameVersionIds: ZodDBIDArray,
@@ -82,7 +82,7 @@ export class Validator {
             return false;
         }
     });
-    public static readonly zCreateProject = ZodMod.pick({
+    public static readonly zCreateProject = ZodProject.pick({
         name: true,
         summary: true,
         description: true,
@@ -93,9 +93,9 @@ export class Validator {
 
     public static readonly zCreateVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray,
-        modVersion: ZodModVersion.shape.modVersion,
-        dependencies: ZodModVersion.shape.dependencies.optional(),
-        platform: ZodModVersion.shape.platform,
+        modVersion: ZodVersion.shape.modVersion,
+        dependencies: ZodVersion.shape.dependencies.optional(),
+        platform: ZodVersion.shape.platform,
     }).strict();
 
     public static readonly zUpdateProject = z.object({
@@ -184,10 +184,10 @@ export class Validator {
 
         let records: Project[]|Version[]|User[]|GameVersion[]|EditQueue[] = [];
         switch (tableName) {
-            case `mods`:
+            case `projects`:
                 records = await DatabaseHelper.database.Projects.findAll({ where: { id: ids } });
                 break;
-            case `modVersions`:
+            case `versions`:
                 records = await DatabaseHelper.database.Versions.findAll({ where: { id: ids } });
                 break;
             case `users`:
@@ -211,4 +211,4 @@ export class Validator {
     }
 }
 
-type TableNames = `mods` | `modVersions` | `users` | `gameVersions` | `editQueue`;
+type TableNames = `projects` | `versions` | `users` | `gameVersions` | `editQueue`;

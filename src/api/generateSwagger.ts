@@ -44,22 +44,22 @@ const ProjectDBObject: OpenAPIV3_1.SchemaObject = {
     properties: {
         name: {
             type: `string`,
-            description: `The name of the mod.`,
-            example: `Example Mod`
+            description: `The name of the project.`,
+            example: `Example Project`
         },
         summary: {
             type: `string`,
-            description: `The summary of the mod.`,
-            example: `This is an example mod.`
+            description: `The summary of the project.`,
+            example: `This is an example project.`
         },
         description: {
             type: `string`,
-            description: `The description of the mod. Supports markdown.`,
-            example: `This is an example mod. It is used as an example for the API documentation.`
+            description: `The description of the project. Supports markdown.`,
+            example: `This is an example project. It is used as an example for the API documentation.`
         },
         gameName: {
             type: `string`,
-            description: `The name of the game this mod is for. Must be a game that is returned by the /games endpoint.`,
+            description: `The name of the game this project is for. Must be a game that is returned by the /games endpoint.`,
             example: `BeatSaber`,
             default: `BeatSaber`
         },
@@ -70,7 +70,7 @@ const ProjectDBObject: OpenAPIV3_1.SchemaObject = {
         authorIds: {
             type: `array`,
             items: { type: `number` },
-            description: `The IDs of the authors of this mod. This id can be resolved to a user object using the /users/{id} endpoint.`,
+            description: `The IDs of the authors of this project. This id can be resolved to a user object using the /users/{id} endpoint.`,
         },
         status: {
             type: `string`,
@@ -94,8 +94,8 @@ const ProjectDBObject: OpenAPIV3_1.SchemaObject = {
                     },
                     reason: {
                         type: `string`,
-                        description: `The reason for the status change. This is used to track the history of the mod's status.`,
-                        example: `This mod is currently in development.`,
+                        description: `The reason for the status change. This is used to track the history of the project's status.`,
+                        example: `This project is currently in development.`,
                     },
                     userId: {
                         type: `integer`,
@@ -125,7 +125,7 @@ const VersionDBObject: OpenAPIV3_1.SchemaObject = {
     properties: {
         projectId: {
             type: `integer`,
-            description: `The parent mod's internal ID.`,
+            description: `The parent project's internal ID.`,
             example: 1
         },
         modVersion: {
@@ -171,7 +171,7 @@ const VersionDBObject: OpenAPIV3_1.SchemaObject = {
                 properties: {
                     parentId: {
                         type: `integer`,
-                        description: `The ID of the mod this version depends on.`
+                        description: `The ID of the project this version depends on.`
                     },
                     sv: {
                         type: `string`,
@@ -470,6 +470,7 @@ const EditApprovalQueueResponse: OpenAPIV3_1.SchemaObject = {
         },
     },
 };
+// #endregion
 // #region Validator Object Schemas
 const zCreateProject: SchemaObject = {
     type: `object`,
@@ -555,7 +556,7 @@ const zApproveObject: SchemaObject = {
             description: `The reason for the action.`,
         },
     }
-}
+};
 const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
@@ -566,7 +567,7 @@ const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
             $ref: `#/components/schemas/VersionAPIPublicResponse`,
         }
     }
-}
+};
 // #endregion
 
 // #region Full API Responses

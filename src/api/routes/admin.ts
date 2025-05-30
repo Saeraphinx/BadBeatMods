@@ -7,7 +7,7 @@ import * as path from 'path';
 import { Validator } from '../../shared/Validator.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { sendVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
 import { Utils } from '../../shared/Utils.ts';
 
 export class AdminRoutes {
@@ -78,14 +78,14 @@ export class AdminRoutes {
                 return;
             }
 
-            let mods = await DatabaseHelper.database.Projects.findAll();
+            let projects = await DatabaseHelper.database.Projects.findAll();
             let errors = [];
 
             let allIcons = fs.readdirSync(path.resolve(Config.storage.iconsDir), { withFileTypes: true }).filter(dirent => dirent.isFile()).map(dirent => dirent.name);
 
-            for (let mod of mods) {
-                if (!allIcons.find(icon => icon === mod.iconFileName)) {
-                    errors.push(mod.iconFileName);
+            for (let project of projects) {
+                if (!allIcons.find(icon => icon === project.iconFileName)) {
+                    errors.push(project.iconFileName);
                 }
             }
 
@@ -172,10 +172,10 @@ export class AdminRoutes {
                 }
                 let mods = await request.json() as any;
 
-                for (let mod of mods.mods) {
-                    for (let dependancyId of mod.latest.dependencies) {
+                for (let project of mods.mods) {
+                    for (let dependancyId of project.latest.dependencies) {
                         if (!mods.mods.find((m: any) => m.latest.id === dependancyId)) {
-                            let versionString = (mod.latest.supportedGameVersions as object[]).flatMap((gV:any) => `${gV.gameName} ${gV.version}`).join(`, `);
+                            let versionString = (project.latest.supportedGameVersions as object[]).flatMap((gV:any) => `${gV.gameName} ${gV.version}`).join(`, `);
                             let dependancy = DatabaseHelper.cache.versions.find((mV: any) => mV.id === dependancyId);
                             if (!dependancy) {
                                 return res.status(404).send({ message: `Database ID for version not found.`, dependancyId });
@@ -188,8 +188,8 @@ export class AdminRoutes {
                             errors.push({
                                 gV: versionString,
                                 dependant: {
-                                    name: mod.mod.name,
-                                    versionId: mod.latest.id
+                                    name: project.mod.name,
+                                    versionId: project.latest.id
                                 },
                                 dependency: {
                                     name: dependancyMod.name,
@@ -292,7 +292,7 @@ export class AdminRoutes {
                 }
             }
 
-            DatabaseHelper.refreshCache(`modVersions`);
+            DatabaseHelper.refreshCache(`versions`);
             return res.status(200).send({ message: `Updated ${updateCount} records.` });
         });
 
@@ -663,8 +663,8 @@ export class AdminRoutes {
 
             modVersion.projectId = newMod.id;
             await modVersion.save().then(() => {
-                DatabaseHelper.refreshCache(`modVersions`);
-                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
+                DatabaseHelper.refreshCache(`versions`);
+                sendVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
                 return res.status(200).send({ message: `Version ${modVersionId.data} moved to project ${newModId.data}.` });
             }).catch((err) => {
                 Logger.error(`Error moving mod version ${modVersionId.data}: ${err}`);

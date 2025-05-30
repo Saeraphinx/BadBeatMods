@@ -1,9 +1,9 @@
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
-import { sendEditLog, sendModLog, WebhookLogType } from "../../ModWebhooks.ts";
+import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { Categories, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
-import { Version } from "./ModVersion.ts";
+import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
 import fs from "fs";
@@ -95,7 +95,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         return false;
     }
 
-    public async getLatestVersion(gameVersionId: number, platform: Platform, statusesToSearchFor: Status[]): Promise<Version | null> {
+    public async getLatestVersion(gameVersionId: number | undefined, platform: Platform | undefined, statusesToSearchFor: Status[]): Promise<Version | null> {
         let versions = DatabaseHelper.cache.versions.filter((version) => {
             if (version.projectId !== this.id) {
                 return false;
@@ -106,11 +106,17 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             }
 
             // if the version is not for the correct game
-            if (!version.supportedGameVersionIds.includes(gameVersionId)) {
-                return false;
+            if (gameVersionId !== undefined && gameVersionId !== null) {
+                if (!version.supportedGameVersionIds.includes(gameVersionId)) {
+                    return false;
+                }
+            }
+            
+            if (platform === undefined || platform === null) {
+                // if no platform is specified, return all versions
+                return true;
             }
 
-            
             if (platform === Platform.UniversalQuest) {
                 return version.platform === Platform.UniversalQuest;
             } else {
@@ -130,11 +136,11 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         return latest;
     }
 
-    public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, mod: Project}> {
+    public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, project: Project}> {
         if (this.status !== Status.Verified && this.status !== Status.Unverified) {
             await this.update({ ...object, lastUpdatedById: submitter.id });
-            sendModLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, mod: this};
+            sendProjectLog(this, submitter, WebhookLogType.Text_Updated);
+            return {isEditObj: false, project: this};
         }
 
         // check if there is already a pending edit
@@ -165,7 +171,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             await edit.approve(submitter, true);
             await this.reload();
             // no need to send log, as it is already sent in the approve method
-            return {isEditObj: false, mod: this};
+            return {isEditObj: false, project: this};
         }
         
         sendEditLog(edit, submitter, WebhookLogType.EditSubmitted, this);
@@ -192,10 +198,10 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             throw error;
         }
         Logger.log(`Mod ${this.id} set to status ${status} by ${user.username}`);
-        sendModLog(this, user, WebhookLogType.Text_StatusChanged);
+        sendProjectLog(this, user, WebhookLogType.Text_StatusChanged);
 
         if (prevStatus == Status.Verified && status !== Status.Verified) {
-            sendModLog(this, user, WebhookLogType.VerificationRevoked, reason);
+            sendProjectLog(this, user, WebhookLogType.VerificationRevoked, reason);
             return this;
         }
         switch (status) {
@@ -205,19 +211,19 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
                 if (prevStatus == Status.Removed) {
                     //sendModLog(this, user, WebhookLogType.Text_StatusChanged);
                 } else {
-                    sendModLog(this, user, WebhookLogType.RejectedUnverified, reason);
+                    sendProjectLog(this, user, WebhookLogType.RejectedUnverified, reason);
                 }
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Verified, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.Verified, reason) : null;
                 break;
             case Status.Removed:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.Removed, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.Removed, reason) : null;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModLog(this, user, WebhookLogType.SetToPending, reason) : null;
+                shouldSendEmbed ? sendProjectLog(this, user, WebhookLogType.SetToPending, reason) : null;
                 break;
         }
         return this;

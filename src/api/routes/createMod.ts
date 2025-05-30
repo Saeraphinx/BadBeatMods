@@ -9,7 +9,7 @@ import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Validator } from '../../shared/Validator.ts';
 import { UploadedFile } from 'express-fileupload';
-import { sendModLog, sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { sendProjectLog, sendVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
 import { Utils } from '../../shared/Utils.ts';
 
 export class CreateModRoutes {
@@ -31,8 +31,8 @@ export class CreateModRoutes {
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
-            #swagger.summary = 'Create a mod.'
-            #swagger.description = 'Create a mod.'
+            #swagger.summary = 'Create a project.'
+            #swagger.description = 'Create a project.'
             #swagger.requestBody = {
                 content: {
                     'application/json': {
@@ -106,12 +106,12 @@ export class CreateModRoutes {
                 lastUpdatedById: session.user.id,
                 status: Status.Private,
             }).then(async (project) => {
-                DatabaseHelper.refreshCache(`mods`);
+                DatabaseHelper.refreshCache(`projects`);
                 if (iconIsValid) {
                     (icon as UploadedFile).mv(filePath);
                 }
                 Logger.log(`Project ${project.name} created by ${session.user.username}.`);
-                sendModLog(project, session.user, WebhookLogType.Text_Created);
+                sendProjectLog(project, session.user, WebhookLogType.Text_Created);
                 return res.status(200).send({ project: project });
             }).catch((error) => {
                 let message = `Error creating project.`;
@@ -142,7 +142,7 @@ export class CreateModRoutes {
             #swagger.parameters['file'] = {
                 in: 'formData',
                 type: 'file',
-                description: 'Mod zip file.',
+                description: 'Version zip file.',
                 required: true
             }
             #swagger.responses[200] = {
@@ -189,7 +189,7 @@ export class CreateModRoutes {
                 return res.status(400).send({ message: `Invalid game version.` });
             }
 
-            if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `mods`, true, true)) == false) {
+            if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `projects`, true, true)) == false) {
                 return res.status(400).send({ message: `Invalid dependencies.` });
             }
 
@@ -248,10 +248,10 @@ export class CreateModRoutes {
                 zipHash: file.md5,
                 lastUpdatedById: session.user.id,
                 fileSize: file.size
-            }).then(async (modVersion) => {
-                DatabaseHelper.refreshCache(`modVersions`);
-                let retVal = await modVersion.toRawAPIResponse();
-                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, project);
+            }).then(async (version) => {
+                DatabaseHelper.refreshCache(`versions`);
+                let retVal = await version.toRawAPIResponse();
+                sendVersionLog(version, session.user, WebhookLogType.Text_Created, project);
                 return res.status(200).send({ project: project, version: retVal });
             }).catch((error) => {
                 let message = `Error creating version.`;

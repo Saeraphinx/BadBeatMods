@@ -2,8 +2,8 @@ import { Logger } from "../Logger.ts";
 import { DatabaseManager, User } from "../Database.ts";
 import { EditQueue } from "./models/EditQueue.ts";
 import { GameVersion } from "./models/GameVersion.ts";
-import { Project } from "./models/Mod.ts";
-import { Version } from "./models/ModVersion.ts";
+import { Project } from "./models/Project.ts";
+import { Version } from "./models/Version.ts";
 import { MOTD } from "./models/MOTD.ts";
 
 // #region Enums & Types
@@ -213,26 +213,26 @@ export class DatabaseHelper {
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
         DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
-        DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((mod) => [mod.id, mod]));
-        DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((modVersion) => [modVersion.id, modVersion]));
+        DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((project) => [project.id, project]));
+        DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((version) => [version.id, version]));
         DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
         Logger.debug(`Finished refreshing all caches`);
     }
 
-    public static async refreshCache(tableName: `gameVersions` | `modVersions` | `mods` | `users` | `editApprovalQueue`) {
+    public static async refreshCache(tableName: `gameVersions` | `versions` | `projects` | `users` | `editApprovalQueue`) {
         Logger.debug(`Refreshing cache for ${tableName}`);
         switch (tableName) {
             case `gameVersions`:
                 DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
                 DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
                 break;
-            case `modVersions`:
+            case `versions`:
                 DatabaseHelper.cache.versions = await DatabaseHelper.database.Versions.findAll();
-                DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((modVersion) => [modVersion.id, modVersion]));
+                DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((version) => [version.id, version]));
                 break;
-            case `mods`:
+            case `projects`:
                 DatabaseHelper.cache.projects = await DatabaseHelper.database.Projects.findAll();
-                DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((mod) => [mod.id, mod]));
+                DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((project) => [project.id, project]));
                 break;
             case `users`:
                 DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
@@ -245,24 +245,24 @@ export class DatabaseHelper {
         Logger.debug(`Finished refreshing cache for ${tableName}`);
     }
 
-    public static getGameNameFromModId(id: number): SupportedGames | null {
-        let mod = DatabaseHelper.mapCache.projects.get(id);
-        if (!mod) {
+    public static getGameNameFromProjectId(id: number): SupportedGames | null {
+        let project = DatabaseHelper.mapCache.projects.get(id);
+        if (!project) {
             return null;
         }
-        return mod.gameName;
+        return project.gameName;
     }
 
-    public static getGameNameFromModVersionId(id: number): SupportedGames | null {
-        let modVersion = DatabaseHelper.mapCache.versions.get(id);
-        if (!modVersion) {
+    public static getGameNameFromVersionId(id: number): SupportedGames | null {
+        let version = DatabaseHelper.mapCache.versions.get(id);
+        if (!version) {
             return null;
         }
-        let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
-        if (!mod) {
+        let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+        if (!project) {
             return null;
         }
-        return mod.gameName;
+        return project.gameName;
     }
 
     public static getGameNameFromEditApprovalQueueId(id: number): SupportedGames | undefined {
@@ -270,10 +270,10 @@ export class DatabaseHelper {
         if (!edit) {
             return undefined;
         }
-        if (edit.objectTableName == `mods` && `gameName` in edit.object) {
+        if (edit.isProject() && `gameName` in edit.object && edit.object.gameName) {
             return edit.object.gameName;
-        } else if (edit.objectTableName == `modVersions`) {
-            let gameName = DatabaseHelper.getGameNameFromModVersionId(edit.objectId);
+        } else if (edit.isVersion()) {
+            let gameName = DatabaseHelper.getGameNameFromVersionId(edit.objectId);
             return gameName ? gameName : undefined;
         }
     }

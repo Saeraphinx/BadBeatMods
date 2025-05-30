@@ -45,7 +45,7 @@ export class GetModRoutes {
                                     type: 'array',
                                     items: {
                                         type: 'number',
-                                        description: 'The IDs of the mods that were removed due to missing dependencies.',
+                                        description: 'The IDs of the versions that were removed due to missing dependencies.',
                                     },
                                 },
                             },
@@ -97,21 +97,21 @@ export class GetModRoutes {
             let preLength = undefined;
             let invalidIds: number[] = [];
             if (gameVersion === null) {
-                let modDb = DatabaseHelper.cache.projects.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
+                let projectDb = DatabaseHelper.cache.projects.filter((p) => p.gameName == reqQuery.data.gameName && statuses.includes(p.status));
 
-                for (let mod of modDb) {
-                    let modVersions = DatabaseHelper.cache.versions.filter((modVersion) => modVersion.projectId === mod.id && statuses.includes(modVersion.status));
+                for (let project of projectDb) {
+                    let versions = DatabaseHelper.cache.versions.filter((v) => v.projectId === project.id && statuses.includes(v.status));
 
-                    modVersions = modVersions.sort((a, b) => {
+                    versions = versions.sort((a, b) => {
                         return b.modVersion.compare(a.modVersion);
                     });
 
-                    let latest = modVersions[0];
+                    let latest = versions[0];
 
                     if (latest) {
                         let latestVer = await latest.toAPIResponse(latest.supportedGameVersionIds[0], statuses);
                         if (latestVer) {
-                            mods.push({ project: mod.toAPIResponse(), version: latestVer });
+                            mods.push({ project: project.toAPIResponse(), version: latestVer });
                         }
                     }
                 }
@@ -120,9 +120,7 @@ export class GetModRoutes {
                 preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    let mod = retMod.mod.toAPIResponse();
-                    let latest = await retMod.latest.toAPIResponse(gameVersion.id, statuses);
-                    mods.push({ project: mod, version: latest });
+                    mods.push({ project: retMod.project.toAPIResponse(), version: await retMod.version.toAPIResponse(gameVersion.id, statuses) });
                 }
                 
                 mods = mods.filter((mod) => {
@@ -169,9 +167,9 @@ export class GetModRoutes {
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
-            #swagger.summary = 'Get a specific mod by ID.'
-            #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
-            #swagger.parameters['projectIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
+            #swagger.summary = 'Get a specific project by ID.'
+            #swagger.description = 'Get a specific project by ID. This will also return every version associated with the project.'
+            #swagger.parameters['projectIdParam'] = { in: 'path', description: 'The project ID.', type: 'number', required: true }
             #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
             #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionsPairResponse' }
             #swagger.responses[400]
@@ -190,15 +188,15 @@ export class GetModRoutes {
 
             let project = DatabaseHelper.mapCache.projects.get(projectId.data);
             if (!project) {
-                return res.status(404).send({ message: `Mod not found.` });
+                return res.status(404).send({ message: `Project not found.` });
             }
 
-            // if the mod isn't verified or unverified (with the unverified flag present), don't show it unless the user is an admin or approver or the mod author
+            // if the Project isn't verified or unverified (with the unverified flag present), don't show it unless the user is an admin or approver or the Project author
             if (project.isAllowedToView(session.user) == false) {
-                return res.status(404).send({ message: `Mod not found.` });
+                return res.status(404).send({ message: `Project not found.` });
             }
 
-            let versions = DatabaseHelper.cache.versions.filter((modVersion) => modVersion.projectId === project.id);
+            let versions = DatabaseHelper.cache.versions.filter((version) => version.projectId === project.id);
             let returnVal: any[] = [];
 
             for (let version of (versions)) {
@@ -206,7 +204,7 @@ export class GetModRoutes {
                 if (allowedToSeeItems == false) {
                     continue;
                 }
-                // if raw is true, return the raw mod version info instead of attempting to resolve the dependencies & other fields
+                // if raw is true, return the raw project version info instead of attempting to resolve the dependencies & other fields
                 if (raw) {
                     returnVal.push(version.toRawAPIResponse());
                 } else {
@@ -258,18 +256,18 @@ export class GetModRoutes {
             let versionId = Validator.zDBID.safeParse(req.params.versionIdParam);
             let raw = req.query.raw;
             if (!versionId.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
+                return res.status(400).send({ message: `Invalid version id.` });
             }
 
             let version = DatabaseHelper.mapCache.versions.get(versionId.data);
             if (!version) {
-                return res.status(404).send({ message: `Mod version not found.` });
+                return res.status(404).send({ message: `Version not found.` });
             }
 
             let project = DatabaseHelper.mapCache.projects.get(version.projectId);
             
             if (!await version.isAllowedToView(session.user, project)) {
-                return res.status(404).send({ message: `Mod version not found.` });
+                return res.status(404).send({ message: `Version not found.` });
             }
 
             if (raw === `true`) {
@@ -289,9 +287,9 @@ export class GetModRoutes {
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
-            #swagger.summary = 'Get multiple mod versions by ID.'
-            #swagger.description = 'Get multiple mod versions by ID.'
-            #swagger.parameters['id'] = { in: 'query', description: 'The mod version IDs. Can be specified multiple times.', type: 'number', required: true }
+            #swagger.summary = 'Get multiple versions by ID.'
+            #swagger.description = 'Get multiple versions by ID.'
+            #swagger.parameters['id'] = { in: 'query', description: 'The version IDs. Can be specified multiple times.', type: 'number', required: true }
             #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
             #swagger.responses[200] = {
                 description: 'Returns the version and the parent project.',
@@ -314,31 +312,31 @@ export class GetModRoutes {
             let versionIds = Validator.zDBIDArray.safeParse(req.query.id);
             let raw = req.query.raw;
             if (!versionIds.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
+                return res.status(400).send({ message: `Invalid version id.` });
             }
 
             let dedupedIds = Array.from(new Set(versionIds.data));
 
             let retVal: {project: ProjectAPIPublicResponse, version: any}[] = [];
             for (const id of dedupedIds) {
-                let modVersion = DatabaseHelper.mapCache.versions.get(id);
-                if (!modVersion) {
-                    return res.status(404).send({ message: `Mod version not found.` });
+                let version = DatabaseHelper.mapCache.versions.get(id);
+                if (!version) {
+                    return res.status(404).send({ message: `Version not found.` });
                 }
 
-                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
-                if (!mod) {
-                    return res.status(404).send({ message: `Mod ID ${modVersion.projectId} not found.` });
+                let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+                if (!project) {
+                    return res.status(404).send({ message: `Project ID ${version.projectId} not found.` });
                 }
                 
-                if (!await modVersion.isAllowedToView(session.user, mod)) {
-                    return res.status(404).send({ message: `Mod version not found.` });
+                if (!await version.isAllowedToView(session.user, project)) {
+                    return res.status(404).send({ message: `Version not found.` });
                 }
 
                 if (raw === `true`) {
-                    retVal.push({ project: mod.toAPIResponse(), version: modVersion.toRawAPIResponse() });
+                    retVal.push({ project: project.toAPIResponse(), version: version.toRawAPIResponse() });
                 } else {
-                    retVal.push({ project: mod.toAPIResponse(), version: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
+                    retVal.push({ project: project.toAPIResponse(), version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
                 }
             }
 

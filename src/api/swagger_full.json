@@ -474,7 +474,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectEditResponse"
+                  "$ref": "#/components/schemas/EditApprovalQueueResponse"
                 }
               }
             }
@@ -1958,7 +1958,14 @@
         "description": "Get user information.",
         "responses": {
           "200": {
-            "description": "Returns user information."
+            "description": "Returns user information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAPIPublicResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized."
@@ -1995,7 +2002,8 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns user information."
+            "description": "OK",
+            "$ref": "#/components/responses/UserResponse"
           },
           "400": {
             "description": "Invalid parameters."
@@ -2030,19 +2038,21 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "platform",
-            "description": "Platform of the mod.",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Returns mods."
+            "description": "Returns mods.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectVersionPair"
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid parameters."
@@ -2078,7 +2088,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns all users."
+            "description": "Returns all users.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserAPIPublicResponse"
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized"

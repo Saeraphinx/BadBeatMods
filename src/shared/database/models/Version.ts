@@ -3,9 +3,9 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, 
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
 import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, VersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
-import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
+import { sendEditLog, sendVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
-import { Project } from "./Mod.ts";
+import { Project } from "./Project.ts";
 import { EditQueue } from "./EditQueue.ts";
 import path from "path";
 import { Config } from "../../Config.ts";
@@ -122,7 +122,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
     public async edit(object: VersionEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, version: Version}> {
         if (this.status !== Status.Verified) {
             this.update({...object, lastUpdatedById: submitter.id});
-            sendModVersionLog(this, submitter, WebhookLogType.Text_Updated);
+            sendVersionLog(this, submitter, WebhookLogType.Text_Updated);
             return {isEditObj: false, version: this};
         }
     
@@ -168,31 +168,31 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             Logger.error(`Error setting status: ${error}`);
             throw error;
         }
-        sendModVersionLog(this, user, WebhookLogType.Text_StatusChanged);
+        sendVersionLog(this, user, WebhookLogType.Text_StatusChanged);
         Logger.log(`Mod ${this.id} approved by ${user.username}`);
 
         if (prevStatus == Status.Verified && status !== Status.Verified) {
             this.lastApprovedById = user.id;
-            shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked, undefined, reason) : undefined;
+            shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.VerificationRevoked, undefined, reason) : undefined;
             return this;
         }
 
         switch (status) {
             case Status.Unverified:
-                sendModVersionLog(this, user, WebhookLogType.RejectedUnverified, undefined, reason);
+                sendVersionLog(this, user, WebhookLogType.RejectedUnverified, undefined, reason);
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Verified, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.Verified, undefined, reason) : undefined;
                 break;
             case Status.Removed:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Removed, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.Removed, undefined, reason) : undefined;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.SetToPending, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.SetToPending, undefined, reason) : undefined;
                 break;
         }
         return this;
@@ -218,7 +218,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         if (this.status !== Status.Verified) {
             this.supportedGameVersionIds = [...this.supportedGameVersionIds, gameVersionId];
             let res = this.save();
-            shouldSendLog ? sendModVersionLog(this, submitter, WebhookLogType.Text_Updated) : null;
+            shouldSendLog ? sendVersionLog(this, submitter, WebhookLogType.Text_Updated) : null;
             return res;
         } else {
             let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitter.id, approved: null } });

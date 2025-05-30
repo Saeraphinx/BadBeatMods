@@ -139,9 +139,9 @@ export class BeatModsRoutes {
         if (gameVersion) {
             let mods = await gameVersion.getSupportedMods(Platform.UniversalPC, statuses);
             for (let mod of mods) {
-                let convertedMod = await this.convertToBeatmodsMod(mod.mod, mod.latest, gameVersion, true);
+                let convertedMod = await this.convertToBeatmodsMod(mod.project, mod.version, gameVersion, true);
                 if (!convertedMod) {
-                    Logger.debugWarn(`Failed to convert mod ${mod.mod.name} v${mod.latest.modVersion.raw} to BeatMods format.`, `getMod`);
+                    Logger.debugWarn(`Failed to convert mod ${mod.project.name} v${mod.version.modVersion.raw} to BeatMods format.`, `getMod`);
                     continue;
                 }
                 modArray.push(convertedMod);
