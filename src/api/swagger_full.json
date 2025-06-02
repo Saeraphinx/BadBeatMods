@@ -233,7 +233,10 @@
                   "type": "object",
                   "properties": {
                     "mods": {
-                      "$ref": "#/components/schemas/ProjectVersionPair"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectVersionPair"
+                      }
                     },
                     "total": {
                       "type": "number",
@@ -247,7 +250,7 @@
                       "type": "array",
                       "items": {
                         "type": "number",
-                        "description": "The IDs of the mods that were removed due to missing dependencies."
+                        "description": "The IDs of the versions that were removed due to missing dependencies."
                       }
                     }
                   }
@@ -266,13 +269,13 @@
         "tags": [
           "Mods"
         ],
-        "summary": "Get multiple mod versions by ID.",
-        "description": "Get multiple mod versions by ID.",
+        "summary": "Get multiple versions by ID.",
+        "description": "Get multiple versions by ID.",
         "parameters": [
           {
             "name": "id",
             "in": "query",
-            "description": "The mod version IDs. Can be specified multiple times.",
+            "description": "The version IDs. Can be specified multiple times.",
             "required": true,
             "schema": {
               "type": "number"
@@ -407,8 +410,8 @@
         "tags": [
           "Mods"
         ],
-        "summary": "Get a specific mod by ID.",
-        "description": "Get a specific mod by ID. This will also return every version of the mod.",
+        "summary": "Get a specific project by ID.",
+        "description": "Get a specific project by ID. This will also return every version associated with the project.",
         "parameters": [
           {
             "name": "projectIdParam",
@@ -417,7 +420,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The mod ID."
+            "description": "The project ID."
           },
           {
             "$ref": "#/components/parameters/raw"
@@ -562,8 +565,8 @@
         "tags": [
           "Mods"
         ],
-        "summary": "Create a mod.",
-        "description": "Create a mod.",
+        "summary": "Create a project.",
+        "description": "Create a project.",
         "parameters": [
           {
             "name": "icon",
@@ -617,7 +620,7 @@
           {
             "name": "file",
             "in": "formData",
-            "description": "Mod zip file.",
+            "description": "Version zip file.",
             "required": true,
             "schema": {
               "type": "file"
@@ -672,8 +675,8 @@
         "tags": [
           "Mods"
         ],
-        "summary": "Update a mod icon.",
-        "description": "Update a mod icon. (Note: This endpoint does not work on the API documentation page.)",
+        "summary": "Update a project icon.",
+        "description": "Update a project icon. (Note: This endpoint does not work on the API documentation page.)",
         "parameters": [
           {
             "name": "projectIdParam",
@@ -681,23 +684,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Project ID."
           },
           {
             "name": "icon",
             "in": "formData",
-            "description": "Mod icon.",
+            "description": "Project icon.",
             "required": true,
             "schema": {
               "type": "file"
-            }
-          },
-          {
-            "name": "modIdParam",
-            "description": "Mod ID.",
-            "in": "query",
-            "schema": {
-              "type": "number"
             }
           }
         ],
@@ -738,7 +734,7 @@
         "tags": [
           "Mods"
         ],
-        "description": "Update a mod version.",
+        "description": "Update a version.",
         "parameters": [
           {
             "name": "versionIdParam",
@@ -746,20 +742,13 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "modVersionIdParam",
-            "description": "Mod Version ID",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
+            },
+            "description": "Version ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Mod version updated successfully.",
+            "description": "Version updated successfully.",
             "content": {
               "application/json": {
                 "schema": {
@@ -769,7 +758,7 @@
             }
           },
           "202": {
-            "description": "Mod version edit submitted for approval.",
+            "description": "Version edit submitted for approval.",
             "content": {
               "application/json": {
                 "schema": {
@@ -798,7 +787,7 @@
           }
         ],
         "requestBody": {
-          "description": "Mod version data",
+          "description": "Version data",
           "required": true,
           "content": {
             "application/json": {
@@ -820,7 +809,7 @@
         "tags": [
           "Mods"
         ],
-        "description": "Submit a mod for approval.",
+        "description": "Submit a project for approval.",
         "parameters": [
           {
             "name": "projectIdParam",
@@ -834,7 +823,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Mod submitted successfully.",
+            "description": "Project submitted successfully.",
             "content": {
               "application/json": {
                 "schema": {
@@ -883,7 +872,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Mod version submitted successfully.",
+            "description": "Version submitted successfully.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1592,8 +1581,8 @@
         "tags": [
           "Approval"
         ],
-        "summary": "Get new mods & modVersions pending approval.",
-        "description": "Get a list of mods & modVersions pending their first approval.",
+        "summary": "Get new projects & versions pending approval.",
+        "description": "Get a list of projects & versions pending their first approval.",
         "parameters": [
           {
             "name": "queueType",
@@ -1618,7 +1607,7 @@
           },
           {
             "name": "gameName",
-            "description": "The name of the game to get new mods for.",
+            "description": "The name of the game to get new projects/versions for.",
             "required": true,
             "in": "query",
             "schema": {
@@ -1663,8 +1652,8 @@
         "tags": [
           "Approval"
         ],
-        "summary": "Approve a mod.",
-        "description": "Approve a mod for public visibility.",
+        "summary": "Approve a project.",
+        "description": "Approve a project for public visibility.",
         "parameters": [
           {
             "name": "projectIdParam",
@@ -1713,8 +1702,8 @@
         "tags": [
           "Approval"
         ],
-        "summary": "Approve a modVersion.",
-        "description": "Approve a modVersion for public visibility.",
+        "summary": "Approve a version.",
+        "description": "Approve a version for public visibility.",
         "parameters": [
           {
             "name": "versionIdParam",
@@ -1723,7 +1712,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The id of the modVersion to approve."
+            "description": "The id of the version to approve."
           }
         ],
         "responses": {
@@ -2033,7 +2022,7 @@
           },
           {
             "name": "status",
-            "description": "Status of the mod.",
+            "description": "Only show this status.",
             "in": "query",
             "schema": {
               "type": "string"
@@ -2147,8 +2136,8 @@
         "tags": [
           "Bulk Actions"
         ],
-        "summary": "Add a game version to multiple mod versions",
-        "description": "Add a game version to multiple mod versions. Submits edits if the mod is already approved, otherwise queues an edit for approval. Requires the user to be an approver.",
+        "summary": "Add a game version to multiple versions",
+        "description": "Add a game version to multiple versions. Submits edits if the version is already approved, otherwise queues an edit for approval. Requires the user to be an approver.",
         "responses": {
           "200": {
             "description": "Success",
@@ -2254,7 +2243,7 @@
                   "gameVersionId": {
                     "type": "number"
                   },
-                  "modVersionIds": {
+                  "versionIds": {
                     "type": "array",
                     "items": {
                       "type": "number"
@@ -2273,7 +2262,7 @@
           "Bulk Actions"
         ],
         "summary": "",
-        "description": "Submits edits if the mod is already approved, otherwise queues an edit for approval. Requires the user to be an approver.",
+        "description": "Submits edits if the version is already approved, otherwise queues an edit for approval. Requires the user to be an approver.",
         "responses": {
           "200": {
             "description": "Success",
@@ -2376,7 +2365,7 @@
                   "gameVersionIdTo": {
                     "type": "number"
                   },
-                  "modVersionIdsToExclude": {
+                  "versionIdsToExclude": {
                     "type": "array",
                     "items": {
                       "type": "number"
@@ -2687,22 +2676,22 @@
           },
           "name": {
             "type": "string",
-            "description": "The name of the mod.",
-            "example": "Example Mod"
+            "description": "The name of the project.",
+            "example": "Example Project"
           },
           "summary": {
             "type": "string",
-            "description": "The summary of the mod.",
-            "example": "This is an example mod."
+            "description": "The summary of the project.",
+            "example": "This is an example project."
           },
           "description": {
             "type": "string",
-            "description": "The description of the mod. Supports markdown.",
-            "example": "This is an example mod. It is used as an example for the API documentation."
+            "description": "The description of the project. Supports markdown.",
+            "example": "This is an example project. It is used as an example for the API documentation."
           },
           "gameName": {
             "type": "string",
-            "description": "The name of the game this mod is for. Must be a game that is returned by the /games endpoint.",
+            "description": "The name of the game this project is for. Must be a game that is returned by the /games endpoint.",
             "example": "BeatSaber",
             "default": "BeatSaber"
           },
@@ -2769,8 +2758,8 @@
                 },
                 "reason": {
                   "type": "string",
-                  "description": "The reason for the status change. This is used to track the history of the mod's status.",
-                  "example": "This mod is currently in development."
+                  "description": "The reason for the status change. This is used to track the history of the project's status.",
+                  "example": "This project is currently in development."
                 },
                 "userId": {
                   "type": "integer",
@@ -2818,7 +2807,7 @@
           },
           "projectId": {
             "type": "integer",
-            "description": "The parent mod's internal ID.",
+            "description": "The parent project's internal ID.",
             "example": 1
           },
           "modVersion": {
@@ -3085,18 +3074,18 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the mod.",
-            "example": "Example Mod"
+            "description": "The name of the project.",
+            "example": "Example Project"
           },
           "summary": {
             "type": "string",
-            "description": "The summary of the mod.",
-            "example": "This is an example mod."
+            "description": "The summary of the project.",
+            "example": "This is an example project."
           },
           "description": {
             "type": "string",
-            "description": "The description of the mod. Supports markdown.",
-            "example": "This is an example mod. It is used as an example for the API documentation."
+            "description": "The description of the project. Supports markdown.",
+            "example": "This is an example project. It is used as an example for the API documentation."
           },
           "category": {
             "type": "string",
@@ -3122,7 +3111,7 @@
           },
           "gameName": {
             "type": "string",
-            "description": "The name of the game this mod is for. Must be a game that is returned by the /games endpoint.",
+            "description": "The name of the game this project is for. Must be a game that is returned by the /games endpoint.",
             "example": "BeatSaber",
             "default": "BeatSaber"
           }
@@ -3150,7 +3139,7 @@
               "properties": {
                 "parentId": {
                   "type": "integer",
-                  "description": "The ID of the mod this version depends on."
+                  "description": "The ID of the project this version depends on."
                 },
                 "sv": {
                   "type": "string",
@@ -3176,18 +3165,18 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the mod.",
-            "example": "Example Mod"
+            "description": "The name of the project.",
+            "example": "Example Project"
           },
           "summary": {
             "type": "string",
-            "description": "The summary of the mod.",
-            "example": "This is an example mod."
+            "description": "The summary of the project.",
+            "example": "This is an example project."
           },
           "description": {
             "type": "string",
-            "description": "The description of the mod. Supports markdown.",
-            "example": "This is an example mod. It is used as an example for the API documentation."
+            "description": "The description of the project. Supports markdown.",
+            "example": "This is an example project. It is used as an example for the API documentation."
           },
           "category": {
             "type": "string",
@@ -3213,7 +3202,7 @@
           },
           "gameName": {
             "type": "string",
-            "description": "The name of the game this mod is for. Must be a game that is returned by the /games endpoint.",
+            "description": "The name of the game this project is for. Must be a game that is returned by the /games endpoint.",
             "example": "BeatSaber",
             "default": "BeatSaber"
           },
@@ -3222,7 +3211,7 @@
             "items": {
               "type": "number"
             },
-            "description": "The IDs of the authors of this mod. This id can be resolved to a user object using the /users/{id} endpoint."
+            "description": "The IDs of the authors of this project. This id can be resolved to a user object using the /users/{id} endpoint."
           }
         }
       },
@@ -3248,7 +3237,7 @@
               "properties": {
                 "parentId": {
                   "type": "integer",
-                  "description": "The ID of the mod this version depends on."
+                  "description": "The ID of the project this version depends on."
                 },
                 "sv": {
                   "type": "string",
@@ -3339,7 +3328,7 @@
         "properties": {
           "projectId": {
             "type": "integer",
-            "description": "The parent mod's internal ID.",
+            "description": "The parent project's internal ID.",
             "example": 1
           },
           "modVersion": {
@@ -3396,7 +3385,7 @@
               "properties": {
                 "parentId": {
                   "type": "integer",
-                  "description": "The ID of the mod this version depends on."
+                  "description": "The ID of the project this version depends on."
                 },
                 "sv": {
                   "type": "string",
@@ -3487,7 +3476,7 @@
                   "properties": {
                     "parentId": {
                       "type": "integer",
-                      "description": "The ID of the mod this version depends on."
+                      "description": "The ID of the project this version depends on."
                     },
                     "sv": {
                       "type": "string",
@@ -3506,22 +3495,22 @@
               },
               "name": {
                 "type": "string",
-                "description": "The name of the mod.",
-                "example": "Example Mod"
+                "description": "The name of the project.",
+                "example": "Example Project"
               },
               "summary": {
                 "type": "string",
-                "description": "The summary of the mod.",
-                "example": "This is an example mod."
+                "description": "The summary of the project.",
+                "example": "This is an example project."
               },
               "description": {
                 "type": "string",
-                "description": "The description of the mod. Supports markdown.",
-                "example": "This is an example mod. It is used as an example for the API documentation."
+                "description": "The description of the project. Supports markdown.",
+                "example": "This is an example project. It is used as an example for the API documentation."
               },
               "gameName": {
                 "type": "string",
-                "description": "The name of the game this mod is for. Must be a game that is returned by the /games endpoint.",
+                "description": "The name of the game this project is for. Must be a game that is returned by the /games endpoint.",
                 "example": "BeatSaber",
                 "default": "BeatSaber"
               },
@@ -3549,7 +3538,7 @@
                 "items": {
                   "type": "number"
                 },
-                "description": "The IDs of the authors of this mod. This id can be resolved to a user object using the /users/{id} endpoint."
+                "description": "The IDs of the authors of this project. This id can be resolved to a user object using the /users/{id} endpoint."
               },
               "gitUrl": {
                 "type": "string"

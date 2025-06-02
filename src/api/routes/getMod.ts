@@ -31,7 +31,10 @@ export class GetModRoutes {
                             type: 'object',
                             properties: {
                                 mods: {
-                                    $ref: '#/components/schemas/ProjectVersionPair'
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/ProjectVersionPair'
+                                    }
                                 },
                                 total: {
                                     type: 'number',

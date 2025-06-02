@@ -98,7 +98,7 @@ for (let pathName in derefSchema.paths) {
 ajv.addSchema(derefSchema.components.schemas.ServerMessage, `ServerMessage`);
 // #endregion
 
-describe.sequential(`API`, async () => {
+describe.sequential(`Documentation`, async () => {
     // #region setup 2 electric boogaloo
     let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
     let defaultModData: Omit<ProjectInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
@@ -196,11 +196,31 @@ describe.sequential(`API`, async () => {
     });
     // #endregion
 
-    describe(`GET /status - 200`, () => {
-        test(`valid`, async () => {
-            const res = await api.get(`/status`);
-            expect(res.status).toBe(200);
-            expect(ajv.validate(`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay-get-200`, res.body)).toBe(true);
+    describe(`GET No Params`, () => {
+        test.each([
+            [`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay`, 200],
+            [`/mods`, 200],
+            [`/projects/1`, 200, `/projects/{projectIdParam}`],
+            [`/user`, 200],
+            [`/user/1`, 200, `/user/{id}`],
+            [`/user/1/mods`, 200, `/user/{id}/mods`],
+            [`/users`, 200],
+            [`/auth`, 200],
+            //[`/games`, 200],
+            //[`/versions`, 200],
+            //[`/edits`, 200],
+            //[`/edits/1`, 200, `/edits/{editIdParam}`],
+        ])(`%s %s follows schema`, async (path, status, schema?) => {
+            shouldAuthenticateWithRole = true;
+            let response = await api.get(path);
+            validateResponse(response, schema ? `${schema}-get-${status}` : `${path}-get-${status}`, status);
         });
     });
 });
+
+function validateResponse(res:supertest.Response, schema: string, code:number = 200) {
+    expect(res).not.toBeNull();
+    expect(res.status, res.body?.message).toBe(code);
+    let validate = ajv.validate(schema, res.body);
+    expect(validate, ajv.errorsText(ajv.errors, { separator: `\n` })).toBe(true);
+}
