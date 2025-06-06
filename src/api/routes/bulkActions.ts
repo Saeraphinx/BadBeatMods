@@ -195,10 +195,10 @@ export class BulkActionsRoutes {
                 if (pidsToIgnore.includes(version.projectId)) {
                     continue; // skip projects that are in the exclude list
                 }
-                let existing = versionsFiltered.find((v) => v.pid === version.projectId);
+                let existing = versionsFiltered.find((v) => v.pid === version.projectId && v.version.status === version.status);
                 if (existing) {
                     if (version.modVersion.compare(existing.version.modVersion) == 1) {
-                        versionsFiltered = versionsFiltered.filter((mv) => mv.pid !== version.projectId);
+                        versionsFiltered = versionsFiltered.filter((mv) => mv.pid !== version.projectId && mv.version.status === version.status);
                         versionsFiltered.push({pid: version.projectId, version: version});
                     }
                 } else {
