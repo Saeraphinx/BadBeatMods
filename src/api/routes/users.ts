@@ -53,7 +53,7 @@ export class UserRoutes {
 
         this.router.get(`/user/:id/mods`, async (req, res) => {
             // #swagger.tags = ['Users']
-            /* #swagger.security = [{
+            /* #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }] */
@@ -110,7 +110,7 @@ export class UserRoutes {
 
         this.router.get(`/users`, async (req, res) => {
             // #swagger.tags = ['Users']
-            /* #swagger.security = [{
+            /* #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }] */

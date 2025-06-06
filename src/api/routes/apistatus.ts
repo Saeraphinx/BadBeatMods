@@ -34,7 +34,7 @@ export class StatusRoutes {
                     }
                 }
             }
-            #swagger.security = [{
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }]

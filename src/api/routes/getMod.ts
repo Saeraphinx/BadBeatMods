@@ -166,7 +166,7 @@ export class GetModRoutes {
             #swagger.path = '/projects/{projectIdParam}'
             #swagger.method = 'get'
             #swagger.tags = ['Mods']
-            #swagger.security = [{
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
@@ -242,7 +242,7 @@ export class GetModRoutes {
             #swagger.path = '/versions/{versionIdParam}'
             #swagger.method = 'get'
             #swagger.tags = ['Mods']
-            #swagger.security = [{
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
@@ -286,7 +286,7 @@ export class GetModRoutes {
             #swagger.path = '/multi/versions'
             #swagger.method = 'get'
             #swagger.tags = ['Mods']
-            #swagger.security = [{
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }]
