@@ -134,12 +134,12 @@ export class BeatModsRoutes {
         }
 
         let showUnverified = status !== `approved`;
-        let statuses = showUnverified ? [Status.Verified, Status.Unverified] : [Status.Verified];
+        let statuses = showUnverified ? [Status.Verified, Status.Unverified, Status.Pending] : [Status.Verified];
 
         if (gameVersion) {
             let mods = await gameVersion.getSupportedMods(Platform.UniversalPC, statuses);
             for (let mod of mods) {
-                let convertedMod = await this.convertToBeatmodsMod(mod.project, mod.version, gameVersion, true);
+                let convertedMod = await this.convertToBeatmodsMod(mod.project, mod.version, gameVersion, true, statuses);
                 if (!convertedMod) {
                     Logger.debugWarn(`Failed to convert mod ${mod.project.name} v${mod.version.modVersion.raw} to BeatMods format.`, `getMod`);
                     continue;
@@ -188,7 +188,7 @@ export class BeatModsRoutes {
                     continue;
                 }
 
-                let bmMod = await this.convertToBeatmodsMod(mod, modVersion, null, true);
+                let bmMod = await this.convertToBeatmodsMod(mod, modVersion, null, true, statuses);
                 if (!bmMod) {
                     Logger.debugWarn(`Failed to convert mod ${mod.name} v${modVersion.modVersion.raw} to BeatMods format.`, `getMod`);
                     continue;
@@ -199,11 +199,11 @@ export class BeatModsRoutes {
         return res.status(200).send(modArray);
     }
 
-    private async convertToBeatmodsMod(mod: Project, modVersion: Version, gameVersion: GameVersion|null, doResolution: boolean = true): Promise<BeatModsMod|null> {
+    private async convertToBeatmodsMod(mod: Project, modVersion: Version, gameVersion: GameVersion|null, doResolution: boolean = true, statuses = [Status.Verified]): Promise<BeatModsMod|null> {
         let dependencies: (BeatModsMod | string)[] = [];
         let mVDeps: Version[] = [];
         if (gameVersion) {
-            let intmVDeps = await modVersion.getDependencyObjs(gameVersion.id, [Status.Verified]);
+            let intmVDeps = await modVersion.getDependencyObjs(gameVersion.id, statuses);
             if (!intmVDeps) {
                 return null;
             }
@@ -249,6 +249,7 @@ export class BeatModsRoutes {
             case Status.Private: // this should never happen
                 status = `declined`;
                 break;
+            case Status.Pending:
             case Status.Unverified:
                 status = `pending`;
                 break;

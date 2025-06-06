@@ -86,7 +86,7 @@
         "deprecated": true
       }
     },
-    "/api/v1/mod": {
+    "/v1/mod": {
       "get": {
         "tags": [
           "BeatMods"
@@ -3469,7 +3469,7 @@
                   "universalquest"
                 ]
               },
-              "dependnecies": {
+              "dependencies": {
                 "type": "array",
                 "items": {
                   "type": "object",

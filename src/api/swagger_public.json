@@ -1116,7 +1116,7 @@
                   "universalquest"
                 ]
               },
-              "dependnecies": {
+              "dependencies": {
                 "type": "array",
                 "items": {
                   "type": "integer",

@@ -296,7 +296,7 @@ const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
                     default: undefined
                 },
                 platform: VersionDBObject.properties!.platform,
-                dependnecies: VersionDBObject.properties!.dependencies,
+                dependencies: VersionDBObject.properties!.dependencies,
                 supportedGameVersionIds: VersionDBObject.properties!.supportedGameVersionIds,
 
                 name: ProjectDBObject.properties!.name,

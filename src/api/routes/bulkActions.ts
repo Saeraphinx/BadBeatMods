@@ -187,7 +187,7 @@ export class BulkActionsRoutes {
                     pidsToIgnore.push(v.projectId); // do not process these project  ids further on down the line
                     return false;
                 }
-                return v.supportedGameVersionIds.includes(gameVersion1.id) && (v.status == Status.Verified || v.status == Status.Unverified);
+                return v.supportedGameVersionIds.includes(gameVersion1.id) && (v.status == Status.Verified || v.status == Status.Unverified || v.status == Status.Pending);
             });
 
             let versionsFiltered:{pid:number, version:Version}[] = [];
