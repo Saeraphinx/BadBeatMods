@@ -2,19 +2,19 @@ import { SemVer, satisfies } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, ModVersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
-import { sendEditLog, sendModVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, VersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
+import { sendEditLog, sendVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
-import { Mod } from "./Mod.ts";
+import { Project } from "./Project.ts";
 import { EditQueue } from "./EditQueue.ts";
 import path from "path";
 import { Config } from "../../Config.ts";
 
-export type ModVersionInfer = InferAttributes<ModVersion>;
-export type ModVersionApproval = Partial<InferAttributes<ModVersion, { omit: `modId` | `id` | `createdAt` | `updatedAt` | `deletedAt` | `authorId` | `status` | `contentHashes` | `zipHash` | `fileSize` | `lastApprovedById` | `lastUpdatedById` | `downloadCount` | `statusHistory` }>>
-export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreationAttributes<ModVersion>> {
+export type VersionInfer = InferAttributes<Version>;
+export type VersionEdit = Partial<Pick<Version, `modVersion` | `platform` | `supportedGameVersionIds` | `dependencies`>>;
+export class Version extends Model<InferAttributes<Version>, InferCreationAttributes<Version>> {
     declare readonly id: CreationOptional<number>;
-    declare modId: number;
+    declare projectId: number;
     declare authorId: number;
     declare modVersion: SemVer;
     declare supportedGameVersionIds: number[];
@@ -32,27 +32,27 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public get mod(): NonAttribute<Mod | undefined> {
-        let mod = DatabaseHelper.mapCache.mods.get(this.modId);
+    public get mod(): NonAttribute<Project | undefined> {
+        let mod = DatabaseHelper.mapCache.projects.get(this.projectId);
         if (!mod) {
-            Logger.error(`Failed to find mod ${this.modId} for mod version ${this.id}`);
+            Logger.error(`Failed to find mod ${this.projectId} for mod version ${this.id}`);
             return undefined;
         }
         return mod;
     }
 
-    public async isAllowedToView(user: User|null|undefined, useCache:Mod|boolean = true) {
-        let parentMod: Mod | null | undefined;
+    public async isAllowedToView(user: User|null|undefined, useCache:Project|boolean = true) {
+        let parentMod: Project | null | undefined;
         if (typeof useCache === `object`) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
         } else if (useCache) {
-            parentMod = DatabaseHelper.mapCache.mods.get(this.modId);
+            parentMod = DatabaseHelper.mapCache.projects.get(this.projectId);
         } else {
-            parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+            parentMod = await DatabaseHelper.database.Projects.findByPk(this.projectId);
         }
 
         if (!parentMod) {
-            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.modId}).`);
+            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.projectId}).`);
             return false;
         }
 
@@ -96,18 +96,18 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         }
     }
 
-    public async isAllowedToEdit(user: User|null, useCache:Mod|boolean = true) {
-        let parentMod: Mod | null | undefined;
-        if (useCache instanceof Mod) {
+    public async isAllowedToEdit(user: User|null, useCache:Project|boolean = true) {
+        let parentMod: Project | null | undefined;
+        if (useCache instanceof Project) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
         } else if (useCache) {
-            parentMod = DatabaseHelper.mapCache.mods.get(this.modId);
+            parentMod = DatabaseHelper.mapCache.projects.get(this.projectId);
         } else {
-            parentMod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+            parentMod = await DatabaseHelper.database.Projects.findByPk(this.projectId);
         }
 
         if (!parentMod) {
-            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.modId}).`);
+            Logger.error(`ModVersion ${this.id} does not have a valid parent mod (reading ${this.projectId}).`);
             return false;
         }
 
@@ -119,11 +119,11 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return false;
     }
 
-    public async edit(object: ModVersionApproval, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, modVersion: ModVersion}> {
+    public async edit(object: VersionEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, version: Version}> {
         if (this.status !== Status.Verified) {
             this.update({...object, lastUpdatedById: submitter.id});
-            sendModVersionLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, modVersion: this};
+            sendVersionLog(this, submitter, WebhookLogType.Text_Updated);
+            return {isEditObj: false, version: this};
         }
     
         // check if there is already a pending edit
@@ -168,40 +168,40 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
             Logger.error(`Error setting status: ${error}`);
             throw error;
         }
-        sendModVersionLog(this, user, WebhookLogType.Text_StatusChanged);
+        sendVersionLog(this, user, WebhookLogType.Text_StatusChanged);
         Logger.log(`Mod ${this.id} approved by ${user.username}`);
 
         if (prevStatus == Status.Verified && status !== Status.Verified) {
             this.lastApprovedById = user.id;
-            shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.VerificationRevoked, undefined, reason) : undefined;
+            shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.VerificationRevoked, undefined, reason) : undefined;
             return this;
         }
 
         switch (status) {
             case Status.Unverified:
-                sendModVersionLog(this, user, WebhookLogType.RejectedUnverified, undefined, reason);
+                sendVersionLog(this, user, WebhookLogType.RejectedUnverified, undefined, reason);
                 break;
             case Status.Verified:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Verified, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.Verified, undefined, reason) : undefined;
                 break;
             case Status.Removed:
                 this.lastApprovedById = user.id;
                 this.save();
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.Removed, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.Removed, undefined, reason) : undefined;
                 break;
             case Status.Pending:
-                shouldSendEmbed ? sendModVersionLog(this, user, WebhookLogType.SetToPending, undefined, reason) : undefined;
+                shouldSendEmbed ? sendVersionLog(this, user, WebhookLogType.SetToPending, undefined, reason) : undefined;
                 break;
         }
         return this;
     }
 
     public async isRestorable(): Promise<boolean> {
-        let mod = await DatabaseHelper.database.Mods.findByPk(this.modId);
+        let mod = await DatabaseHelper.database.Projects.findByPk(this.projectId);
         if (!mod) {
-            Logger.error(`Mod ${this.modId} not found for mod version ${this.id}`);
+            Logger.error(`Mod ${this.projectId} not found for mod version ${this.id}`);
             return false;
         }
         if (!mod.isRestorable()) {
@@ -210,7 +210,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
     }
 
-    public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<ModVersion | EditQueue | null> {
+    public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<Version | EditQueue | null> {
         if (this.supportedGameVersionIds.includes(gameVersionId)) {
             return Promise.resolve(null);
         }
@@ -218,7 +218,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         if (this.status !== Status.Verified) {
             this.supportedGameVersionIds = [...this.supportedGameVersionIds, gameVersionId];
             let res = this.save();
-            shouldSendLog ? sendModVersionLog(this, submitter, WebhookLogType.Text_Updated) : null;
+            shouldSendLog ? sendVersionLog(this, submitter, WebhookLogType.Text_Updated) : null;
             return res;
         } else {
             let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitter.id, approved: null } });
@@ -244,13 +244,13 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     }
 
     // this function called to see if a duplicate version already exists in the database. if it does, creation of a new version should be halted.
-    public static async checkForExistingVersion(modId: number, semver: SemVer, platform:Platform): Promise<ModVersion | null> {
-        let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { modId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
+    public static async checkForExistingVersion(modId: number, semver: SemVer, platform:Platform): Promise<Version | null> {
+        let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
         return modVersion;
     }
 
     public static async countExistingVersions(modId: number, semver: SemVer, platform:Platform): Promise<number> {
-        let count = await DatabaseHelper.database.ModVersions.count({ where: { modId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
+        let count = await DatabaseHelper.database.Versions.count({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
         return count;
     }
 
@@ -273,11 +273,11 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         return gameVersions;
     }
 
-    public async getDependencyObjs(gameVersionId: number, statusesToSearchFor: Status[]): Promise<ModVersion[] | null> {
+    public async getDependencyObjs(gameVersionId: number, statusesToSearchFor: Status[]): Promise<Version[] | null> {
         let dependencies = [];
 
         for (let dep of this.dependencies) {
-            let parentMod = DatabaseHelper.mapCache.mods.get(dep.parentId);
+            let parentMod = DatabaseHelper.mapCache.projects.get(dep.parentId);
             if (!parentMod) {
                 Logger.debugWarn(`Failed to find parent project ${dep.parentId} for dependency (Req by ${this.id})`);
                 return null;
@@ -303,7 +303,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
     public toRawAPIResponse() {
         return {
             id: this.id,
-            modId: this.modId,
+            projectId: this.projectId,
             authorId: this.authorId,
             modVersion: this.modVersion.raw,
             platform: this.platform,
@@ -322,7 +322,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         };
     }
 
-    public async toAPIResponse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<ModVersionAPIPublicResponse|null> {
+    public async toAPIResponse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<VersionAPIPublicResponse|null> {
         let dependencies = await this.getDependencyObjs(gameVersionId, statusesToSearchFor);
         if (!dependencies) {
             Logger.debugWarn(`Failed to find dependencies for ${this.id}`);
@@ -342,7 +342,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
 
         return {
             id: this.id,
-            modId: this.modId,
+            projectId: this.projectId,
             author: author.toAPIResponse(),
             modVersion: this.modVersion.raw,
             platform: this.platform,

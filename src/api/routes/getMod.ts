@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
@@ -15,15 +15,48 @@ export class GetModRoutes {
 
     private async loadRoutes() {
         this.router.get(`/mods`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Get all mods for a specified version.'
-            // #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
-            // #swagger.responses[200] = {'description':'Returns all mods.','schema':{'mods':[{'mod':{'$ref':'#/components/schemas/ModAPIPublicResponse'},'latest':{'$ref':'#/components/schemas/ModVersionAPIPublicResponse'}}]}}
-            // #swagger.responses[400] = { description: 'Invalid gameVersion.' }
-            // #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
-            // #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.', type: 'string' }
-            // #swagger.parameters['status'] = { description: 'The status of the mod. Available status are: \'verified\'. Typing anything other than that will show you unverified mods too.', type: 'string' }
-            // #swagger.parameters['platform'] = { description: 'The platform of the mod. Available platforms are: \'oculuspc\', \'universalpc\', \'steampc\'', type: 'string' }
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Get all mods for a specified version.'
+            #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
+            #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
+            #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). This parameter is required for dependency resolution to work.', type: 'string' }
+            #swagger.parameters['status'] = { description: 'The mod status. (ex. \'all\', \'verified\', \'unverified\', \'pending\')', type: 'string' }
+            #swagger.parameters['platform'] = { description: 'The platform. (ex. \'pc\', \'oculus\')', type: 'string' }
+            #swagger.responses[200] = {
+                description: 'Returns the mods.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                mods: {
+                                    type: 'array',
+                                    items: {
+                                        $ref: '#/components/schemas/ProjectVersionPair'
+                                    }
+                                },
+                                total: {
+                                    type: 'number',
+                                    description: 'The total number of mods before checking dependencies.',
+                                },
+                                invalidCount: {
+                                    type: 'number',
+                                    description: 'The number of mods that were removed due to missing dependencies.',
+                                },
+                                invalidIds: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'number',
+                                        description: 'The IDs of the versions that were removed due to missing dependencies.',
+                                    },
+                                },
+                            },
+                        }
+                    }
+                }
+            }
+            */
             let reqQuery = Validator.zGetMods.safeParse(req.query);
             if (!reqQuery.success) {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqQuery.error.issues });
@@ -63,47 +96,50 @@ export class GetModRoutes {
                     break;
             }
                 
-            let mods: {mod: ModAPIPublicResponse, latest: ModVersionAPIPublicResponse | null}[] = [];
+            let mods: {project: ProjectAPIPublicResponse, version: VersionAPIPublicResponse | null}[] = [];
+            let preLength = undefined;
+            let invalidIds: number[] = [];
             if (gameVersion === null) {
-                let modDb = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == reqQuery.data.gameName && statuses.includes(mod.status));
+                let projectDb = DatabaseHelper.cache.projects.filter((p) => p.gameName == reqQuery.data.gameName && statuses.includes(p.status));
 
-                for (let mod of modDb) {
-                    let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id && statuses.includes(modVersion.status));
+                for (let project of projectDb) {
+                    let versions = DatabaseHelper.cache.versions.filter((v) => v.projectId === project.id && statuses.includes(v.status));
 
-                    modVersions = modVersions.sort((a, b) => {
+                    versions = versions.sort((a, b) => {
                         return b.modVersion.compare(a.modVersion);
                     });
 
-                    let latest = modVersions[0];
+                    let latest = versions[0];
 
                     if (latest) {
                         let latestVer = await latest.toAPIResponse(latest.supportedGameVersionIds[0], statuses);
                         if (latestVer) {
-                            mods.push({ mod: mod.toAPIResponse(), latest: latestVer });
+                            mods.push({ project: project.toAPIResponse(), version: latestVer });
                         }
                     }
                 }
             } else {
                 let modsFromDB = await gameVersion.getSupportedMods(reqQuery.data.platform, statuses);
-                let preLength = modsFromDB.length;
+                preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    let mod = retMod.mod.toAPIResponse();
-                    let latest = await retMod.latest.toAPIResponse(gameVersion.id, statuses);
-                    mods.push({ mod, latest });
+                    mods.push({ project: retMod.project.toAPIResponse(), version: await retMod.version.toAPIResponse(gameVersion.id, statuses) });
                 }
-
+                
                 mods = mods.filter((mod) => {
-                    if (!mod?.latest) {
+                    if (!mod?.version) {
+                        invalidIds.push(mod.project.id);
                         return false;
                     }
 
-                    if (!mod?.latest?.dependencies) {
+                    if (!mod?.version?.dependencies) {
+                        invalidIds.push(mod.project.id);
                         return false;
                     }
 
-                    for (let dependency of mod.latest.dependencies) {
-                        if (!mods.find((mod) => mod?.latest?.id === dependency)) {
+                    for (let dependency of mod.version.dependencies) {
+                        if (!mods.find((mod) => mod?.version?.id === dependency)) {
+                            invalidIds.push(mod.project.id);
                             return false;
                         }
                     }
@@ -116,60 +152,75 @@ export class GetModRoutes {
                 }
             }
 
-            return res.status(200).send({ mods });
+            return res.status(200).send({
+                mods: mods,
+                total: mods.length,
+                invalidConut: preLength ? preLength - mods.length : null,
+                invalidIds: invalidIds,
+            });
         });
 
-        this.router.get(`/mods/:modIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get([`/mods/:projectIdParam`, `/projects/:projectIdParam`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/projects/{projectIdParam}'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get a specific mod by ID.'
-            // #swagger.description = 'Get a specific mod by ID. This will also return every version of the mod.'
-            // #swagger.responses[200] = { description: 'Returns the mod.' }
-            // #swagger.responses[400] = { description: 'Invalid mod id.' }
-            // #swagger.responses[404] = { description: 'Mod not found.' }
-            // #swagger.parameters['modIdParam'] = { in: 'path', description: 'The mod ID.', type: 'number', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod info.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get a specific project by ID.'
+            #swagger.description = 'Get a specific project by ID. This will also return every version associated with the project.'
+            #swagger.parameters['projectIdParam'] = { in: 'path', description: 'The project ID.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionsPairResponse' }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
-            let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            if (!modId.success) {
-                return res.status(400).send({ message: `Invalid mod id.` });
+            let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
+            if (!projectId.success) {
+                return res.status(400).send({ message: `Invalid project id.` });
             }
             let raw = Validator.zBool.default(false).safeParse(req.query.raw).data;
             if (!raw) {
                 raw = false;
             }
 
-            let mod = DatabaseHelper.mapCache.mods.get(modId.data);
-            if (!mod) {
-                return res.status(404).send({ message: `Mod not found.` });
+            let project = DatabaseHelper.mapCache.projects.get(projectId.data);
+            if (!project) {
+                return res.status(404).send({ message: `Project not found.` });
             }
 
-            // if the mod isn't verified or unverified (with the unverified flag present), don't show it unless the user is an admin or approver or the mod author
-            if (mod.isAllowedToView(session.user) == false) {
-                return res.status(404).send({ message: `Mod not found.` });
+            // if the Project isn't verified or unverified (with the unverified flag present), don't show it unless the user is an admin or approver or the Project author
+            if (project.isAllowedToView(session.user) == false) {
+                return res.status(404).send({ message: `Project not found.` });
             }
 
-            let modVersions = DatabaseHelper.cache.modVersions.filter((modVersion) => modVersion.modId === mod.id);
+            let versions = DatabaseHelper.cache.versions.filter((version) => version.projectId === project.id);
             let returnVal: any[] = [];
 
-            for (let version of (modVersions)) {
-                let allowedToSeeItems = await version.isAllowedToView(session.user, mod);
+            for (let version of (versions)) {
+                let allowedToSeeItems = await version.isAllowedToView(session.user, project);
                 if (allowedToSeeItems == false) {
                     continue;
                 }
-                // if raw is true, return the raw mod version info instead of attempting to resolve the dependencies & other fields
+                // if raw is true, return the raw project version info instead of attempting to resolve the dependencies & other fields
                 if (raw) {
                     returnVal.push(version.toRawAPIResponse());
                 } else {
                     // resort to default behavior, which does return no matter what iirc.
-                    let resolvedVersion = await version.toAPIResponse(undefined, [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
+                    let acceptableStatuses = await version.isAllowedToEdit(session.user, project) ?
+                        [Status.Verified, Status.Unverified, Status.Pending, Status.Removed, Status.Private] :
+                        [Status.Verified, Status.Unverified, Status.Pending];
+
+                    let resolvedVersion = await version.toAPIResponse(undefined, acceptableStatuses);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
-                        Logger.debug(`Failed to get mod version ${version.id} for mod ${mod.id}`);
+                        Logger.debug(`Failed to get version ${version.id} for project ${project.id}`);
                     }
                 }
             }
@@ -182,106 +233,143 @@ export class GetModRoutes {
                 }
             });
 
-            return res.status(200).send({ mod: { info: raw ? mod : mod.toAPIResponse(), versions: returnVal } });
+            return res.status(200).send({ project: raw ? project : project.toAPIResponse(), versions: returnVal });
         });
 
-        this.router.get(`/modversions/:modVersionIdParam`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get([`/modversions/:versionIdParam`, `/versions/:versionIdParam`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/versions/{versionIdParam}'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get a specific mod version by ID.'
-            // #swagger.description = 'Get a specific mod version by ID.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Invalid mod version id.' }
-            // #swagger.responses[404] = { description: 'Mod version not found.' }
-            // #swagger.parameters['modVersionIdParam'] = { in: 'path', description: 'The mod version ID.', type: 'number', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get a specific version by ID.'
+            #swagger.description = 'Get a specific version by ID.'
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionPairResponse' }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.parameters['versionIdParam'] = { in: 'path', description: 'The version ID.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
-            let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
+            let versionId = Validator.zDBID.safeParse(req.params.versionIdParam);
             let raw = req.query.raw;
-            if (!modVersionId.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
+            if (!versionId.success) {
+                return res.status(400).send({ message: `Invalid version id.` });
             }
 
-            let modVersion = DatabaseHelper.mapCache.modVersions.get(modVersionId.data);
-            if (!modVersion) {
-                return res.status(404).send({ message: `Mod version not found.` });
+            let version = DatabaseHelper.mapCache.versions.get(versionId.data);
+            if (!version) {
+                return res.status(404).send({ message: `Version not found.` });
             }
 
-            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+            let project = DatabaseHelper.mapCache.projects.get(version.projectId);
             
-            if (!await modVersion.isAllowedToView(session.user, mod)) {
-                return res.status(404).send({ message: `Mod version not found.` });
+            if (!await version.isAllowedToView(session.user, project)) {
+                return res.status(404).send({ message: `Version not found.` });
             }
 
             if (raw === `true`) {
-                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: modVersion.toRawAPIResponse() });
+                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: version.toRawAPIResponse() });
             } else {
-                return res.status(200).send({ mod: mod ? mod.toAPIResponse() : undefined, modVersion: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
+                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
             }
         });
 
-        this.router.get(`/multi/modversions`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.get(`/multi/versions`, async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/multi/versions'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get multiple mod versions by ID.'
-            // #swagger.description = 'Get multiple mod versions by ID.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Invalid mod version id.' }
-            // #swagger.responses[404] = { description: 'Mod version not found.' }
-            // #swagger.parameters['id'] = { in: 'query', description: 'The mod version IDs.', type: 'array', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
+            }]
+            #swagger.summary = 'Get multiple versions by ID.'
+            #swagger.description = 'Get multiple versions by ID.'
+            #swagger.parameters['id'] = { in: 'query', description: 'The version IDs. Can be specified multiple times.', type: 'number', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.responses[200] = {
+                description: 'Returns the version and the parent project.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/ProjectVersionPair'
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.end
+            */
             let session = await validateSession(req, res, false, null, false);
-            let modVersionIds = Validator.zDBIDArray.safeParse(req.query.id);
+            let versionIds = Validator.zDBIDArray.safeParse(req.query.id);
             let raw = req.query.raw;
-            if (!modVersionIds.success) {
-                return res.status(400).send({ message: `Invalid mod version id.` });
+            if (!versionIds.success) {
+                return res.status(400).send({ message: `Invalid version id.` });
             }
 
-            let dedupedIds = Array.from(new Set(modVersionIds.data));
+            let dedupedIds = Array.from(new Set(versionIds.data));
 
-            let retVal: {mod: ModAPIPublicResponse, modVersion: any}[] = [];
+            let retVal: {project: ProjectAPIPublicResponse, version: any}[] = [];
             for (const id of dedupedIds) {
-                let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
-                if (!modVersion) {
-                    return res.status(404).send({ message: `Mod version not found.` });
+                let version = DatabaseHelper.mapCache.versions.get(id);
+                if (!version) {
+                    return res.status(404).send({ message: `Version not found.` });
                 }
 
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
-                if (!mod) {
-                    return res.status(404).send({ message: `Mod ID ${modVersion.modId} not found.` });
+                let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+                if (!project) {
+                    return res.status(404).send({ message: `Project ID ${version.projectId} not found.` });
                 }
                 
-                if (!await modVersion.isAllowedToView(session.user, mod)) {
-                    return res.status(404).send({ message: `Mod version not found.` });
+                if (!await version.isAllowedToView(session.user, project)) {
+                    return res.status(404).send({ message: `Version not found.` });
                 }
 
                 if (raw === `true`) {
-                    retVal.push({ mod: mod.toAPIResponse(), modVersion: modVersion.toRawAPIResponse() });
+                    retVal.push({ project: project.toAPIResponse(), version: version.toRawAPIResponse() });
                 } else {
-                    retVal.push({ mod: mod.toAPIResponse(), modVersion: await modVersion.toAPIResponse(modVersion.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
+                    retVal.push({ project: project.toAPIResponse(), version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
                 }
             }
 
-            return res.status(200).send({ mods: retVal });
+            return res.status(200).send(retVal);
         });
 
         // #region Hashes
         this.router.get(`/hashlookup`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
-            // #swagger.description = 'Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Missing hash.' }
-            // #swagger.responses[404] = { description: 'Hash not found.' }
-            // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
-            // #swagger.parameters['raw'] = { description: 'Return the raw mod depedendcies without attempting to resolve them.', type: 'boolean' }
-            // #swagger.parameters['status'] = { description: 'Only show mods with these statuses.', type: 'string' }
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
+            #swagger.description = 'Get a specific mod version that has a file with the specified hash. This is useful for finding the mod that a file belongs to.'
+            #swagger.responses[200] = { description: 'Returns the mod version.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/VersionAPIPublicResponse'
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
+            #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
+            #swagger.parameters['status'] = { description: 'Only show versions with these statuses.', type: 'string' }
+            */
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
             const raw = Validator.zBool.safeParse(req.query.raw).data;
             const status = Validator.zStatus.safeParse(req.query.status).data;
@@ -294,7 +382,7 @@ export class GetModRoutes {
             let retVal: Promise<any>[] = [];
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
-            for (const version of DatabaseHelper.cache.modVersions) {
+            for (const version of DatabaseHelper.cache.versions) {
                 if (status !== undefined && status !== version.status) {
                     continue;
                 }
@@ -319,7 +407,7 @@ export class GetModRoutes {
 
             if (retVal.length > 0) {
                 Promise.all(retVal).then((retVal) => {
-                    return res.status(200).send({ modVersions: retVal });
+                    return res.status(200).send(retVal);
                 });
             } else {
                 return res.status(404).send({ message: `Hash not found.` });
@@ -327,13 +415,16 @@ export class GetModRoutes {
         });
 
         this.router.get(`/multi/hashlookup`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            // #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
-            // #swagger.description = 'Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.'
-            // #swagger.responses[200] = { description: 'Returns the mod version.' }
-            // #swagger.responses[400] = { description: 'Missing hash.' }
-            // #swagger.responses[404] = { description: 'Hash not found.' }
-            // #swagger.parameters['hash'] = { description: 'The hash to look up.', type: 'string', required: true }
+            /*
+            #swagger.tags = ['Mods']
+            #swagger.summary = 'Get a specific mod version that has a file with the specified hash.'
+            #swagger.description = 'Look up multiple hashes at once, and sort the results by hash. Developed for PinkModManager.'
+            #swagger.parameters['hash'] = { description: 'The hash to look up. Can be repeated', type: 'string', required: true }
+            #swagger.parameters['status'] = { description: 'Only show versions with these statuses.', type: 'string' }
+            #swagger.responses[200] = { description: 'Returns the mod version.' }
+            #swagger.responses[400] = { description: 'Missing hash.' }
+            #swagger.responses[404] = { description: 'Hash not found.' }
+            */
             const hash = Validator.zHashStringOrArray.safeParse(req.query.hash).data;
             const status = Validator.zStatus.safeParse(req.query.status).data;
 
@@ -345,7 +436,7 @@ export class GetModRoutes {
             let retVal: Map<string, any[]> = new Map();
             let hashArr = Array.isArray(hash) ? hash : [hash];
 
-            for (const version of DatabaseHelper.cache.modVersions) {
+            for (const version of DatabaseHelper.cache.versions) {
                 if (status !== undefined && status !== version.status) {
                     continue;
                 }
@@ -376,7 +467,7 @@ export class GetModRoutes {
                     retObj[key] = value;
                 });
 
-                return res.status(200).send({ hashes: retObj });
+                return res.status(200).send(retObj);
             } else {
                 return res.status(404).send({ message: `Hash not found.` });
             }

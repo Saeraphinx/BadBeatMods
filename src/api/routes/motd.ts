@@ -7,7 +7,7 @@ export class MOTDRoutes {
     private router: Router;
     constructor(router: Router) {
         this.router = router;
-        this.loadRoutes();
+        //this.loadRoutes();
     }
 
     private async loadRoutes() {

@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll, describe, afterEach } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, GameVersionInfer, ModInfer, SupportedGames, Status, ModVersionInfer, Platform, DatabaseHelper, UserInfer } from '../../src/shared/Database.ts';
+import { Categories, DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer } from '../../src/shared/Database.ts';
 // eslint-disable-next-line quotes
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
@@ -24,7 +24,7 @@ for (let user of fakeData.users) {
     });
 }
 
-let projects: ModInfer[] = [];
+let projects: ProjectInfer[] = [];
 for (let project of fakeData.projects) {
     projects.push({
         ...project,
@@ -36,7 +36,7 @@ for (let project of fakeData.projects) {
     });
 }
 
-let versions: ModVersionInfer[] = [];
+let versions: VersionInfer[] = [];
 for (let version of fakeData.versions) {
     versions.push({
         ...version,
@@ -201,8 +201,8 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
         await db.init();
 
         await db.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
-        await db.Mods.bulkCreate(projects, { individualHooks: true });
-        await db.ModVersions.bulkCreate(versions, { individualHooks: true });
+        await db.Projects.bulkCreate(projects, { individualHooks: true });
+        await db.Versions.bulkCreate(versions, { individualHooks: true });
         await DatabaseHelper.refreshAllCaches();
     });
 
@@ -216,15 +216,15 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
             let versions = await db.GameVersions.findAll({ where: { gameName: game } });
             for (let version of versions) {
                 let supportedMods = await version.getSupportedMods(Platform.UniversalPC, [Status.Verified]);
-                for (let mod of supportedMods) {
-                    expect(mod).toBeDefined();
-                    expect(mod.mod).toBeDefined();
-                    expect(mod.latest).toBeDefined();
-                    expect(mod.mod.gameName).toBe(game);
-                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
-                    expect(mod.mod.status).toBe(Status.Verified);
-                    expect(mod.latest.status).toBe(Status.Verified);
-                    expect(mod.latest.platform).toBe(Platform.UniversalPC);
+                for (let pair of supportedMods) {
+                    expect(pair).toBeDefined();
+                    expect(pair.project).toBeDefined();
+                    expect(pair.project.gameName).toBe(game);
+                    expect(pair.project.status).toBe(Status.Verified);
+                    expect(pair.version).toBeDefined();
+                    expect(pair.version.supportedGameVersionIds).toContain(version.id);
+                    expect(pair.version.status).toBe(Status.Verified);
+                    expect(pair.version.platform).toBe(Platform.UniversalPC);
                 }
             }
         }
@@ -236,15 +236,15 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
             let versions = await db.GameVersions.findAll({ where: { gameName: game } });
             for (let version of versions) {
                 let supportedMods = await version.getSupportedMods(Platform.UniversalQuest, [Status.Verified]);
-                for (let mod of supportedMods) {
-                    expect(mod).toBeDefined();
-                    expect(mod.mod).toBeDefined();
-                    expect(mod.latest).toBeDefined();
-                    expect(mod.mod.gameName).toBe(game);
-                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
-                    expect(mod.mod.status).toBe(Status.Verified);
-                    expect(mod.latest.status).toBe(Status.Verified);
-                    expect(mod.latest.platform).toBe(Platform.UniversalQuest);
+                for (let pair of supportedMods) {
+                    expect(pair).toBeDefined();
+                    expect(pair.project).toBeDefined();
+                    expect(pair.project.gameName).toBe(game);
+                    expect(pair.project.status).toBe(Status.Verified);
+                    expect(pair.version).toBeDefined();
+                    expect(pair.version.supportedGameVersionIds).toContain(version.id);
+                    expect(pair.version.status).toBe(Status.Verified);
+                    expect(pair.version.platform).toBe(Platform.UniversalQuest);
                 }
             }
         }
@@ -261,18 +261,18 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
             for (let version of versions) {
                 let supportedMods = await version.getSupportedMods(Platform.UniversalPC, [Status.Verified, Status.Unverified]);
                 expect(supportedMods.length).toBeGreaterThanOrEqual(1);
-                for (let mod of supportedMods) {
-                    expect(mod).toBeDefined();
-                    expect(mod.mod).toBeDefined();
-                    expect(mod.latest).toBeDefined();
-                    expect(mod.mod.gameName).toBe(game);
-                    expect(mod.latest.supportedGameVersionIds).toContain(version.id);
-                    expect(mod.latest.status).not.toBeOneOf([Status.Pending, Status.Removed, Status.Private]);
-                    expect(mod.latest.platform).toBe(Platform.UniversalPC);
-                    if (mod.latest.status == Status.Verified) {
+                for (let pair of supportedMods) {
+                    expect(pair).toBeDefined();
+                    expect(pair.project).toBeDefined();
+                    expect(pair.project.gameName).toBe(game);
+                    expect(pair.version).toBeDefined();
+                    expect(pair.version.supportedGameVersionIds).toContain(version.id);
+                    expect(pair.version.status).not.toBeOneOf([Status.Pending, Status.Removed, Status.Private]);
+                    expect(pair.version.platform).toBe(Platform.UniversalPC);
+                    if (pair.version.status == Status.Verified) {
                         hasSeenVerified = true;
                     }
-                    if (mod.latest.status == Status.Unverified) {
+                    if (pair.version.status == Status.Unverified) {
                         hasSeenUnverified = true;
                     }
                 }

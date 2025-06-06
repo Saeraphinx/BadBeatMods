@@ -2,6 +2,9 @@
 import { Categories, Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
+import { ApprovalAction } from './routes/approval.ts';
+import fs from 'fs';
+type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
 const options = {
@@ -18,7 +21,6 @@ const DBObject: OpenAPIV3_1.SchemaObject = {
             description: `The object's internal ID.`,
             example: 1,
             minimum: 1,
-
         },
         createdAt: {
             type: `string`,
@@ -37,28 +39,27 @@ const DBObject: OpenAPIV3_1.SchemaObject = {
         },
     }
 };
-
-const ModDBObject: OpenAPIV3_1.SchemaObject = {
+const ProjectDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
         name: {
             type: `string`,
-            description: `The name of the mod.`,
-            example: `Example Mod`
+            description: `The name of the project.`,
+            example: `Example Project`
         },
         summary: {
             type: `string`,
-            description: `The summary of the mod.`,
-            example: `This is an example mod.`
+            description: `The summary of the project.`,
+            example: `This is an example project.`
         },
         description: {
             type: `string`,
-            description: `The description of the mod. Supports markdown.`,
-            example: `This is an example mod.`
+            description: `The description of the project. Supports markdown.`,
+            example: `This is an example project. It is used as an example for the API documentation.`
         },
         gameName: {
             type: `string`,
-            description: `The name of the game this mod is for. This is used to identify the game.`,
+            description: `The name of the game this project is for. Must be a game that is returned by the /games endpoint.`,
             example: `BeatSaber`,
             default: `BeatSaber`
         },
@@ -69,6 +70,7 @@ const ModDBObject: OpenAPIV3_1.SchemaObject = {
         authorIds: {
             type: `array`,
             items: { type: `number` },
+            description: `The IDs of the authors of this project. This id can be resolved to a user object using the /users/{id} endpoint.`,
         },
         status: {
             type: `string`,
@@ -81,6 +83,33 @@ const ModDBObject: OpenAPIV3_1.SchemaObject = {
         gitUrl: {
             type: `string`,
         },
+        statusHistory: {
+            type: `array`,
+            items: {
+                type: `object`,
+                properties: {
+                    status: {
+                        type: `string`,
+                        enum: Object.values(Status),
+                    },
+                    reason: {
+                        type: `string`,
+                        description: `The reason for the status change. This is used to track the history of the project's status.`,
+                        example: `This project is currently in development.`,
+                    },
+                    userId: {
+                        type: `integer`,
+                        description: `The ID of the user who changed the status.`,
+                        example: 1,
+                    },
+                    setAt: {
+                        type: `string`,
+                        description: `The date the status was changed.`,
+                        example: `2023-10-01T00:00:00.000Z`,
+                    },
+                }
+            },
+        },
         lastApprovedById: {
             type: [`integer`, `null`],
             default: null,
@@ -91,12 +120,12 @@ const ModDBObject: OpenAPIV3_1.SchemaObject = {
         ...DBObject.properties
     }
 };
-const ModVersionDBObject: OpenAPIV3_1.SchemaObject = {
+const VersionDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
-        modId: {
+        projectId: {
             type: `integer`,
-            description: `The parent mod's internal ID.`,
+            description: `The parent project's internal ID.`,
             example: 1
         },
         modVersion: {
@@ -106,7 +135,7 @@ const ModVersionDBObject: OpenAPIV3_1.SchemaObject = {
         },
         authorId: {
             type: `integer`,
-            description: `The ID of the user who authored this version.`
+            description: `The ID of the user who uploaded/authored this version.`
         },
         platform: {
             type: `string`,
@@ -137,7 +166,20 @@ const ModVersionDBObject: OpenAPIV3_1.SchemaObject = {
         },
         dependencies: {
             type: `array`,
-            items: { type: `integer`, description: `The ID of the mod version this version depends on.` },
+            items: {
+                type: `object`,
+                properties: {
+                    parentId: {
+                        type: `integer`,
+                        description: `The ID of the project this version depends on.`
+                    },
+                    sv: {
+                        type: `string`,
+                        description: `The comapre version string. This is used to identify the version of the mod. This must be SemVer compliant.`,
+                        example: `^1.0.0`
+                    }
+                },
+            },
         },
         supportedGameVersionIds: {
             type: `array`,
@@ -231,7 +273,6 @@ const GameVersionDBObject: OpenAPIV3_1.SchemaObject = {
         ...DBObject.properties
     }
 };
-
 const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
@@ -251,20 +292,20 @@ const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
             type: `object`,
             properties: {
                 modVersion: {
-                    ...ModVersionDBObject.properties!.modVersion,
+                    ...VersionDBObject.properties!.modVersion,
                     default: undefined
                 },
-                platform: ModVersionDBObject.properties!.platform,
-                dependnecies: ModVersionDBObject.properties!.dependencies,
-                supportedGameVersionIds: ModVersionDBObject.properties!.supportedGameVersionIds,
+                platform: VersionDBObject.properties!.platform,
+                dependencies: VersionDBObject.properties!.dependencies,
+                supportedGameVersionIds: VersionDBObject.properties!.supportedGameVersionIds,
 
-                name: ModDBObject.properties!.name,
-                summary: ModDBObject.properties!.summary,
-                description: ModDBObject.properties!.description,
-                gameName: ModDBObject.properties!.gameName,
-                category: ModDBObject.properties!.category,
-                authorIds: ModDBObject.properties!.authorIds,
-                gitUrl: ModDBObject.properties!.gitUrl,
+                name: ProjectDBObject.properties!.name,
+                summary: ProjectDBObject.properties!.summary,
+                description: ProjectDBObject.properties!.description,
+                gameName: ProjectDBObject.properties!.gameName,
+                category: ProjectDBObject.properties!.category,
+                authorIds: ProjectDBObject.properties!.authorIds,
+                gitUrl: ProjectDBObject.properties!.gitUrl,
             }
         },
         approverId: {
@@ -283,57 +324,63 @@ const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
     }
 };
 // #endregion
-// #region API Public Responses
+// #region DB API Public Schemas
 const UserAPIPublicResponse: OpenAPIV3_1.SchemaObject = UserDBObject;
 const GameVersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = GameVersionDBObject;
-const ModAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
+const ProjectAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
-        id: ModDBObject.properties!.id,
-        name: ModDBObject.properties!.name,
-        summary: ModDBObject.properties!.summary,
-        description: ModDBObject.properties!.description,
-        gameName: ModDBObject.properties!.gameName,
-        category: ModDBObject.properties!.category,
+        id: ProjectDBObject.properties!.id,
+        name: ProjectDBObject.properties!.name,
+        summary: ProjectDBObject.properties!.summary,
+        description: ProjectDBObject.properties!.description,
+        gameName: ProjectDBObject.properties!.gameName,
+        category: ProjectDBObject.properties!.category,
         authors: {
             type: `array`,
             items: { allOf: [{ $ref: `#/components/schemas/UserAPIPublicResponse` }] },
         },
-        status: ModDBObject.properties!.status,
-        iconFileName: ModDBObject.properties!.iconFileName,
-        gitUrl: ModDBObject.properties!.gitUrl,
-        lastApprovedById: ModDBObject.properties!.lastApprovedById,
-        lastUpdatedById: ModDBObject.properties!.lastUpdatedById,
-        createdAt: ModDBObject.properties!.createdAt,
-        updatedAt: ModDBObject.properties!.updatedAt,
+        status: ProjectDBObject.properties!.status,
+        iconFileName: ProjectDBObject.properties!.iconFileName,
+        gitUrl: ProjectDBObject.properties!.gitUrl,
+        statusHistory: ProjectDBObject.properties!.statusHistory,
+        lastApprovedById: ProjectDBObject.properties!.lastApprovedById,
+        lastUpdatedById: ProjectDBObject.properties!.lastUpdatedById,
+        createdAt: ProjectDBObject.properties!.createdAt,
+        updatedAt: ProjectDBObject.properties!.updatedAt,
     }
 };
-const ModVersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
+const VersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
-        id: ModVersionDBObject.properties!.id,
-        modId: ModVersionDBObject.properties!.modId,
-        modVersion: ModVersionDBObject.properties!.modVersion,
+        id: VersionDBObject.properties!.id,
+        projectId: VersionDBObject.properties!.projectId,
+        modVersion: VersionDBObject.properties!.modVersion,
         author: {
             $ref: `#/components/schemas/UserAPIPublicResponse`
         },
-        platform: ModVersionDBObject.properties!.platform,
-        zipHash: ModVersionDBObject.properties!.zipHash,
-        contentHashes: ModVersionDBObject.properties!.contentHashes,
-        status: ModVersionDBObject.properties!.status,
-        dependencies: ModVersionDBObject.properties!.dependencies,
+        platform: VersionDBObject.properties!.platform,
+        zipHash: VersionDBObject.properties!.zipHash,
+        contentHashes: VersionDBObject.properties!.contentHashes,
+        status: VersionDBObject.properties!.status,
+        dependencies: {
+            type: `array`,
+            items: {
+                type: `number`,
+            }
+        },
         supportedGameVersions: {
             type: `array`,
             items: { allOf: [{ $ref: `#/components/schemas/GameVersionAPIPublicResponse` }] },
         },
-        downloadCount: ModVersionDBObject.properties!.downloadCount,
-        createdAt: ModVersionDBObject.properties!.createdAt,
-        updatedAt: ModVersionDBObject.properties!.updatedAt
+        downloadCount: VersionDBObject.properties!.downloadCount,
+        createdAt: VersionDBObject.properties!.createdAt,
+        updatedAt: VersionDBObject.properties!.updatedAt
     },
 };
 // #endregion
-// #region General API Responses
-const APIStatus:OpenAPIV3_1.SchemaObject = {
+// #region General API Schemas
+const APIStatus: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
         message: {
@@ -384,42 +431,303 @@ const ServerMessage: OpenAPIV3_1.SchemaObject = {
     }
 };
 // #endregion
-// #region Edit Object Schemas
-const CreateMod: OpenAPIV3_1.SchemaObject = {
+// #region Edit Sucess Schemas
+const ProjectEditResponse: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
-        name: ModDBObject.properties!.name,
-        summary: ModDBObject.properties!.summary,
-        description: ModDBObject.properties!.description,
-        gameName: ModDBObject.properties!.gameName,
-        category: ModDBObject.properties!.category,
-        gitUrl: ModDBObject.properties!.gitUrl,
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        project: {
+            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+        },
+    },
+};
+
+const VersionEditResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        version: {
+            $ref: `#/components/schemas/VersionDBObject`
+        },
+    },
+};
+
+const EditApprovalQueueResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        message: {
+            type: `string`,
+            description: `The message to be displayed.`,
+        },
+        edit: {
+            $ref: `#/components/schemas/EditApprovalQueueDBObject`
+        },
+    },
+};
+// #endregion
+// #region Validator Object Schemas
+const zCreateProject: SchemaObject = {
+    type: `object`,
+    properties: {
+        name: ProjectDBObject.properties!.name,
+        summary: ProjectDBObject.properties!.summary,
+        description: ProjectDBObject.properties!.description,
+        category: ProjectDBObject.properties!.category,
+        gitUrl: ProjectDBObject.properties!.gitUrl,
+        gameName: ProjectDBObject.properties!.gameName,
     }
 };
 
-const EditMod: OpenAPIV3_1.SchemaObject = {
+const zCreateVersion: SchemaObject = {
     type: `object`,
     properties: {
-        ...CreateMod.properties!,
-        authorIds: ModDBObject.properties!.authorIds,
+        supportedGameVersionIds: VersionDBObject.properties!.supportedGameVersionIds,
+        modVersion: VersionDBObject.properties!.modVersion,
+        dependencies: VersionDBObject.properties!.dependencies,
+        platform: VersionDBObject.properties!.platform,
+    }
+}
+
+const zUpdateProject: SchemaObject = {
+    type: `object`,
+    properties: {
+        name: ProjectDBObject.properties!.name,
+        summary: ProjectDBObject.properties!.summary,
+        description: ProjectDBObject.properties!.description,
+        category: ProjectDBObject.properties!.category,
+        gitUrl: ProjectDBObject.properties!.gitUrl,
+        gameName: ProjectDBObject.properties!.gameName,
+        authorIds: ProjectDBObject.properties!.authorIds,
     }
 };
 
-const CreateEditModVersion: OpenAPIV3_1.SchemaObject = {
+const zUpdateVersion: SchemaObject = {
     type: `object`,
     properties: {
-        modVersion: ModVersionDBObject.properties!.modVersion,
-        platform: ModVersionDBObject.properties!.platform,
-        dependencies: ModVersionDBObject.properties!.dependencies,
-        supportedGameVersionIds: ModVersionDBObject.properties!.supportedGameVersionIds,
+        supportedGameVersionIds: VersionDBObject.properties!.supportedGameVersionIds,
+        modVersion: VersionDBObject.properties!.modVersion,
+        dependencies: VersionDBObject.properties!.dependencies,
+        platform: VersionDBObject.properties!.platform,
+    }
+};
+const zUpdateUserRoles: SchemaObject = {
+    type: `object`,
+    properties: {
+        userId: UserDBObject.properties!.id,
+        gameName: GameVersionDBObject.properties!.gameName,
+        role: {
+            type: `string`,
+            enum: Object.values(UserRoles),
+        }
+    }
+};
+const zOAuth2Callback: SchemaObject = {
+    type: `object`,
+    properties: {
+        code: {
+            type: `string`,
+            description: `The code returned from GitHub.`,
+            example: `1234567890abcdef`
+        },
+        state: {
+            type: `string`,
+            description: `The state returned from GitHub.`,
+            example: `1234567890abcdef`
+        }
+    }
+};
+const zApproveObject: SchemaObject = {
+    type: `object`,
+    required: [`action`],
+    properties: {
+        action: {
+            type: `string`,
+            enum: Object.values(ApprovalAction),
+            description: `The action to take.`
+        },
+        reason: {
+            type: `string`,
+            description: `The reason for the action.`,
+        },
+    }
+};
+const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        project: {
+            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+        },
+        version: {
+            $ref: `#/components/schemas/VersionAPIPublicResponse`,
+        }
     }
 };
 // #endregion
 
+// #region Full API Responses
+const ServerMessageResponse: OpenAPIV3_1.ResponseObject = {
+    description: `A simple message from the server. Indicates anything from a successful operation to an error message. Most, if not all, endpoints will return this in the event of an error.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/ServerMessage`
+            }
+        }
+    }
+};
+
+const ServerMessageResponseWithErrorStringArray: OpenAPIV3_1.ResponseObject = {
+    description: `A simple message from the server. Indicates anything from a successful operation to an error message. Most, if not all, endpoints will return this in the event of an error.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                additionalProperties: true,
+                properties: {
+                    message: {
+                        type: `string`,
+                        description: `The message to be displayed.`,
+                    },
+                    errors: {
+                        type: `array`,
+                        items: { type: `string` },
+                        description: `An array of error messages.`
+                    }
+                }
+            }
+        }
+    }
+};
+
+const ApprovalQueueResponse: OpenAPIV3_1.ResponseObject = {
+    description: `A list of items in the approval queue.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                minProperties: 1,
+                maxProperties: 1,
+                properties: {
+                    projects: {
+                        type: `array`,
+                        items: {
+                            $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                        }
+                    },
+                    versions: {
+                        type: `array`,
+                        items: {
+                            type: `object`,
+                            properties: {
+                                project: {
+                                    $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                                },
+                                version: {
+                                    $ref: `#/components/schemas/VersionDBObject`
+                                }
+                            }
+                        }
+                    },
+                    edits: {
+                        type: `array`,
+                        items: {
+                            type: `object`,
+                            properties: {
+                                project: {
+                                    '$ref': `#/components/schemas/ProjectAPIPublicResponse`
+                                },
+                                original: {
+                                    '$ref': `#/components/schemas/VersionDBObject`
+                                },
+                                edit: {
+                                    '$ref': `#/components/schemas/EditApprovalQueueDBObject`
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+const UserResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns user information.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/UserAPIPublicResponse`
+            }
+        }
+    }
+};
+
+const ProjectVersionPairResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a project and version pair (e.g. a mod).`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/ProjectVersionPair`
+            }
+        }
+    }
+};
+
+const ProjectVersionsPairResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a project and version pair (e.g. a mod). \`versions\` is a list of all visible versions for a project.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                properties: {
+                    project: {
+                        $ref: `#/components/schemas/ProjectAPIPublicResponse`
+                    },
+                    versions: {
+                        type: `array`,
+                        items: {
+                            $ref: `#/components/schemas/VersionAPIPublicResponse`
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+// #endregion
+// #region Full API Request Bodies
+const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
+    description: ``,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/zApproveObject`
+            }
+        }
+    }
+};
+// #endregion
+// #region Full API Parameters
+const rawParameter: OpenAPIV3_1.ParameterObject = {
+    name: `raw`,
+    in: `query`,
+    description: `If set to true, the response will be altered to return a non-processed version of the object. The resulting response will not have the same structure as the public response. This parameter is used for debugging purposes.`,
+    required: false,
+    schema: {
+        type: `boolean`,
+    }
+};
+// #endregion
 const doc = {
     info: {
         title: `BadBeatMods API`,
-        description: `This isn't really fully complete, but its better than absolutely nothing.\n\nThis API documentation is automatically generated and therefor may not be 100% accurate and may be missing a few fields. For example, request bodies are not fully fleshed out, and may not be accurate. Full documentation is still currently a work in progress.`,
+        description: `This isn't really fully complete, but its better than absolutely nothing.\n\nThis API documentation is automatically generated and therefor may not be 100% accurate and may be missing a few fields. For example, request bodies are not fully fleshed out, and may not be accurate. Full documentation is still currently a work in progress.\n\nAll errors that originate from the server will have a \`message\` field. Errors that come from input validation will sometimes also have an \`errors\` field. This has been omiitted from the documentation of most endpoints for brevity. These follow the \`ServerMessage\` schema.`,
         version: `0.0.1`,
     },
     servers: [
@@ -434,9 +742,9 @@ const doc = {
     //schemes: [`https`, `http`],
     tags: [
         { name: `Status`, description: `Status related endpoints` },
-        { name: `Mods`, description: `Mod related endpoints` },
+        { name: `Mods`, description: `` },
         { name: `Versions`, description: `Version Management` },
-        { name: `MOTD`, description: `Message of the Day related endpoints` },
+        //{ name: `MOTD`, description: `Message of the Day related endpoints` },
         { name: `Approval`, description: `Approval related endpoints` },
         { name: `Users`, description: `User related endpoints` },
         { name: `Admin`, description: `Admin related endpoints` },
@@ -457,21 +765,40 @@ const doc = {
             }
         },
         "@schemas": {
-            ModAPIPublicResponse,
-            ModVersionAPIPublicResponse,
+            ProjectVersionPair: ProjectVersionPair,
+            ProjectAPIPublicResponse,
+            VersionAPIPublicResponse,
             UserAPIPublicResponse,
             GameVersionAPIPublicResponse,
-            CreateEditModVersion,
-            CreateMod,
-            EditMod,
             APIStatus,
-            ModDBObject,
-            ModVersionDBObject,
-            UserDBObject,
-            GameVersionDBObject,
+            zCreateProject,
+            zCreateVersion,
+            zUpdateProject,
+            zUpdateVersion,
+            zOAuth2Callback,
+            zUpdateUserRoles,
+            zApproveObject: zApproveObject,
+            VersionDBObject,
             EditApprovalQueueDBObject,
+            ProjectEditResponse,
+            VersionEditResponse,
+            EditApprovalQueueResponse,
             ServerMessage
-        }
+        },
+        "responses": {
+            ServerMessage: ServerMessageResponse,
+            ServerMessageWithErrorStringArray: ServerMessageResponseWithErrorStringArray,
+            ApprovalQueueResponse: ApprovalQueueResponse,
+            UserResponse: UserResponse,
+            ProjectVersionPairResponse: ProjectVersionPairResponse,
+            ProjectVersionsPairResponse: ProjectVersionsPairResponse,
+        },
+        "requestBodies": {
+            ApproveObjectBody: ApproveObjectBody,
+        },
+        "parameters": {
+            raw: rawParameter,
+        },
     }
 };
 
@@ -483,10 +810,10 @@ const routes = [
     `./routes/updateMod.ts`,
     `./routes/auth.ts`,
     `./routes/versions.ts`,
-    `./routes/import.ts`,
+    //`./routes/import.ts`,
     `./routes/admin.ts`,
     `./routes/approval.ts`,
-    `./routes/motd.ts`,
+    //`./routes/motd.ts`,
     `./routes/users.ts`,
     `./routes/apistatus.ts`,
     `./routes/bulkActions.ts`,

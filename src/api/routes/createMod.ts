@@ -9,7 +9,7 @@ import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Validator } from '../../shared/Validator.ts';
 import { UploadedFile } from 'express-fileupload';
-import { sendModLog, sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { sendProjectLog, sendVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
 import { Utils } from '../../shared/Utils.ts';
 
 export class CreateModRoutes {
@@ -21,31 +21,41 @@ export class CreateModRoutes {
     }
 
     private async loadRoutes() {
-        this.router.post(`/mods/create`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.post([`/mods/create`, `/projects/create`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/projects/create'
+            #swagger.method = 'post'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Create a mod.'
-            // #swagger.description = 'Create a mod.'
-            /* #swagger.requestBody = {
-                schema: {
-                    $ref: '#/definitions/CreateMod'
+            }]
+            #swagger.summary = 'Create a project.'
+            #swagger.description = 'Create a project.'
+            #swagger.requestBody = {
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zCreateProject'
+                        }
+                    }
                 }
             }
             #swagger.parameters['icon'] = {
                 in: 'formData',
                 type: 'file',
-                description: 'Mod icon.',
+                description: 'Project icon.',
                 required: false
-            } */
+            }
+            #swagger.end
+            */
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
 
-            let reqBody = Validator.zCreateMod.safeParse(req.body);
+            let reqBody = Validator.zCreateProject.safeParse(req.body);
             let icon = req.files?.icon;
             let iconIsValid = false;
 
@@ -83,7 +93,7 @@ export class CreateModRoutes {
                 }
             }
 
-            DatabaseHelper.database.Mods.create({
+            DatabaseHelper.database.Projects.create({
                 name: reqBody.data.name,
                 summary: reqBody.data.summary,
                 description: reqBody.data.description,
@@ -95,79 +105,92 @@ export class CreateModRoutes {
                 iconFileName: iconIsValid ? `${(icon as UploadedFile).md5}${path.extname((icon as UploadedFile).name)}` : `default.png`,
                 lastUpdatedById: session.user.id,
                 status: Status.Private,
-            }).then(async (mod) => {
-                DatabaseHelper.refreshCache(`mods`);
+            }).then(async (project) => {
+                DatabaseHelper.refreshCache(`projects`);
                 if (iconIsValid) {
                     (icon as UploadedFile).mv(filePath);
                 }
-                Logger.log(`Mod ${mod.name} created by ${session.user.username}.`);
-                sendModLog(mod, session.user, WebhookLogType.Text_Created);
-                return res.status(200).send({ mod });
+                Logger.log(`Project ${project.name} created by ${session.user.username}.`);
+                sendProjectLog(project, session.user, WebhookLogType.Text_Created);
+                return res.status(200).send({ project: project });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating project.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating project: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });
 
-        this.router.post(`/mods/:modIdParam/upload`, async (req, res) => {
-            // #swagger.tags = ['Mods']
-            /* #swagger.security = [{
+        this.router.post([`/mods/:projectIdParam/create`, `/mods/:projectIdParam/upload`, `/projects/:projectIdParam/create`, `/projects/:projectIdParam/upload`,], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/projects/{projectIdParam}/create'
+            #swagger.method = 'post'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Upload a mod version.'
-            // #swagger.description = 'Upload a mod version.'
-            // #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
-            /* #swagger.requestBody = {
+            }]
+            #swagger.summary = 'Upload a version.'
+            #swagger.description = 'Upload a new version to a project.'
+            #swagger.parameters['projectIdParam'] = { description: 'Project ID.', type: 'number' }
+            #swagger.requestBody = {
                 schema: {
-                    $ref: '#/definitions/CreateEditModVersion'
+                    $ref: '#/definitions/zUpdateVersion'
                 }
             }
             #swagger.parameters['file'] = {
                 in: 'formData',
                 type: 'file',
-                description: 'Mod zip file.',
+                description: 'Version zip file.',
                 required: true
-            } */
+            }
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ProjectVersionPairResponse'
+            }
+            #swagger.responses[400]
+            #swagger.responses[401]
+            #swagger.responses[404]
+            #swagger.responses[413]
+            #swagger.responses[500]
+            */
 
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
             
-            let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let reqBody = Validator.zUploadModVersion.safeParse(req.body);
+            let projectId = Validator.zDBID.safeParse(req.params.projectIdParam);
+            let reqBody = Validator.zCreateVersion.safeParse(req.body);
             let file = req.files?.file;
 
-            if (!modId.success) {
-                return res.status(400).send({ message: `Invalid modId.` });
+            if (!projectId.success) {
+                return res.status(400).send({ message: `Invalid project ID.` });
             }
 
             if (!reqBody.success) {
                 return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
-            if (!mod) {
-                return res.status(404).send({ message: `Mod not found.` });
+            let project = await DatabaseHelper.database.Projects.findOne({ where: { id: projectId.data } });
+            if (!project) {
+                return res.status(404).send({ message: `Project not found.` });
             }
 
-            if (!mod.authorIds.includes(session.user.id)) {
-                return res.status(401).send({ message: `You cannot upload to this mod.` });
+            if (!project.authorIds.includes(session.user.id)) {
+                return res.status(401).send({ message: `You cannot upload to this project.` });
             }
 
-            if (mod.status === Status.Removed) {
-                return res.status(401).send({ message: `This mod has been denied and removed` });
+            if (project.status === Status.Removed) {
+                return res.status(401).send({ message: `This project has been denied and removed` });
             }
 
             if ((await Validator.validateIDArray(reqBody.data.supportedGameVersionIds, `gameVersions`, false, false)) == false) {
                 return res.status(400).send({ message: `Invalid game version.` });
             }
 
-            if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `mods`, true, true)) == false) {
-                return res.status(400).send({ message: `Invalid dependency.` });
+            if ((await Validator.validateIDArray(reqBody.data.dependencies?.map(d => d.parentId), `projects`, true, true)) == false) {
+                return res.status(400).send({ message: `Invalid dependencies.` });
             }
 
             if (!file || Array.isArray(file)) {
@@ -175,8 +198,8 @@ export class CreateModRoutes {
             }
 
             if (file.truncated || file.size > Config.server.fileUploadLimitMB * 1024 * 1024) {
-                if (validateAdditionalGamePermissions(session, mod.gameName, UserRoles.LargeFiles)) {
-                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for mod ${mod.name} (${mod.id}).`);
+                if (validateAdditionalGamePermissions(session, project.gameName, UserRoles.LargeFiles)) {
+                    Logger.warn(`User ${session.user.username} (${session.user.id}) uploaded a file larger than ${Config.server.fileUploadLimitMB}MB for project ${project.name} (${project.id}).`);
                     // let it slide. truncated will catch anything above the limit
                 } else {
                     return res.status(413).send({ message: `File too large. Max size is ${Config.server.fileUploadLimitMB}MB.` });
@@ -213,8 +236,8 @@ export class CreateModRoutes {
                 file.mv(filePath);
             }
 
-            DatabaseHelper.database.ModVersions.create({
-                modId: modId.data,
+            DatabaseHelper.database.Versions.create({
+                projectId: projectId.data,
                 authorId: session.user.id,
                 status: Status.Private,
                 supportedGameVersionIds: reqBody.data.supportedGameVersionIds,
@@ -225,15 +248,15 @@ export class CreateModRoutes {
                 zipHash: file.md5,
                 lastUpdatedById: session.user.id,
                 fileSize: file.size
-            }).then(async (modVersion) => {
-                DatabaseHelper.refreshCache(`modVersions`);
-                let retVal = await modVersion.toRawAPIResponse();
-                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Created, mod);
-                return res.status(200).send({ modVersion: retVal });
+            }).then(async (version) => {
+                DatabaseHelper.refreshCache(`versions`);
+                let retVal = await version.toRawAPIResponse();
+                sendVersionLog(version, session.user, WebhookLogType.Text_Created, project);
+                return res.status(200).send({ project: project, version: retVal });
             }).catch((error) => {
-                let message = `Error creating mod.`;
+                let message = `Error creating version.`;
                 message = Utils.parseErrorMessage(error);
-                Logger.error(`Error creating mod: ${error} - ${message}`);
+                Logger.error(`Error creating version: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
         });

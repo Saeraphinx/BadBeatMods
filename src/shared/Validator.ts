@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.ts";
+import { Categories, DatabaseHelper, GameVersion, Version, Platform, Status, SupportedGames, User, Project, PostType, UserRoles, EditQueue } from "./Database.ts";
 import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
+import { ApprovalAction } from "../api/routes/approval.ts";
 
 //generic types that I use a lot
 const ZodDBID = z.number({coerce: true}).int().positive();
@@ -34,7 +35,7 @@ const ZodPostType = z.nativeEnum(PostType);
 const ZodUserRoles = z.nativeEnum(UserRoles);
 
 // from ./Database.ts
-const ZodMod = z.object({
+const ZodProject = z.object({
     id: ZodDBID,
     name: z.string().min(3).max(64),
     summary: z.string().min(3).max(160),
@@ -46,7 +47,7 @@ const ZodMod = z.object({
 });
 
 // from ./Database.ts
-const ZodModVersion = z.object({
+const ZodVersion = z.object({
     id: ZodDBID,
     modId: ZodDBID,
     supportedGameVersionIds: ZodDBIDArray,
@@ -81,7 +82,7 @@ export class Validator {
             return false;
         }
     });
-    public static readonly zCreateMod = ZodMod.pick({
+    public static readonly zCreateProject = ZodProject.pick({
         name: true,
         summary: true,
         description: true,
@@ -90,16 +91,16 @@ export class Validator {
         gameName: true,
     }).required().strict();
 
-    public static readonly zUploadModVersion = z.object({
+    public static readonly zCreateVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray,
-        modVersion: ZodModVersion.shape.modVersion,
-        dependencies: ZodModVersion.shape.dependencies.optional(),
-        platform: ZodModVersion.shape.platform,
+        modVersion: ZodVersion.shape.modVersion,
+        dependencies: ZodVersion.shape.dependencies.optional(),
+        platform: ZodVersion.shape.platform,
     }).strict();
 
-    public static readonly zUpdateMod = z.object({
+    public static readonly zUpdateProject = z.object({
         name: z.string().min(3).max(64).optional(),
-        summary: z.string().min(3).max(100).optional(),
+        summary: z.string().min(3).max(160).optional(),
         description: z.string().min(3).max(4096).optional(),
         category: ZodCategory.optional(),
         gitUrl: z.string().min(5).max(256).url().optional(),
@@ -107,7 +108,7 @@ export class Validator {
         authorIds: ZodDBIDArray.optional(),
     }).strict();
 
-    public static readonly zUpdateModVersion = z.object({
+    public static readonly zUpdateVersion = z.object({
         supportedGameVersionIds: ZodDBIDArray.optional(),
         modVersion: z.string().refine(valid, { message: `Invalid SemVer` }).optional(),
         dependencies: z.array(z.object({
@@ -128,6 +129,12 @@ export class Validator {
         status: z.enum([`all`, Status.Verified, Status.Unverified, Status.Pending]).default(Status.Verified),
         platform: ZodPlatform.default(Platform.UniversalPC),
     });
+
+    public static readonly zEditUserRoles = z.object({
+        userId: ZodDBID,
+        gameName: ZodGameName,
+        role: this.zUserRoles
+    }).strict();
 
     public static readonly zCreateMOTD = z.object({
         gameName: ZodGameName.default(SupportedGames.BeatSaber),
@@ -151,6 +158,12 @@ export class Validator {
         version: z.string(),
     }).required();
 
+    public static readonly zApproveObject = z.object({
+        id: ZodDBID,
+        action: z.nativeEnum(ApprovalAction),
+        reason: z.string().optional(),
+    }).strict();
+
     public static async validateIDArray(ids: number[]|undefined|null, tableName:TableNames, allowEmpty: boolean = false, allowNull = true): Promise<boolean> {
         if (!Array.isArray(ids) && allowNull === false) {
             return false;
@@ -169,13 +182,13 @@ export class Validator {
             return false;
         }
 
-        let records: Mod[]|ModVersion[]|User[]|GameVersion[]|EditQueue[] = [];
+        let records: Project[]|Version[]|User[]|GameVersion[]|EditQueue[] = [];
         switch (tableName) {
-            case `mods`:
-                records = await DatabaseHelper.database.Mods.findAll({ where: { id: ids } });
+            case `projects`:
+                records = await DatabaseHelper.database.Projects.findAll({ where: { id: ids } });
                 break;
-            case `modVersions`:
-                records = await DatabaseHelper.database.ModVersions.findAll({ where: { id: ids } });
+            case `versions`:
+                records = await DatabaseHelper.database.Versions.findAll({ where: { id: ids } });
                 break;
             case `users`:
                 records = await DatabaseHelper.database.Users.findAll({ where: { id: ids } });
@@ -198,4 +211,4 @@ export class Validator {
     }
 }
 
-type TableNames = `mods` | `modVersions` | `users` | `gameVersions` | `editQueue`;
+type TableNames = `projects` | `versions` | `users` | `gameVersions` | `editQueue`;

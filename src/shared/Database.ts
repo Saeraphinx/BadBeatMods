@@ -8,8 +8,8 @@ import { SequelizeStorage, Umzug } from "umzug";
 import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
 import { EditQueue } from "./database/models/EditQueue.ts";
 import { GameVersion } from "./database/models/GameVersion.ts";
-import { Mod } from "./database/models/Mod.ts";
-import { ModVersion } from "./database/models/ModVersion.ts";
+import { Project } from "./database/models/Project.ts";
+import { Version } from "./database/models/Version.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
 import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
@@ -17,8 +17,8 @@ import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
 // in use by this file
 export * from "./database/models/EditQueue.ts";
 export * from "./database/models/GameVersion.ts";
-export * from "./database/models/Mod.ts";
-export * from "./database/models/ModVersion.ts";
+export * from "./database/models/Project.ts";
+export * from "./database/models/Version.ts";
 export * from "./database/models/MOTD.ts";
 export * from "./database/models/User.ts";
 export * from "./database/DBHelper.ts";
@@ -32,8 +32,8 @@ export type Migration = typeof DatabaseManager.prototype.umzug._types.migration;
 export class DatabaseManager {
     public sequelize: Sequelize;
     public Users: ModelStatic<User>;
-    public ModVersions: ModelStatic<ModVersion>;
-    public Mods: ModelStatic<Mod>;
+    public Versions: ModelStatic<Version>;
+    public Projects: ModelStatic<Project>;
     public GameVersions: ModelStatic<GameVersion>;
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
@@ -299,8 +299,8 @@ export class DatabaseManager {
             paranoid: true,
         });
         // #endregion
-        // #region Mods
-        this.Mods = Mod.init({
+        // #region Projects
+        this.Projects = Project.init({
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
@@ -391,15 +391,15 @@ export class DatabaseManager {
             paranoid: true,
         });
         // #endregion
-        // #region ModVersions
-        this.ModVersions = ModVersion.init({
+        // #region Versions
+        this.Versions = Version.init({
             id: {
                 type: DataTypes.INTEGER,
                 primaryKey: true,
                 autoIncrement: true,
                 unique: true,
             },
-            modId: {
+            projectId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
@@ -675,63 +675,63 @@ export class DatabaseManager {
             await Promise.all(promises);
         });
 
-        this.ModVersions.afterSync(async () => {
-            let modVersions = await this.ModVersions.findAll();
+        this.Versions.afterSync(async () => {
+            let versions = await this.Versions.findAll();
             let promises = [];
-            for (let modVersion of modVersions) {
-                promises.push(updateDependencies(modVersion, modVersions));
+            for (let version of versions) {
+                promises.push(updateDependencies(version, versions));
             }
             await Promise.all(promises);
         });
 
 
-        this.Mods.afterValidate(async (mod) => {
-            await Mod.checkForExistingMod(mod.name).then((existingMod) => {
+        this.Projects.afterValidate(async (project) => {
+            await Project.checkForExistingMod(project.name).then((existingMod) => {
                 if (existingMod) {
-                    if (existingMod.id != mod.id) {
-                        throw new Error(`Mod already exists.`);
+                    if (existingMod.id != project.id) {
+                        throw new Error(`Project already exists.`);
                     }
                 }
             });
 
-            if (mod.authorIds.length == 0) {
-                throw new Error(`Mod must have at least one author.`);
+            if (project.authorIds.length == 0) {
+                throw new Error(`Project must have at least one author.`);
             }
         });
 
-        this.ModVersions.afterValidate(async (modVersion) => {
-            let parentMod = await Mod.findByPk(modVersion.modId);
+        this.Versions.afterValidate(async (version) => {
+            let parentMod = await Project.findByPk(version.projectId);
 
             if (!parentMod) {
-                throw new Error(`ModVersion must have a valid modId.`);
+                throw new Error(`Version must have a valid modId.`);
             }
 
-            await ModVersion.checkForExistingVersion(modVersion.modId, modVersion.modVersion, modVersion.platform).then((existingVersion) => {
+            await Version.checkForExistingVersion(version.projectId, version.modVersion, version.platform).then((existingVersion) => {
                 if (existingVersion) {
-                    if (existingVersion.id != modVersion.id) {
+                    if (existingVersion.id != version.id) {
                         throw new Error(`Edit would cause a duplicate version.`);
                     }
                 }
             });
 
-            if (modVersion.supportedGameVersionIds.length == 0) {
-                throw new Error(`ModVersion must support at least one game version.`);
+            if (version.supportedGameVersionIds.length == 0) {
+                throw new Error(`Version must support at least one game version.`);
             }
 
             //dedupe supported game versions
-            modVersion.supportedGameVersionIds = [...new Set(modVersion.supportedGameVersionIds)];
-            let gameVersions = await this.GameVersions.findAll({ where: { id: modVersion.supportedGameVersionIds } });
+            version.supportedGameVersionIds = [...new Set(version.supportedGameVersionIds)];
+            let gameVersions = await this.GameVersions.findAll({ where: { id: version.supportedGameVersionIds } });
             if (gameVersions.length == 0) {
                 throw new Error(`No valid game versions found.`);
             }
 
-            if (gameVersions.length != modVersion.supportedGameVersionIds.length) {
+            if (gameVersions.length != version.supportedGameVersionIds.length) {
                 throw new Error(`Invalid or duplicate game version(s) found.`);
             }
 
             for (let gameVersion of gameVersions) {
                 if (gameVersion.gameName != parentMod.gameName) {
-                    throw new Error(`ModVersion must only have game versions for the parent mod's game.`);
+                    throw new Error(`Version must only have game versions for the parent project's game.`);
                 }
 
                 // check if game version is linked to another game version
@@ -744,17 +744,17 @@ export class DatabaseManager {
 
                     for (let linkedVersion of linkedVersions) {
                         if (linkedVersion.gameName != parentMod.gameName) {
-                            throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the parent mod's game. Please contact a site administrator.`);
+                            throw new Error(`Game Version ${linkedVersion.id} must only have linked game versions for the parent project's game. Please contact a site administrator.`);
                         }
 
-                        if (!modVersion.supportedGameVersionIds.includes(linkedVersion.id)) {
-                            modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, linkedVersion.id];
+                        if (!version.supportedGameVersionIds.includes(linkedVersion.id)) {
+                            version.supportedGameVersionIds = [...version.supportedGameVersionIds, linkedVersion.id];
                         }
                     }
                 }
             }
 
-            modVersion.supportedGameVersionIds = modVersion.supportedGameVersionIds.sort((a, b) => {
+            version.supportedGameVersionIds = version.supportedGameVersionIds.sort((a, b) => {
                 let gvA = gameVersions.find((gv) => gv.id == a);
                 let gvB = gameVersions.find((gv) => gv.id == b);
 
@@ -765,20 +765,20 @@ export class DatabaseManager {
                 return GameVersion.compareVersions(gvA, gvB);
             });
 
-            if (modVersion.dependencies.length > 0) {
+            if (version.dependencies.length > 0) {
                 //dedupe dependencies
-                modVersion.dependencies = [...new Set(modVersion.dependencies)];
-                let parentIds = modVersion.dependencies.map((dep) => dep.parentId);
-                let versions = modVersion.dependencies.map((dep) => dep.sv);
-                if ([...new Set(parentIds)].length != modVersion.dependencies.length) {
-                    throw new Error(`ModVersion cannot have duplicate dependencies.`);
+                version.dependencies = [...new Set(version.dependencies)];
+                let parentIds = version.dependencies.map((dep) => dep.parentId);
+                let versions = version.dependencies.map((dep) => dep.sv);
+                if ([...new Set(parentIds)].length != version.dependencies.length) {
+                    throw new Error(`Version cannot have duplicate dependencies.`);
                 }
-                let parentMods = await Mod.findAll({ where: { id: parentIds } });
+                let parentMods = await Project.findAll({ where: { id: parentIds } });
                 if (parentMods.length == 0) {
-                    throw new Error(`No valid parent mods found.`);
+                    throw new Error(`No valid parent projects found.`);
                 }
                 if (parentMods.length != parentIds.length) {
-                    throw new Error(`Invalid or duplicate parent mod(s) found.`);
+                    throw new Error(`Invalid or duplicate parent projects(s) found.`);
                 }
                 if (versions.every(v => validRange(v) == null)) {
                     throw new Error(`Invalid SemVer version(s) found.`);
@@ -786,8 +786,8 @@ export class DatabaseManager {
             }
 
             // do not allow modVersion to be created with a version that starts with v
-            if (modVersion.modVersion.raw.startsWith(`v`)) {
-                modVersion.modVersion = new SemVer(modVersion.modVersion.raw.slice(1));
+            if (version.modVersion.raw.startsWith(`v`)) {
+                version.modVersion = new SemVer(version.modVersion.raw.slice(1));
             }
         });
 
@@ -827,7 +827,7 @@ export class DatabaseManager {
         });
 
         this.EditApprovalQueue.beforeCreate(async (queueItem) => {
-            if (!queueItem.isMod() && !queueItem.isModVersion()) {
+            if (!queueItem.isProject() && !queueItem.isVersion()) {
                 throw new Error(`Invalid object type.`);
             }
         });

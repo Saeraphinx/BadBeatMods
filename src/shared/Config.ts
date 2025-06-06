@@ -239,7 +239,7 @@ export class Config {
         
 
         if (!fs.existsSync(path.resolve(Config.storage.modsDir))) {
-            console.log(`Creating mods directory at ${path.resolve(Config.storage.modsDir)}`);
+            console.log(`Creating version directory at ${path.resolve(Config.storage.modsDir)}`);
             fs.mkdirSync(path.resolve(Config.storage.modsDir));
         }
 

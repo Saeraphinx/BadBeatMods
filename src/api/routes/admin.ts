@@ -7,7 +7,8 @@ import * as path from 'path';
 import { Validator } from '../../shared/Validator.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { sendVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export class AdminRoutes {
     private router: Router;
@@ -18,17 +19,27 @@ export class AdminRoutes {
 
     private async loadRoutes() {
         this.router.get(`/admin/health/hashCheck`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
+            }]
+            #swagger.summary = 'Check if all hashes are valid & present.'
+            #swagger.description = 'Check if all hashes are valid & their files are still present on the server.'
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            #swagger.responses[500] = {
+                $ref: '#/components/responses/ServerMessageWithErrorStringArray'
+            }
+            */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
             }
 
-            let versions = await DatabaseHelper.database.ModVersions.findAll();
+            let versions = await DatabaseHelper.database.Versions.findAll();
             let errors = [];
 
             let allZips = fs.readdirSync(path.resolve(Config.storage.modsDir), { withFileTypes: true }).filter(dirent => dirent.isFile() && dirent.name.endsWith(`.zip`));
@@ -47,24 +58,34 @@ export class AdminRoutes {
         });
 
         this.router.get(`/admin/health/missingIcons`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
+            }]
+            #swagger.summary = 'Check if all icons are valid & present.'
+            #swagger.description = 'Check if all icons are valid & their files are still present on the server.'
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            #swagger.responses[500] = {
+                $ref: '#/components/responses/ServerMessageWithErrorStringArray',
+            }
+            */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
             }
 
-            let mods = await DatabaseHelper.database.Mods.findAll();
+            let projects = await DatabaseHelper.database.Projects.findAll();
             let errors = [];
 
             let allIcons = fs.readdirSync(path.resolve(Config.storage.iconsDir), { withFileTypes: true }).filter(dirent => dirent.isFile()).map(dirent => dirent.name);
 
-            for (let mod of mods) {
-                if (!allIcons.find(icon => icon === mod.iconFileName)) {
-                    errors.push(mod.iconFileName);
+            for (let project of projects) {
+                if (!allIcons.find(icon => icon === project.iconFileName)) {
+                    errors.push(project.iconFileName);
                 }
             }
 
@@ -76,14 +97,26 @@ export class AdminRoutes {
         });
 
         this.router.get(`/admin/health/dependencyResolution`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.parameters['versionId'] = { description: 'The version ID to check.', required: true }
-            // #swagger.parameters['gameName'] = { description: 'The game name to check.', required: true }
-            // #swagger.parameters['includeUnverified'] = { description: 'Include unverified mods.', required: false, type: 'boolean' }
+            }]
+            #swagger.parameters['versionId'] = {
+                description: 'The version ID to check.',
+                required: true
+            }
+            #swagger.parameters['gameName'] = {
+                description: 'The game name to check.',
+                required: true
+            }
+            #swagger.parameters['includeUnverified'] = {
+                description: 'Include unverified mods.',
+                required: false,
+                type: 'boolean'
+            }
+            */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
@@ -116,17 +149,17 @@ export class AdminRoutes {
                 } else {
                     let defaultVersion = await GameVersion.getDefaultVersionObject(params.data.gameName);
                     if (!defaultVersion) {
-                        return res.status(404).send({ message: `Default version not found.` });
+                        return res.status(404).send({ message: `Default GameVersion not found.` });
                     }
                     versions.push(defaultVersion);
                 }
             } else {
                 if (params.data.versionId <= -2) {
-                    return res.status(400).send({ message: `Invalid version ID.` });
+                    return res.status(400).send({ message: `Invalid GameVersion ID.` });
                 }
                 let version = await DatabaseHelper.database.GameVersions.findByPk(params.data.versionId as number);
                 if (!version) {
-                    return res.status(404).send({ message: `Version not found.` });
+                    return res.status(404).send({ message: `GameVersion not found.` });
                 }
                 versions.push(version);
             }
@@ -139,24 +172,24 @@ export class AdminRoutes {
                 }
                 let mods = await request.json() as any;
 
-                for (let mod of mods.mods) {
-                    for (let dependancyId of mod.latest.dependencies) {
+                for (let project of mods.mods) {
+                    for (let dependancyId of project.latest.dependencies) {
                         if (!mods.mods.find((m: any) => m.latest.id === dependancyId)) {
-                            let versionString = (mod.latest.supportedGameVersions as object[]).flatMap((gV:any) => `${gV.gameName} ${gV.version}`).join(`, `);
-                            let dependancy = DatabaseHelper.cache.modVersions.find((mV: any) => mV.id === dependancyId);
+                            let versionString = (project.latest.supportedGameVersions as object[]).flatMap((gV:any) => `${gV.gameName} ${gV.version}`).join(`, `);
+                            let dependancy = DatabaseHelper.cache.versions.find((mV: any) => mV.id === dependancyId);
                             if (!dependancy) {
-                                return res.status(404).send({ message: `Database ID for modVersions not found.`, dependancyId });
+                                return res.status(404).send({ message: `Database ID for version not found.`, dependancyId });
                             }
-                            let dependancyMod = DatabaseHelper.cache.mods.find((m: any) => m.id === dependancy.modId);
+                            let dependancyMod = DatabaseHelper.cache.projects.find((m: any) => m.id === dependancy.projectId);
                             if (!dependancyMod) {
-                                return res.status(404).send({ message: `Database ID for mods not found.`, dependancyId });
+                                return res.status(404).send({ message: `Database ID for project not found.`, dependancyId });
                             }
 
                             errors.push({
                                 gV: versionString,
                                 dependant: {
-                                    name: mod.mod.name,
-                                    versionId: mod.latest.id
+                                    name: project.mod.name,
+                                    versionId: project.latest.id
                                 },
                                 dependency: {
                                     name: dependancyMod.name,
@@ -180,25 +213,30 @@ export class AdminRoutes {
         });
     
         this.router.post(`/admin/sortgameversions`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Sort all Game Versions in all mod versions.'
-            // #swagger.description = 'Sort all Game Versions in all mod versions.'
+            }]
+            #swagger.summary = 'Sort game versions.'
+            #swagger.description = 'Sort game versions within versions by a gameversions version using SemVer's compare function.'
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
             }
 
-            const modVersions = await DatabaseHelper.database.ModVersions.findAll();
+            const versions = await DatabaseHelper.database.Versions.findAll();
             const gameVersions = await DatabaseHelper.database.GameVersions.findAll();
 
-            res.status(200).send({ message: `Sorting ${modVersions.length} mod versions. Edits will not be created.` });
+            res.status(200).send({ message: `Sorting ${versions.length} versions. Edits will not be created.` });
 
-            for (let modVersion of modVersions) {
-                modVersion.supportedGameVersionIds = modVersion.supportedGameVersionIds.sort((a, b) => {
+            for (let version of versions) {
+                version.supportedGameVersionIds = version.supportedGameVersionIds.sort((a, b) => {
                     let gvA = gameVersions.find((gv) => gv.id == a);
                     let gvB = gameVersions.find((gv) => gv.id == b);
     
@@ -214,29 +252,34 @@ export class AdminRoutes {
                         return gvB.version.localeCompare(gvA.version);
                     }
                 });
-                await modVersion.save().catch((err) => {
-                    Logger.error(`Error saving modVersion ${modVersion.id}: ${err}`);
+                await version.save().catch((err) => {
+                    Logger.error(`Error saving version ${version.id}: ${err}`);
                 });
 
-                Logger.debug(`Sorted ${modVersion.id}`);
+                Logger.debug(`Sorted ${version.id}`);
             }
         });
       
         this.router.post(`/admin/database/loadBlankFileSizes`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Load blank file sizes into the database.'
-            // #swagger.description = 'Check each record in the modVersions table. If the file size is 0, attempt to get the file size from the zip file.'
+            }]
+            #swagger.summary = 'Load blank file sizes into the database.'
+            #swagger.description = 'Check each record in the modVersions table. If the file size is 0, attempt to get the file size from the zip file.'
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            */
             let session = await validateSession(req, res, UserRoles.Admin);
             if (!session.user) {
                 return;
             }
 
             let updateCount = 0;
-            const versions = await DatabaseHelper.database.ModVersions.findAll({where: { fileSize: 0 }});
+            const versions = await DatabaseHelper.database.Versions.findAll({where: { fileSize: 0 }});
             for (let version of versions) {
                 let filePath = path.resolve(Config.storage.modsDir, `${version.zipHash}.zip`);
                 if (fs.existsSync(filePath)) {
@@ -249,39 +292,42 @@ export class AdminRoutes {
                 }
             }
 
-            DatabaseHelper.refreshCache(`modVersions`);
+            DatabaseHelper.refreshCache(`versions`);
             return res.status(200).send({ message: `Updated ${updateCount} records.` });
         });
 
         this.router.post(`/admin/users/addRole`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Add a role to a user.'
-            // #swagger.description = 'Add a role to a user.'
-            /* #swagger.requestBody = {
-                    
-                    description: 'The role to add.',
-                    required: true,
-                    schema: {
-                      userId: 1,
-                      role: 'string',
-                      gameName: 'string'
-                  }
+            }]
+            #swagger.summary = 'Add a role to a user.'
+            #swagger.description = 'Add a role to a user.'
+            #swagger.requestBody = {
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zUpdateUserRoles'
+                        }
+                    }
+                }
             }
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
             */
 
-            let userId = Validator.zDBID.safeParse(req.body.userId);
-            let gameName = Validator.zGameName.optional().safeParse(req.body.gameName);
-            let role = Validator.zUserRoles.safeParse(req.body.role);
-
-            if (!userId.success || !role.success || !gameName.success) {
+            let reqBody = Validator.zEditUserRoles.safeParse(req.body);
+            if (!reqBody.success) {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
-            let user = await DatabaseHelper.database.Users.findByPk(userId.data);
+            let user = await DatabaseHelper.database.Users.findByPk(reqBody.data.userId);
             if (!user) {
                 return res.status(404).send({ message: `User not found.` });
             }
@@ -296,66 +342,66 @@ export class AdminRoutes {
             }
 
             let session: { user: any } = { user: null };
-            if (gameName.data) {
-                switch (role.data) {
+            if (reqBody.data.gameName) {
+                switch (reqBody.data.role) {
                     case UserRoles.Admin:
-                        session = await validateSession(req, res, UserRoles.AllPermissions, gameName.data);
+                        session = await validateSession(req, res, UserRoles.AllPermissions, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.addPerGameRole(gameName.data, UserRoles.Admin);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.Admin);
                         break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.addPerGameRole(gameName.data, UserRoles.Approver);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.Approver);
                         break;
                     case UserRoles.GameManager:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.addPerGameRole(gameName.data, UserRoles.GameManager);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.GameManager);
                         break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.addPerGameRole(gameName.data, UserRoles.Poster);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.Poster);
                         break;
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.addPerGameRole(gameName.data, UserRoles.LargeFiles);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Approver, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
 
-                        if (gameName.data) {
-                            if (Array.isArray(user.roles.perGame[gameName.data])) {
+                        if (reqBody.data.gameName) {
+                            if (Array.isArray(user.roles.perGame[reqBody.data.gameName])) {
                                 // @ts-expect-error - TS doesn't like this but it's fine
-                                if (user.roles.perGame[gameName.data].length > 0) {
+                                if (user.roles.perGame[reqBody.data.gameName].length > 0) {
                                     return res.status(400).send({ message: `User cannot be banned due to already having roles.`, user });
                                 }
                             }
                         }
                     
-                        user.addPerGameRole(gameName.data, UserRoles.Banned);
+                        user.addPerGameRole(reqBody.data.gameName, UserRoles.Banned);
                         break;
                     default:
                         return res.status(400).send({ message: `Invalid role.` });
                 }
-                Logger.log(`User ${session.user.username} added role ${role.data} to user ${user.username} for game ${gameName.data} by ${session.user?.id}.`);
+                Logger.log(`User ${session.user.username} added role ${reqBody.data.role} to user ${user.username} for game ${reqBody.data.gameName} by ${session.user?.id}.`);
             } else {
-                switch (role.data) {
+                switch (reqBody.data.role) {
                     case UserRoles.Admin:
                         session = await validateSession(req, res, UserRoles.AllPermissions);
                         if (!session.user) {
@@ -405,97 +451,99 @@ export class AdminRoutes {
                     default:
                         return res.status(400).send({ message: `Invalid role.` });
                 }
-                Logger.log(`User ${session.user.username} added role ${role.data} to user ${user.username} by ${session.user?.id}.`);
+                Logger.log(`User ${session.user.username} added role ${reqBody.data.role} to user ${user.username} by ${session.user?.id}.`);
             }
 
-            return res.status(200).send({ message: gameName.data ? `Role ${role.data} added to user ${user.username} for game ${gameName.data}.` : `Role ${role.data} added to user ${user.username}`, user });
+            return res.status(200).send({ message: reqBody.data.gameName ? `Role ${reqBody.data.role} added to user ${user.username} for game ${reqBody.data.gameName}.` : `Role ${reqBody.data.role} added to user ${user.username}`, user });
 
         });
 
         this.router.post(`/admin/users/removeRole`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Remove a role from a user.'
-            // #swagger.description = 'Remove a role from a user.'
-            /* #swagger.requestBody = {
-                    
-                    description: 'The role to remove.',
-                    required: true,
-                    schema: {
-                      userId: 1,
-                      role: 'string',
-                      gameName: 'string'
-                  }
+            }]
+            #swagger.summary = 'Remove a role from a user.'
+            #swagger.description = 'Remove a role from a user.'
+            #swagger.requestBody = {
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/definitions/zUpdateUserRoles'
+                        }
+                    }
+                }
             }
+            #swagger.responses[200]
+            #swagger.responses[400]
+            #swagger.responses[404]
             */
 
-            let userId = Validator.zDBID.safeParse(req.body.userId);
-            let gameName = Validator.zGameName.optional().safeParse(req.body.gameName);
-            let role = Validator.zUserRoles.safeParse(req.body.role);
+            let reqBody = Validator.zEditUserRoles.safeParse(req.body);
 
-            if (!userId.success || !role.success || !gameName.success) {
+            if (!reqBody.success) {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
-            let user = await DatabaseHelper.database.Users.findByPk(userId.data);
+            let user = await DatabaseHelper.database.Users.findByPk(reqBody.data.userId);
             if (!user) {
                 return res.status(404).send({ message: `User not found.` });
             }
 
             let session: { user: any } = { user: null };
-            if (gameName.data) {
-                switch (role.data) {
+            if (reqBody.data.gameName) {
+                switch (reqBody.data.role) {
                     case UserRoles.Admin:
-                        session = await validateSession(req, res, UserRoles.AllPermissions, gameName.data);
+                        session = await validateSession(req, res, UserRoles.AllPermissions, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.Admin);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.Admin);
                         break;
                     case UserRoles.Approver:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.Approver);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.Approver);
                         break;
                     case UserRoles.GameManager:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.GameManager);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.GameManager);
                         break;
                     case UserRoles.Poster:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.Poster);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.Poster);
                         break;
                     
                     case UserRoles.LargeFiles:
-                        session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Admin, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.LargeFiles);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.LargeFiles);
                         break;
                     case UserRoles.Banned:
-                        session = await validateSession(req, res, UserRoles.Approver, gameName.data);
+                        session = await validateSession(req, res, UserRoles.Approver, reqBody.data.gameName);
                         if (!session.user) {
                             return;
                         }
-                        user.removePerGameRole(gameName.data, UserRoles.Banned);
+                        user.removePerGameRole(reqBody.data.gameName, UserRoles.Banned);
                         break;
                     default:
                         return res.status(400).send({ message: `Invalid role.` });
                 }
             } else {
-                switch (role.data) {
+                switch (reqBody.data.role) {
                     case UserRoles.Admin:
                         session = await validateSession(req, res, UserRoles.AllPermissions);
                         if (!session.user) {
@@ -543,26 +591,45 @@ export class AdminRoutes {
                         return res.status(400).send({ message: `Invalid role.` });
                 }
             }
-            Logger.log(`User ${session.user.username} removed role ${role.data} from user ${user.username} for game ${gameName.data} by ${session.user?.id}.`);
-            return res.status(200).send({ message: gameName.data ? `Role ${role.data} removed from user ${user.username} for game ${gameName.data}.` : `Role ${role.data} removed from user ${user.username}`, user });
+            Logger.log(`User ${session.user.username} removed role ${reqBody.data.role} from user ${user.username} for game ${reqBody.data.gameName} by ${session.user?.id}.`);
+            return res.status(200).send({ message: reqBody.data.gameName ? `Role ${reqBody.data.role} removed from user ${user.username} for game ${reqBody.data.gameName}.` : `Role ${reqBody.data.role} removed from user ${user.username}`, user });
         });
 
         this.router.post(`/admin/versions/moveVersion`, async (req, res) => {
-            // #swagger.tags = ['Admin']
-            /* #swagger.security = [{
+            /*
+            #swagger.tags = ['Admin']
+            #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Move a version to another game.'
-            // #swagger.description = 'Move a version to another game.'
-            /* #swagger.requestBody = {
-                    description: 'The version to move.',
-                    required: true,
-                    schema: {
-                      versionId: 1,
-                      newModId: 2
-                  }
+            }]
+            #swagger.summary = 'Move a mod version to a new mod.'
+            #swagger.description = 'Move a mod version to a new mod.'
+            #swagger.requestBody = {
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                versionId: {
+                                    type: 'number',
+                                    description: 'The mod version ID to move.'
+                                },
+                                newModId: {
+                                    type: 'number',
+                                    description: 'The new mod ID to move the version to.'
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/ServerMessage'
+            }
+            #swagger.responses[400]
+            #swagger.responses[404]
+            #swagger.responses[500]
             */
             let modVersionId = Validator.zDBID.safeParse(req.body.versionId);
             let newModId = Validator.zDBID.safeParse(req.body.newModId);
@@ -570,14 +637,14 @@ export class AdminRoutes {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
-            let modVersion = await DatabaseHelper.database.ModVersions.findByPk(modVersionId.data);
+            let modVersion = await DatabaseHelper.database.Versions.findByPk(modVersionId.data);
             if (!modVersion) {
                 return res.status(404).send({ message: `Version not found.` });
             }
 
-            let originalMod = await DatabaseHelper.database.Mods.findByPk(modVersion.modId);
+            let originalMod = await DatabaseHelper.database.Projects.findByPk(modVersion.projectId);
             if (!originalMod) {
-                return res.status(404).send({ message: `Mod not found.` });
+                return res.status(404).send({ message: `Project not found.` });
             }
 
             let session = await validateSession(req, res, UserRoles.Approver, originalMod.gameName);
@@ -585,23 +652,23 @@ export class AdminRoutes {
                 return;
             }
 
-            let newMod = await DatabaseHelper.database.Mods.findByPk(newModId.data);
+            let newMod = await DatabaseHelper.database.Projects.findByPk(newModId.data);
             if (!newMod) {
-                return res.status(404).send({ message: `New mod not found.` });
+                return res.status(404).send({ message: `New project not found.` });
             }
 
             if (originalMod.gameName !== newMod.gameName) {
-                return res.status(400).send({ message: `Mods must be for the same game.` });
+                return res.status(400).send({ message: `Versions must be for the same game.` });
             }
 
-            modVersion.modId = newMod.id;
+            modVersion.projectId = newMod.id;
             await modVersion.save().then(() => {
-                DatabaseHelper.refreshCache(`modVersions`);
-                sendModVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
-                return res.status(200).send({ message: `Version ${modVersionId.data} moved to mod ${newModId.data}.` });
+                DatabaseHelper.refreshCache(`versions`);
+                sendVersionLog(modVersion, session.user, WebhookLogType.Text_Updated, newMod);
+                return res.status(200).send({ message: `Version ${modVersionId.data} moved to project ${newModId.data}.` });
             }).catch((err) => {
                 Logger.error(`Error moving mod version ${modVersionId.data}: ${err}`);
-                return res.status(500).send({ message: `Error moving mod version ${modVersionId.data}: ${err}` });
+                return res.status(500).send({ message: `Error moving Version ${modVersionId.data}: ${Utils.parseErrorMessage(err)}` });
             });
         });
     }
