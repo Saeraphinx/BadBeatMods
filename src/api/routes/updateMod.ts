@@ -67,7 +67,7 @@ export class UpdateProjectRoutes {
                 return res.status(400).send({ message: `Invalid modId.` });
             }
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
             
             let session = await validateSession(req, res, true);
@@ -97,13 +97,13 @@ export class UpdateProjectRoutes {
             }
 
             project.edit({
-                name: reqBody.data.name || project.name,
-                summary: reqBody.data.summary || project.summary,
-                description: reqBody.data.description || project.description,
-                gameName: reqBody.data.gameName || project.gameName,
-                gitUrl: reqBody.data.gitUrl || project.gitUrl,
-                authorIds: reqBody.data.authorIds || project.authorIds,
-                category: reqBody.data.category || project.category,
+                name: reqBody.data.name,
+                summary: reqBody.data.summary,
+                description: reqBody.data.description,
+                gameName: reqBody.data.gameName,
+                gitUrl: reqBody.data.gitUrl,
+                authorIds: reqBody.data.authorIds,
+                category: reqBody.data.category,
             }, session.user).then((project) => {
                 if (project.isEditObj) {
                     if (project.newEdit) {
@@ -261,7 +261,7 @@ export class UpdateProjectRoutes {
                 return res.status(400).send({ message: `Invalid versionIdParam.` });
             }
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
 
             let session = await validateSession(req, res, true);
@@ -300,10 +300,10 @@ export class UpdateProjectRoutes {
             }
 
             version.edit({
-                supportedGameVersionIds: reqBody.data.supportedGameVersionIds || version.supportedGameVersionIds,
-                modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : version.modVersion,
-                dependencies: reqBody.data.dependencies || version.dependencies,
-                platform: reqBody.data.platform || version.platform,
+                supportedGameVersionIds: reqBody.data.supportedGameVersionIds,
+                modVersion: reqBody.data.modVersion ? new SemVer(reqBody.data.modVersion) : undefined,
+                dependencies: reqBody.data.dependencies,
+                platform: reqBody.data.platform,
             }, session.user).then((version) => {
                 if (version.isEditObj) {
                     if (version.newEdit) {
