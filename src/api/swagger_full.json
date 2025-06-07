@@ -1167,10 +1167,193 @@
         "tags": [
           "Versions"
         ],
-        "description": "",
+        "summary": "Get all games & their versions.",
+        "description": "Returns a list of all games and their versions.",
+        "parameters": [
+          {
+            "name": "shouldShowVersions",
+            "description": "Whether to include versions in the response.",
+            "required": false,
+            "in": "query",
+            "default": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Returns a list of games with their versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameAPIPublicResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/{gameName}": {
+      "get": {
+        "tags": [
+          "Versions"
+        ],
+        "summary": "Get game by name.",
+        "description": "Returns a specific game and its versions by name.",
+        "parameters": [
+          {
+            "name": "gameName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The name of the game to get versions for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the game versions for the specified game.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameAPIPublicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/games/{gameName}/version": {
+      "post": {
+        "tags": [
+          "Versions"
+        ],
+        "summary": "Add a version to a game.",
+        "description": "Adds a new version to the specified game.",
+        "parameters": [
+          {
+            "name": "gameName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The name of the game to add a version to."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version added successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameAPIPublicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "description": "The version to add to the game.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "description": "The version to add."
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/{gameName}/category": {
+      "post": {
+        "tags": [
+          "Versions"
+        ],
+        "summary": "Add a category to a game.",
+        "description": "Adds a new category to the specified game.",
+        "parameters": [
+          {
+            "name": "gameName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The name of the game to add a category to."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category added successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameAPIPublicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "requestBody": {
+          "description": "The category to add to the game.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "description": "The category to add."
+                  }
+                },
+                "required": [
+                  "category"
+                ]
+              }
+            }
           }
         }
       }
@@ -1194,7 +1377,8 @@
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "deprecated": true
       },
       "post": {
         "tags": [
@@ -1239,7 +1423,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/versions/default": {
@@ -1264,7 +1449,8 @@
           "400": {
             "description": "Bad Request"
           }
-        }
+        },
+        "deprecated": true
       },
       "post": {
         "tags": [
@@ -1304,7 +1490,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/admin/health/hashCheck": {
@@ -2702,23 +2889,7 @@
             "default": "BeatSaber"
           },
           "category": {
-            "type": "string",
-            "enum": [
-              "core",
-              "essential",
-              "library",
-              "cosmetic",
-              "practice",
-              "gameplay",
-              "streamtools",
-              "ui",
-              "lighting",
-              "tweaks",
-              "multiplayer",
-              "text",
-              "editor",
-              "other"
-            ]
+            "type": "string"
           },
           "authors": {
             "type": "array",
@@ -3004,39 +3175,51 @@
       "GameVersionAPIPublicResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The ID of the game version.",
+            "example": 1
+          },
           "gameName": {
             "type": "string",
-            "description": "The name of the game this version is for. This is used to identify the game.",
+            "description": "The name of the game this version is for. This is the same as the name field in the Game object.",
             "example": "BeatSaber"
           },
           "version": {
             "type": "string",
-            "description": "The version string. This is used to identify the version of the game.",
+            "description": "The version string.",
             "example": "1.0.0"
           },
-          "id": {
-            "type": "integer",
-            "description": "The object's internal ID.",
-            "example": 1,
-            "minimum": 1
-          },
-          "createdAt": {
+          "defaultVersion": {
+            "type": "boolean",
+            "description": "Whether this version is the default version for the game."
+          }
+        }
+      },
+      "GameAPIPublicResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
             "type": "string",
-            "description": "The date the object was added to the database.",
-            "example": "2023-10-01T00:00:00.000Z"
+            "description": "The name of the game.",
+            "example": "BeatSaber"
           },
-          "updatedAt": {
+          "displayName": {
             "type": "string",
-            "description": "The date the object was last updated.",
-            "example": "2023-10-01T00:00:00.000Z"
+            "description": "The display name of the game.",
+            "example": "Beat Saber"
           },
-          "deletedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "The date the object was deleted from the database.",
-            "example": "2023-10-01T00:00:00.000Z"
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+            }
           }
         }
       },
@@ -3094,23 +3277,7 @@
             "example": "This is an example project. It is used as an example for the API documentation."
           },
           "category": {
-            "type": "string",
-            "enum": [
-              "core",
-              "essential",
-              "library",
-              "cosmetic",
-              "practice",
-              "gameplay",
-              "streamtools",
-              "ui",
-              "lighting",
-              "tweaks",
-              "multiplayer",
-              "text",
-              "editor",
-              "other"
-            ]
+            "type": "string"
           },
           "gitUrl": {
             "type": "string"
@@ -3185,23 +3352,7 @@
             "example": "This is an example project. It is used as an example for the API documentation."
           },
           "category": {
-            "type": "string",
-            "enum": [
-              "core",
-              "essential",
-              "library",
-              "cosmetic",
-              "practice",
-              "gameplay",
-              "streamtools",
-              "ui",
-              "lighting",
-              "tweaks",
-              "multiplayer",
-              "text",
-              "editor",
-              "other"
-            ]
+            "type": "string"
           },
           "gitUrl": {
             "type": "string"
@@ -3290,7 +3441,7 @@
           },
           "gameName": {
             "type": "string",
-            "description": "The name of the game this version is for. This is used to identify the game.",
+            "description": "The name of the game this version is for. This is the same as the name field in the Game object.",
             "example": "BeatSaber"
           },
           "role": {
@@ -3521,23 +3672,7 @@
                 "default": "BeatSaber"
               },
               "category": {
-                "type": "string",
-                "enum": [
-                  "core",
-                  "essential",
-                  "library",
-                  "cosmetic",
-                  "practice",
-                  "gameplay",
-                  "streamtools",
-                  "ui",
-                  "lighting",
-                  "tweaks",
-                  "multiplayer",
-                  "text",
-                  "editor",
-                  "other"
-                ]
+                "type": "string"
               },
               "authorIds": {
                 "type": "array",

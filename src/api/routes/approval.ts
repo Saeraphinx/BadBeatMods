@@ -5,6 +5,7 @@ import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
 import { Validator } from '../../shared/Validator.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the project/version/edit, set its status to verified
@@ -153,7 +154,7 @@ export class ApprovalRoutes {
                 reason: req.body.reason
             });
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
 
             let project = await DatabaseHelper.database.Projects.findOne({ where: { id: reqBody.data.id } });
@@ -231,7 +232,7 @@ export class ApprovalRoutes {
                 reason: req.body.reason
             });
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
             let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromVersionId(reqBody.data.id));
             if (!session.user) {
@@ -489,7 +490,7 @@ export class ApprovalRoutes {
                     // parameter validation for projects
                     let reqBodym = Validator.zUpdateProject.safeParse(req.body);
                     if (!reqBodym.success) {
-                        return res.status(400).send({ message: `Invalid parameters.`, errors: reqBodym.error.issues });
+                        return res.status(400).send({ message: Utils.parseErrorMessage(reqBodym.error, `Invalid parameters.`), errors: reqBodym.error.issues });
                     }
                     
                     if (!reqBodym.data || (!reqBodym.data.name && !reqBodym.data.summary && !reqBodym.data.description && !reqBodym.data.gitUrl && !reqBodym.data.category && !reqBodym.data.gameName && !reqBodym.data.authorIds)) {
@@ -526,7 +527,7 @@ export class ApprovalRoutes {
                     // parameter validation for modVersions
                     let reqBodyv = Validator.zUpdateVersion.safeParse(req.body);
                     if (!reqBodyv.success) {
-                        return res.status(400).send({ message: `Invalid parameters.`, errors: reqBodyv.error.issues });
+                        return res.status(400).send({ message: Utils.parseErrorMessage(reqBodyv.error, `Invalid parameters.`), errors: reqBodyv.error.issues });
                     }
 
                     // parameter validation & getting db object

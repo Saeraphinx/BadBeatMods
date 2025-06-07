@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
 import { Server } from 'http';
-import { Categories, DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 import Ajv from "ajv";
 const ajv = new Ajv({strict: false})
 // #region setup
@@ -43,7 +43,7 @@ for (let project of fakeData.projects) {
     projects.push({
         ...project,
         gameName: project.gameName as SupportedGames,
-        category: project.category as Categories,
+        category: project.category,
         status: project.status as Status,
         createdAt: new Date(project.createdAt),
         updatedAt: new Date(project.updatedAt),
@@ -165,6 +165,14 @@ describe.sequential(`Documentation`, async () => {
 
         process.env.NODE_ENV = `test`;
         server = await startServer();
+        await server.database.Games.bulkCreate(fakeData.games.map(game => {
+            return {
+                ...game,
+                createdAt: new Date(game.createdAt),
+                updatedAt: new Date(game.updatedAt),
+            };
+        }), { individualHooks: true });
+        await DatabaseHelper.refreshCache(`games`);
         await server.database.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
         await server.database.Projects.bulkCreate(projects, { individualHooks: true });
         await server.database.Versions.bulkCreate(versions, { individualHooks: true });
@@ -172,9 +180,9 @@ describe.sequential(`Documentation`, async () => {
         //console.log(JSON.stringify(server.database.serverAdmin));
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -206,6 +214,7 @@ describe.sequential(`Documentation`, async () => {
             [`/user/1/mods`, 200, `/user/{id}/mods`],
             [`/users`, 200],
             [`/auth`, 200],
+            [`/games`, 200],
             //[`/games`, 200],
             //[`/versions`, 200],
             //[`/edits`, 200],

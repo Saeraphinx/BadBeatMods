@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { Migration, Platform, SupportedGames } from "../Database.ts";
+import { Migration, Platform } from "../Database.ts";
 
 /*
     Inital Database structure.
@@ -109,7 +109,7 @@ export const up: Migration = async ({ context: sequelize }) => {
         gameName: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: SupportedGames.BeatSaber,
+            defaultValue: `BeatSaber`,
         },
         category: {
             type: DataTypes.TEXT,

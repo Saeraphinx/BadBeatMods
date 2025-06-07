@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll, describe, afterEach } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer } from '../../src/shared/Database.ts';
 // eslint-disable-next-line quotes
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
@@ -29,7 +29,6 @@ for (let project of fakeData.projects) {
     projects.push({
         ...project,
         gameName: project.gameName as SupportedGames,
-        category: project.category as Categories,
         status: project.status as Status,
         createdAt: new Date(project.createdAt),
         updatedAt: new Date(project.updatedAt),
@@ -53,6 +52,12 @@ describe.sequential(`Game Versions - Hooks`, () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(fakeData.games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })), { individualHooks: true });
+        await DatabaseHelper.refreshAllCaches();
     });
 
     afterAll(async () => {
@@ -65,12 +70,12 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should set default version on create of first version only`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
         let version2 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.1.0`,
         });
 
@@ -80,12 +85,12 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should link versions`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
         let version2 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.1.0`,
         });
 
@@ -100,7 +105,7 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should disallow linking to self`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
@@ -110,7 +115,7 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should disallow linking to non-existent version`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
@@ -120,12 +125,12 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should disallow linking to version of different game`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
         let version2 = await db.GameVersions.create({
-            gameName: SupportedGames.ChroMapper,
+            gameName: `Chromapper`,
             version: `1.0.0`,
         });
 
@@ -135,12 +140,12 @@ describe.sequential(`Game Versions - Hooks`, () => {
 
     test(`should mark linked version as linked with first version`, async () => {
         let version1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
         });
 
         let version2 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.1.0`,
         });
 
@@ -158,7 +163,11 @@ describe.sequential(`Game Versions - GV`, () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
-
+        await db.Games.bulkCreate(fakeData.games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })), { individualHooks: true });
         await db.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
         await DatabaseHelper.refreshAllCaches();
     });
@@ -199,7 +208,11 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
-
+        await db.Games.bulkCreate(fakeData.games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })), { individualHooks: true });
         await db.GameVersions.bulkCreate(gameVersions, { individualHooks: true });
         await db.Projects.bulkCreate(projects, { individualHooks: true });
         await db.Versions.bulkCreate(versions, { individualHooks: true });

@@ -58,7 +58,7 @@ export async function validateSession(req: Request, res: Response, role: UserRol
 
     // check if user is banned only
     if (typeof role === `boolean` && role == true) {
-        if (user.roles.sitewide.includes(UserRoles.Banned) || (DatabaseHelper.isValidGameName(gameName) && user.roles.perGame[gameName]?.includes(UserRoles.Banned))) {
+        if (user.roles.sitewide.includes(UserRoles.Banned) || (DatabaseHelper.isSupportedGame(gameName) && user.roles.perGame[gameName]?.includes(UserRoles.Banned))) {
             if (handleRequest) {
                 res.status(403).send({ message: `Forbidden.` });
             }
@@ -71,10 +71,10 @@ export async function validateSession(req: Request, res: Response, role: UserRol
     }
 
     // check if user has role (yes, sitewide overrides perGame roles. hence the name, "sitewide")
-    if (user.roles.sitewide.includes(role) || (DatabaseHelper.isValidGameName(gameName) && user.roles.perGame[gameName]?.includes(role))) {
+    if (user.roles.sitewide.includes(role) || (DatabaseHelper.isSupportedGame(gameName) && user.roles.perGame[gameName]?.includes(role))) {
         return { user: user };
     } else {
-        if (user.roles.sitewide.includes(UserRoles.AllPermissions) || (DatabaseHelper.isValidGameName(gameName) && user.roles.perGame[gameName]?.includes(UserRoles.AllPermissions))) {
+        if (user.roles.sitewide.includes(UserRoles.AllPermissions) || (DatabaseHelper.isSupportedGame(gameName) && user.roles.perGame[gameName]?.includes(UserRoles.AllPermissions))) {
             return { user: user };
         } else {
             // process the "role in any game" check
@@ -82,7 +82,7 @@ export async function validateSession(req: Request, res: Response, role: UserRol
                 gameName = null;
                 //check for the user role in any game
                 for (const game in user.roles.perGame) {
-                    if (!DatabaseHelper.isValidGameName(game) || !user.roles.perGame[game]) {
+                    if (!DatabaseHelper.isSupportedGame(game) || !user.roles.perGame[game]) {
                         continue; // skip invalid games
                     }
 

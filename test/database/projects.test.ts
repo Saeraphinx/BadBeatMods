@@ -1,17 +1,17 @@
 import { faker } from "@faker-js/faker";
 import { SemVer } from "semver";
-import { projects, users } from '../fakeData.json' with { type: 'json' };
+import { projects, users, games } from '../fakeData.json' with { type: 'json' };
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { DatabaseManager, GameVersion, SupportedGames, Categories, Platform, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, Project, Version, ProjectInfer, VersionInfer } from "../../src/shared/Database";
+import { DatabaseManager, GameVersion, SupportedGames, Platform, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, Project, Version, ProjectInfer, VersionInfer } from "../../src/shared/Database";
 import { WebhookLogType } from "../../src/shared/ModWebhooks.ts";
 
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?:string) => {}),
-        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => {}),
+        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?: string) => { }),
+        sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?: string) => { }),
+        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => { }),
     };
 });
 
@@ -22,11 +22,16 @@ describe.sequential(`Projects - Hooks`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -36,6 +41,7 @@ describe.sequential(`Projects - Hooks`, async () => {
             statusHistory: [],
             summary: `Test Summary`,
         };
+        await DatabaseHelper.refreshAllCaches();
     });
 
     afterAll(async () => {
@@ -82,11 +88,17 @@ describe.sequential(`Projects - Getting Mods`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -96,9 +108,9 @@ describe.sequential(`Projects - Getting Mods`, async () => {
             statusHistory: [],
             summary: `Test Summary`,
         };
-        
+
         defaultGameVersionData = {
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             version: `1.29.1`,
             defaultVersion: true,
             linkedVersionIds: [],
@@ -167,18 +179,25 @@ describe.sequential(`Projects - Permissions`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         testUser1 = await db.Users.create({
             ...users[0],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[0].createdAt),
             updatedAt: new Date(users[0].updatedAt),
         });
         testUser2 = await db.Users.create({
             ...users[1],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[1].createdAt),
             updatedAt: new Date(users[1].updatedAt),
         });
+        await DatabaseHelper.refreshAllCaches();
     });
 
     afterAll(async () => {
@@ -218,10 +237,10 @@ describe.sequential(`Projects - Permissions`, async () => {
             name: `Test Mod`,
             description: `Test Description`,
             summary: `Test Summary`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             status: status as Status,
             authorIds: [testUser1.id],
-            category: Categories.Core,
+            category: `Core`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastUpdatedById: 1,
@@ -235,16 +254,18 @@ describe.sequential(`Projects - Permissions`, async () => {
             testUser = undefined;
         } else {
             shouldCheckPerGame = true;
-            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser2.roles = { sitewide: [role as UserRoles], perGame: {} };
             testUser = testUser2;
         }
         let isAllowed = await mod.isAllowedToView(testUser);
         expect(isAllowed).toEqual(expected); // check sitewide roles
 
         if (shouldCheckPerGame) {
-            testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
-            }};
+            testUser2.roles = {
+                sitewide: [], perGame: {
+                    [games[0].name]: [role as UserRoles]
+                }
+            };
 
             isAllowed = await mod.isAllowedToView(testUser2);
             expect(isAllowed).toEqual(expected); // check per game roles
@@ -263,10 +284,10 @@ describe.sequential(`Projects - Permissions`, async () => {
             name: `Test Mod`,
             description: `Test Description`,
             summary: `Test Summary`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             status: Status.Private,
             authorIds: [testUser1.id],
-            category: Categories.Core,
+            category: `Core`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastUpdatedById: 1,
@@ -281,7 +302,7 @@ describe.sequential(`Projects - Permissions`, async () => {
             testUser = undefined;
         } else {
             shouldCheckPerGame = true;
-            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser2.roles = { sitewide: [role as UserRoles], perGame: {} };
             testUser = testUser2;
         }
         let isAllowed = await mod.isAllowedToEdit(testUser);
@@ -289,9 +310,11 @@ describe.sequential(`Projects - Permissions`, async () => {
         expect(Project.prototype.isAllowedToView).toHaveBeenNthCalledWith(1, testUser);
 
         if (shouldCheckPerGame) {
-            testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
-            }};
+            testUser2.roles = {
+                sitewide: [], perGame: {
+                    [`BeatSaber`]: [role as UserRoles]
+                }
+            };
 
             isAllowed = await mod.isAllowedToEdit(testUser);
             expect(isAllowed).toEqual(expected); // check per game roles
@@ -309,23 +332,30 @@ describe.sequential(`Projects - Editing`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
+
         testUser1 = await db.Users.create({
             ...users[0],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[0].createdAt),
             updatedAt: new Date(users[0].updatedAt),
         });
         await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.29.1`,
             defaultVersion: true,
             linkedVersionIds: [],
         });
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,

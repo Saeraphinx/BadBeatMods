@@ -2,6 +2,7 @@
 // @ts-nocheck i do not gaf about this file anymore since beatmods is dead
 /* eslint-disable no-console */ // see above
 
+/*
 import { Router } from 'express';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Categories, ContentHash, DatabaseHelper, Project, Version, Platform, SupportedGames, UserRoles, Status } from '../../shared/Database.ts';
@@ -411,3 +412,4 @@ export class ImportRoutes {
         return dependancyRecord;
     }
 }
+    */

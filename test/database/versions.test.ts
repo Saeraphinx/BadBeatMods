@@ -1,8 +1,8 @@
 import { test, expect, beforeAll, afterAll, beforeEach, describe, afterEach, vi } from 'vitest';
-import { Categories, DatabaseManager, GameVersion, Status, SupportedGames, Platform, User, DatabaseHelper, UserRoles, EditQueue, Version, VersionInfer, Project, ProjectInfer } from '../../src/shared/Database.ts';
+import { DatabaseManager, GameVersion, Status, SupportedGames, Platform, User, DatabaseHelper, UserRoles, EditQueue, Version, VersionInfer, Project, ProjectInfer, Game } from '../../src/shared/Database.ts';
 import { UniqueConstraintError } from 'sequelize';
 // eslint-disable-next-line quotes
-import { projects, users } from '../fakeData.json' with { type: 'json' };
+import { projects, users, games } from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { faker } from '@faker-js/faker';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
@@ -23,20 +23,28 @@ describe.sequential(`Versions - Hooks`, async () => {
     let testMod1: Project;
     let testMod2: Project;
     let testModGV: GameVersion[];
+    let testGames: Game[];
     let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
         try {
+            testGames = await db.Games.bulkCreate(games.map((game) => ({
+                ...game,
+                createdAt: new Date(game.createdAt),
+                updatedAt: new Date(game.updatedAt),
+            })));
+            await DatabaseHelper.refreshCache(`games`);
+
             testModGV = await db.GameVersions.bulkCreate([
                 {
-                    gameName: SupportedGames.BeatSaber,
+                    gameName: `BeatSaber`,
                     version: `1.0.0`,
                     defaultVersion: true,
                 },
                 {
-                    gameName: SupportedGames.BeatSaber,
+                    gameName: `BeatSaber`,
                     version: `1.1.0`,
                     defaultVersion: false,
                 }
@@ -44,9 +52,9 @@ describe.sequential(`Versions - Hooks`, async () => {
 
             testMod1 = await db.Projects.create({
                 ...projects[0],
-                gameName: SupportedGames.BeatSaber,
+                gameName: `BeatSaber`,
                 status: projects[0].status as Status,
-                category: projects[0].category as Categories,
+                category: projects[0].category,
                 authorIds: [1],
                 createdAt: new Date(projects[0].createdAt),
                 updatedAt: new Date(projects[0].updatedAt),
@@ -54,9 +62,9 @@ describe.sequential(`Versions - Hooks`, async () => {
             testModGV = await db.GameVersions.findAll({ where: { gameName: testMod1.gameName } });
             testMod2 = await db.Projects.create({
                 ...projects[1],
-                gameName: SupportedGames.BeatSaber,
+                gameName: `BeatSaber`,
                 status: projects[0].status as Status,
-                category: projects[0].category as Categories,
+                category: projects[0].category,
                 authorIds: [1],
                 createdAt: new Date(projects[0].createdAt),
                 updatedAt: new Date(projects[0].updatedAt),
@@ -280,6 +288,12 @@ describe.sequential(`Versions - Permissions`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+                ...game,
+                createdAt: new Date(game.createdAt),
+                updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         testUser1 = await db.Users.create({
             ...users[0],
             roles: {sitewide: [], perGame: {}},
@@ -293,29 +307,29 @@ describe.sequential(`Versions - Permissions`, async () => {
             updatedAt: new Date(users[1].updatedAt),
         });
         testGv1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
             defaultVersion: true,
         });
         testGv2 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.1.0`,
             defaultVersion: false,
         });
         testMod1 = await db.Projects.create({
             ...projects[0],
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             status: Status.Verified,
-            category: projects[0].category as Categories,
+            category: projects[0].category,
             authorIds: [testUser1.id],
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),
         });
         testMod2 = await db.Projects.create({
             ...projects[1],
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             status: Status.Verified,
-            category: projects[0].category as Categories,
+            category: projects[0].category,
             authorIds: [testUser1.id],
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),
@@ -383,7 +397,7 @@ describe.sequential(`Versions - Permissions`, async () => {
 
         if (shouldCheckPerGame) {
             testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
+                [`BeatSaber`]: [role as UserRoles]
             }};
 
             isAllowed = await modVersion.isAllowedToView(testUser2);
@@ -429,7 +443,7 @@ describe.sequential(`Versions - Permissions`, async () => {
 
         if (shouldCheckPerGame) {
             testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
+                [`BeatSaber`]: [role as UserRoles]
             }};
 
             isAllowed = await modVersion.isAllowedToEdit(testUser);
@@ -456,6 +470,12 @@ describe.sequential(`Versions - Editing`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+                ...game,
+                createdAt: new Date(game.createdAt),
+                updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         testUser1 = await db.Users.create({
             ...users[0],
             roles: {sitewide: [], perGame: {}},
@@ -469,29 +489,29 @@ describe.sequential(`Versions - Editing`, async () => {
             updatedAt: new Date(users[1].updatedAt),
         });
         testGv1 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.0.0`,
             defaultVersion: true,
         });
         testGv2 = await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.1.0`,
             defaultVersion: false,
         });
         testMod1 = await db.Projects.create({
             ...projects[0],
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             status: Status.Verified,
-            category: projects[0].category as Categories,
+            category: projects[0].category,
             authorIds: [testUser1.id],
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),
         });
         testMod2 = await db.Projects.create({
             ...projects[1],
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             status: Status.Verified,
-            category: projects[0].category as Categories,
+            category: projects[0].category,
             authorIds: [testUser1.id],
             createdAt: new Date(projects[0].createdAt),
             updatedAt: new Date(projects[0].updatedAt),

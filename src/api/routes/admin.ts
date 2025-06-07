@@ -129,7 +129,7 @@ export class AdminRoutes {
             }).required().strict().safeParse(req.query);
 
             if (!params.success) {
-                return res.status(400).send({ message: `Invalid parameters.` });
+                return res.status(400).send({ message: Utils.parseErrorMessage(params.error, `Invalid parameters.`), errors: params.error.issues });
             }
 
             let isSpecificVersion = params.data.versionId === 0 || params.data.versionId === -1;
@@ -324,7 +324,7 @@ export class AdminRoutes {
 
             let reqBody = Validator.zEditUserRoles.safeParse(req.body);
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.` });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`) });
             }
 
             let user = await DatabaseHelper.database.Users.findByPk(reqBody.data.userId);
@@ -387,7 +387,6 @@ export class AdminRoutes {
 
                         if (reqBody.data.gameName) {
                             if (Array.isArray(user.roles.perGame[reqBody.data.gameName])) {
-                                // @ts-expect-error - TS doesn't like this but it's fine
                                 if (user.roles.perGame[reqBody.data.gameName].length > 0) {
                                     return res.status(400).send({ message: `User cannot be banned due to already having roles.`, user });
                                 }
@@ -485,7 +484,7 @@ export class AdminRoutes {
             let reqBody = Validator.zEditUserRoles.safeParse(req.body);
 
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.` });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`) });
             }
 
             let user = await DatabaseHelper.database.Users.findByPk(reqBody.data.userId);

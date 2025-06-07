@@ -63,7 +63,6 @@ export const DEFAULT_CONFIG = {
         token: `BOT_TOKEN`
     },
     flags: {
-        enableBeatModsDownloads: true, // enables downloading mods from BeatMods
         enableBeatModsCompatibility: true, // enables all of the endpoints structured to be compatible with BeatMods
         enableBeatModsRouteCompatibility: true, // enables the BeatMods route compatibility (e.g. force hosts /api/v1/mods, /versions.json, and /aliases.json). enableBeatModsCompatibility must be enabled for this to work.
         logRawSQL: false, // logs raw SQL queries to the console
@@ -129,7 +128,6 @@ export class Config {
         token: string;
     };
     private static _flags: {
-        enableBeatModsDownloads: boolean;
         enableBeatModsCompatibility: boolean;
         enableBeatModsRouteCompatibility: boolean;
         logRawSQL: boolean;
@@ -598,12 +596,6 @@ export class Config {
             }
             // #endregion
             // #region Flags
-            if (process.env.FLAGS_ENABLEBEATMODSDOWNLOADS) {
-                Config._flags.enableBeatModsDownloads = process.env.FLAGS_ENABLEBEATMODSDOWNLOADS === `true`;
-            } else {
-                failedToLoad.push(`flags.enableBeatModsDownloads`);
-            }
-
             if (process.env.FLAGS_ENABLEBEATMODSCOMPATIBILITY) {
                 Config._flags.enableBeatModsCompatibility = process.env.FLAGS_ENABLEBEATMODSCOMPATIBILITY === `true`;
             } else {

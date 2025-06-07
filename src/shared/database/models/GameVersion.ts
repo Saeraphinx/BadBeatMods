@@ -70,7 +70,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         if (svA && svB) {
             return svA.compare(svB); // the earliest version is first in the array
         } else {
-            return b.version.localeCompare(a.version);
+            return a.version.localeCompare(b.version);
         }
     }
 

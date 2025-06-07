@@ -5,14 +5,11 @@ import { GameVersion } from "./models/GameVersion.ts";
 import { Project } from "./models/Project.ts";
 import { Version } from "./models/Version.ts";
 import { MOTD } from "./models/MOTD.ts";
+import { Game } from "./models/Game.ts";
 
 // #region Enums & Types
-export enum SupportedGames {
-    BeatSaber = `BeatSaber`,
-    ChroMapper = `ChroMapper`,
-    TromboneChampUnflattened = `TromboneChampUnflattened`,
-    SpinRhythmXD = `SpinRhythmXD`,
-}
+export type SupportedGames = string;
+export type Category = string;
 
 export type UserAPIPublicResponse = {
     id: number;
@@ -30,8 +27,6 @@ export type GameVersionAPIPublicResponse = {
     gameName: SupportedGames;
     version: string;
     defaultVersion: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
 };
 export type ProjectAPIPublicResponse = {
     id: number;
@@ -39,7 +34,7 @@ export type ProjectAPIPublicResponse = {
     summary: string;
     description: string;
     gameName: SupportedGames;
-    category: Categories;
+    category: Category;
     authors: UserAPIPublicResponse[];
     status: Status;
     iconFileName: string;
@@ -73,7 +68,7 @@ export type VersionAPIPublicResponse = {
 export interface UserRolesObject {
     sitewide: UserRoles[];
     perGame: {
-        [gameName in SupportedGames]?: UserRoles[];
+        [key: string]: UserRoles[];
     }
 }
 
@@ -127,23 +122,6 @@ export enum Status {
     Verified = `verified`,
 }
 
-export enum Categories {
-    Core = `core`, // BSIPA, SongCore, etc
-    Essential = `essential`, // Camera2, BeatSaverDownloader, BeatSaverUpdater, etc
-    Library = `library`,
-    Cosmetic = `cosmetic`,
-    PracticeTraining = `practice`,
-    Gameplay = `gameplay`,
-    StreamTools = `streamtools`,
-    UIEnhancements = `ui`,
-    Lighting = `lighting`,
-    TweaksTools = `tweaks`,
-    Multiplayer = `multiplayer`,
-    TextChanges = `text`,
-    Editor = `editor`,
-    Other = `other`,
-}
-
 export interface Dependency {
     parentId: number; // mod/project id
     sv: string; // "^1.0.0"
@@ -168,6 +146,7 @@ export class DatabaseHelper {
         users: User[],
         editApprovalQueue: EditQueue[],
         motd: MOTD[],
+        games: Game[],
     } = {
             gameVersions: [],
             versions: [],
@@ -175,6 +154,7 @@ export class DatabaseHelper {
             users: [],
             editApprovalQueue: [],
             motd: [],
+            games: [],
         };
     public static mapCache: {
         gameVersions: Map<number, GameVersion>,
@@ -212,6 +192,7 @@ export class DatabaseHelper {
         DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
+        DatabaseHelper.cache.games = await DatabaseHelper.database.Games.findAll();
         DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
         DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((project) => [project.id, project]));
         DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((version) => [version.id, version]));
@@ -219,7 +200,7 @@ export class DatabaseHelper {
         Logger.debug(`Finished refreshing all caches`);
     }
 
-    public static async refreshCache(tableName: `gameVersions` | `versions` | `projects` | `users` | `editApprovalQueue`) {
+    public static async refreshCache(tableName: `gameVersions` | `versions` | `projects` | `users` | `editApprovalQueue` | `games`) {
         Logger.debug(`Refreshing cache for ${tableName}`);
         switch (tableName) {
             case `gameVersions`:
@@ -240,6 +221,9 @@ export class DatabaseHelper {
                 break;
             case `editApprovalQueue`:
                 DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
+                break;
+            case `games`:
+                DatabaseHelper.cache.games = await DatabaseHelper.database.Games.findAll();
                 break;
         }
         Logger.debug(`Finished refreshing cache for ${tableName}`);
@@ -270,8 +254,13 @@ export class DatabaseHelper {
         if (!edit) {
             return undefined;
         }
-        if (edit.isProject() && `gameName` in edit.object && edit.object.gameName) {
-            return edit.object.gameName;
+        if (edit.isProject()) {
+            if (`gameName` in edit.object && edit.object.gameName) {
+                return edit.object.gameName as SupportedGames;
+            } else {
+                let gameName = DatabaseHelper.getGameNameFromProjectId(edit.objectId);
+                return gameName ? gameName : undefined;
+            }
         } else if (edit.isVersion()) {
             let gameName = DatabaseHelper.getGameNameFromVersionId(edit.objectId);
             return gameName ? gameName : undefined;
@@ -286,28 +275,47 @@ export class DatabaseHelper {
         return validateEnumValue(value, Status);
     }
 
-    public static isValidCategory(value: string): value is Categories {
-        return validateEnumValue(value, Categories);
-    }
-
-    public static isValidGameName(name: any): name is SupportedGames {
-        if (!name) {
-            return false;
-        }
-
-        if (typeof name !== `string` && typeof name !== `number`) {
+    public static isSupportedGame(name: unknown): name is SupportedGames {
+        if (typeof name !== `string`) {
             return false;
         }
         
-        return validateEnumValue(name, SupportedGames);
+        if (this.cache.games.length === 0) {
+            Logger.warn(`No games found in cache. Please ensure the database is initialized and games are loaded.`);
+            return false;
+        }
+        
+        if (this.cache.games.find((app) => app.name === name)) {
+            return true;
+        } else {
+            return false;
+        }
     }
+
+    public static isValidCategory(value: unknown, gameName: SupportedGames): value is Category {
+        if (typeof value !== `string`) {
+            return false;
+        }
+
+        if (value === `Core` || value === `Essential` || value === `Other`) {
+            return true; // Core, Essential, and Other are always valid categories
+        }
+
+        // Check if the category exists in any game
+        let game = DatabaseHelper.cache.games.find((g) => g.name === gameName);
+        if (game && game.categories.includes(value)) {
+            return true;
+        }
+        return false;
+    }
+
 
     public static async isValidGameVersion(gameName: string, version: string): Promise<number | null> {
         if (!gameName || !version) {
             return null;
         }
 
-        if (!DatabaseHelper.isValidGameName(gameName)) {
+        if (!DatabaseHelper.isSupportedGame(gameName)) {
             return null;
         }
 

@@ -1,5 +1,5 @@
 import { Request, Express, Response, Router } from 'express';
-import { Categories, DatabaseHelper, GameVersion, Project, Version, Platform, SupportedGames, Status } from '../../shared/Database.ts';
+import { DatabaseHelper, GameVersion, Project, Version, Platform, Status } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Config } from '../../shared/Config.ts';
 import { coerce } from 'semver';
@@ -48,7 +48,7 @@ export class BeatModsRoutes {
             // #swagger.description = 'Legacy BeatMods API endpoint. This is available for mod downloaders that have not been updated to use the new API.<br><br>This endpoint does not work the same way as the old BeatMods API, but it should be close enough to work with most mod downloaders.'
             // #swagger.deprecated = true
             // #swagger.responses[200] = { description: 'Returns all versions.' }
-            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber).flatMap((gameVersion) => gameVersion.version);
+            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`).flatMap((gameVersion) => gameVersion.version);
             versions.sort((a, b) => {
                 let verA = coerce(a, { loose: true });
                 let verB = coerce(b, { loose: true });
@@ -68,7 +68,7 @@ export class BeatModsRoutes {
                 // #swagger.description = 'Legacy BeatMods API endpoint. This is available for mod downloaders that have not been updated to use the new API.<br><br>This endpoint does not work the same way as the old BeatMods API, but it should be close enough to work with most mod downloaders.'
                 // #swagger.deprecated = true
                 // #swagger.responses[200] = { description: 'Returns all versions.' }
-                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber).flatMap((gameVersion) => gameVersion.version);
+                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`).flatMap((gameVersion) => gameVersion.version);
                 versions.sort((a, b) => {
                     let verA = coerce(a, { loose: true });
                     let verB = coerce(b, { loose: true });
@@ -91,7 +91,7 @@ export class BeatModsRoutes {
             // #swagger.responses[200] = { description: 'Returns all aliases.' }
             // #swagger.deprecated = true
             let aliases: any = {};
-            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber);
+            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`);
             for (let version of versions) {
                 aliases[version.version] = [];
             }
@@ -108,7 +108,7 @@ export class BeatModsRoutes {
             // #swagger.responses[200] = { description: 'Returns all aliases.' }
             // #swagger.deprecated = true
                 let aliases: any = {};
-                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber);
+                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`);
                 for (let version of versions) {
                     aliases[version.version] = [];
                 }
@@ -126,7 +126,7 @@ export class BeatModsRoutes {
             version = undefined;
         }
 
-        let gameVersion = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === version && gameVersion.gameName === SupportedGames.BeatSaber);
+        let gameVersion = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === version && gameVersion.gameName === `BeatSaber`);
         if (!gameVersion && !version) {
             gameVersion = undefined;
         } else if (!gameVersion) {
@@ -317,7 +317,7 @@ export class BeatModsRoutes {
                 })
             }],
             dependencies: doResolution ? dependencies as BeatModsMod[] : dependencies as string[],
-            required: (mod.category === Categories.Core),
+            required: mod.category === `Core`,
         };
     }
 }

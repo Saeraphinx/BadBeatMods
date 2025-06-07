@@ -60,7 +60,7 @@ export class CreateModRoutes {
             let iconIsValid = false;
 
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
 
             // validate icon if it exists
@@ -169,7 +169,7 @@ export class CreateModRoutes {
             }
 
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
 
             let project = await DatabaseHelper.database.Projects.findOne({ where: { id: projectId.data } });

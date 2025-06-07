@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database.ts';
+import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Validator } from '../../shared/Validator.ts';
@@ -15,17 +15,212 @@ export class VersionsRoutes {
 
     private async loadRoutes() {
         this.router.get(`/games`, async (req, res) => {
-            // #swagger.tags = ['Versions']
-            const deduplicatedArray = Array.from(new Set(DatabaseHelper.cache.gameVersions.map(a => a.gameName)));
-            let games = [];
-            for (let gameName of deduplicatedArray) {
-                games.push({ gameName, default: DatabaseHelper.cache.gameVersions.find(v => v.gameName === gameName && v.defaultVersion === true) });
+            /*
+            #swagger.tags = ['Versions']
+            #swagger.summary = 'Get all games & their versions.'
+            #swagger.description = 'Returns a list of all games and their versions.'
+            #swagger.parameters['shouldShowVersions'] = {
+                description: 'Whether to include versions in the response.',
+                type: 'boolean',
+                required: false,
+                in: 'query',
+                default: true
             }
+            #swagger.responses[200] = {
+                description: 'Returns a list of games with their versions.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                $ref: '#/components/schemas/GameAPIPublicResponse'
+                            }
+                        }
+                    }
+                }
+            }
+            */
+            let shouldShowVersions = req.query.shouldShowVersions === `true`;
+            const games = DatabaseHelper.cache.games.map(game => game.toAPIResponse(shouldShowVersions));
             return res.status(200).send(games);
         });
 
+        this.router.get(`/games/:gameName`, async (req, res) => {
+            /*
+            #swagger.tags = ['Versions']
+            #swagger.summary = 'Get game by name.'
+            #swagger.description = 'Returns a specific game and its versions by name.'
+            #swagger.parameters['gameName'] = {
+                description: 'The name of the game to get versions for.',
+                type: 'string',
+                required: true
+            }
+            #swagger.responses[200] = {
+                description: 'Returns the game versions for the specified game.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/GameAPIPublicResponse'
+                        }
+                    }
+                }
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            if (!gameName.success) {
+                return res.status(400).send({ message: `Invalid gameName` });
+            }
+            let game = DatabaseHelper.cache.games.find(g => g.name === gameName.data);
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            return res.status(200).send(game.toAPIResponse());
+        });
+
+        this.router.post(`/games/:gameName/version`, async (req, res) => {
+            /*
+            #swagger.tags = ['Versions']
+            #swagger.summary = 'Add a version to a game.'
+            #swagger.description = 'Adds a new version to the specified game.'
+            #swagger.parameters['gameName'] = {
+                description: 'The name of the game to add a version to.',
+                type: 'string',
+                required: true
+            }
+            #swagger.requestBody = {
+                description: 'The version to add to the game.',
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                version: {
+                                    type: 'string',
+                                    description: 'The version to add.'
+                                }
+                            },
+                            required: ['version']
+                        }
+                    }
+                }
+            }
+            #swagger.responses[200] = {
+                description: 'Version added successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/GameAPIPublicResponse'
+                        }
+                    }
+                }
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            if (!gameName.success) {
+                return res.status(400).send({ message: `Invalid gameName` });
+            }
+            let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
+            if (!session.user) {
+                return;
+            }
+            let version = Validator.z.string().safeParse(req.body.version);
+            if (!version.success) {
+                return res.status(400).send({ message: `Invalid version`, errors: version.error.issues });
+            }
+
+            let versions = await DatabaseHelper.database.GameVersions.findAll({ where: { version: version.data, gameName: gameName.data} });
+            if (versions.length > 0) {
+                return res.status(409).send({ message: `Version already exists.` });
+            }
+        
+            DatabaseHelper.database.GameVersions.create({
+                gameName: gameName.data,
+                version: version.data,
+                defaultVersion: false,
+            }).then((version) => {
+                Logger.log(`Version ${version.gameName} ${version.version} added by ${session.user.username}.`);
+                DatabaseHelper.refreshCache(`gameVersions`);
+                return res.status(200).send(version);
+            }).catch((error) => {
+                Logger.error(`Error creating version: ${error}`);
+                return res.status(500).send({ message: `Error creating version: ${error}` });
+            });
+        });
+            
+        this.router.post(`/games/:gameName/category`, async (req, res) => {
+            /*
+            #swagger.tags = ['Versions']
+            #swagger.summary = 'Add a category to a game.'
+            #swagger.description = 'Adds a new category to the specified game.'
+            #swagger.parameters['gameName'] = {
+                description: 'The name of the game to add a category to.',
+                type: 'string',
+                required: true
+            }
+            #swagger.requestBody = {
+                description: 'The category to add to the game.',
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                category: {
+                                    type: 'string',
+                                    description: 'The category to add.'
+                                }
+                            },
+                            required: ['category']
+                        }
+                    }
+                }
+            }
+            #swagger.responses[200] = {
+                description: 'Category added successfully.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/GameAPIPublicResponse'
+                        }
+                    }
+                }
+            }
+            #swagger.responses[400]
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            if (!gameName.success) {
+                return res.status(400).send({ message: `Invalid gameName` });
+            }
+            let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
+            if (!session.user) {
+                return;
+            }
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+            let newCategory = Validator.z.string().min(1).max(64).safeParse(req.body.category);
+            if (!newCategory.success) {
+                return res.status(400).send({ message: `Invalid category`, errors: newCategory.error.issues });
+            }
+
+            // Check if the category already exists
+            if (game.categories.includes(newCategory.data)) {
+                return res.status(409).send({ message: `Category already exists for this game.` });
+            }
+
+            game.categories.push(newCategory.data);
+            await game.save();
+            DatabaseHelper.refreshCache(`games`);
+            Logger.log(`Category ${newCategory.data} added to game ${game.name} by ${session.user.username}.`);
+        });
+
+        // Deprecated routes, kept since they still work.
         this.router.get(`/versions`, async (req, res) => {
             // #swagger.tags = ['Versions']
+            // #swagger.deprecated = true
             let gameName = Validator.zGameName.safeParse(req.query.gameName).data;
             
             let versions;
@@ -50,6 +245,7 @@ export class VersionsRoutes {
 
         this.router.post(`/versions`, async (req, res) => {
             // #swagger.tags = ['Versions']
+            // #swagger.deprecated = true
             /* #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []
@@ -95,7 +291,8 @@ export class VersionsRoutes {
 
         this.router.get(`/versions/default`, async (req, res) => {
             // #swagger.tags = ['Versions']
-            let gameName = Validator.zGameName.default(SupportedGames.BeatSaber).safeParse(req.query.gameName);
+            // #swagger.deprecated = true
+            let gameName = Validator.zGameName.default(`BeatSaber`).safeParse(req.query.gameName);
             if (!gameName.success) {
                 return res.status(400).send({ message: `Invalid gameName` });
             }
@@ -107,6 +304,7 @@ export class VersionsRoutes {
 
         this.router.post(`/versions/default`, async (req, res) => {
             // #swagger.tags = ['Versions']
+            // #swagger.deprecated = true
             /* #swagger.security = [{
                 "bearerAuth": [],
                 "cookieAuth": []

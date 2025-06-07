@@ -4,6 +4,7 @@ import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { SemVer } from 'semver';
+import { Utils } from '../../shared/Utils.ts';
 
 export class GetModRoutes {
     private router: Router;
@@ -59,7 +60,7 @@ export class GetModRoutes {
             */
             let reqQuery = Validator.zGetMods.safeParse(req.query);
             if (!reqQuery.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqQuery.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqQuery.error, `Invalid parameters.`), errors: reqQuery.error.issues });
             }
 
             // set the default gameversion if it's not provided

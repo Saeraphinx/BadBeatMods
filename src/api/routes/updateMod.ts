@@ -85,7 +85,7 @@ export class UpdateProjectRoutes {
             }
 
             let isGameChange = reqBody.data.gameName && reqBody.data.gameName !== project.gameName;
-            if (project.isAllowedToEdit(session.user, isGameChange) == false) {
+            if (project.isAllowedToEdit(session.user, isGameChange || false) == false) {
                 return res.status(401).send({ message: `You cannot edit this project.` });
             }
 

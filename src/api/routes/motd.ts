@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
+import { Utils } from '../../shared/Utils.ts';
 
 export class MOTDRoutes {
     private router: Router;
@@ -15,7 +16,7 @@ export class MOTDRoutes {
             // #swagger.tags = ['MOTD']
             let reqQuery = Validator.zGetMOTD.safeParse(req.query.gameName);
             if (!reqQuery.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqQuery.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqQuery.error, `Invalid parameters.`), errors: reqQuery.error.issues });
             }
 
             let gameVersionObj = DatabaseHelper.cache.gameVersions.find(gV => gV.gameName === reqQuery.data.gameName && gV.version === reqQuery.data.gameVersion);
@@ -35,7 +36,7 @@ export class MOTDRoutes {
             }] */
             let reqBody = Validator.zCreateMOTD.safeParse(req.body);
             if (!reqBody.success) {
-                return res.status(400).send({ message: `Invalid parameters.`, errors: reqBody.error.issues });
+                return res.status(400).send({ message: Utils.parseErrorMessage(reqBody.error, `Invalid parameters.`), errors: reqBody.error.issues });
             }
 
             let session = await validateSession(req, res, UserRoles.Poster, reqBody.data.gameName);
@@ -44,7 +45,7 @@ export class MOTDRoutes {
             }
 
             let motd = DatabaseHelper.database.MOTDs.create({
-                gameName: reqBody.data.gameName || SupportedGames.BeatSaber,
+                gameName: reqBody.data.gameName,
                 gameVersionIds: reqBody.data.gameVersionIds || null,
                 message: reqBody.data.message,
                 platforms: reqBody.data.platforms || null,

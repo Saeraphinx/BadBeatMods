@@ -1,9 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { Categories, Platform, Status, UserRoles } from '../shared/Database.ts';
+import { Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
 import { ApprovalAction } from './routes/approval.ts';
-import fs from 'fs';
 type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
@@ -65,7 +64,6 @@ const ProjectDBObject: OpenAPIV3_1.SchemaObject = {
         },
         category: {
             type: `string`,
-            enum: Object.values(Categories),
         },
         authorIds: {
             type: `array`,
@@ -260,17 +258,25 @@ const UserDBObject: OpenAPIV3_1.SchemaObject = {
 const GameVersionDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
     properties: {
+        id: {
+            type: `integer`,
+            description: `The ID of the game version.`,
+            example: 1
+        },
         gameName: {
             type: `string`,
-            description: `The name of the game this version is for. This is used to identify the game.`,
+            description: `The name of the game this version is for. This is the same as the name field in the Game object.`,
             example: `BeatSaber`
         },
         version: {
             type: `string`,
-            description: `The version string. This is used to identify the version of the game.`,
+            description: `The version string.`,
             example: `1.0.0`
         },
-        ...DBObject.properties
+        defaultVersion: {
+            type: `boolean`,
+            description: `Whether this version is the default version for the game.`,
+        }
     }
 };
 const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
@@ -378,6 +384,34 @@ const VersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
         updatedAt: VersionDBObject.properties!.updatedAt
     },
 };
+const GameAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        name: {
+            type: `string`,
+            description: `The name of the game.`,
+            example: `BeatSaber`,
+        },
+        displayName: {
+            type: `string`,
+            description: `The display name of the game.`,
+            example: `Beat Saber`,
+        },
+        categories: {
+            type: `array`,
+            items: {
+                type: `string`,
+            }
+        },
+        versions: {
+            type: `array`,
+            items: {
+                $ref: `#/components/schemas/GameVersionAPIPublicResponse`
+            }
+        }
+    }
+};
+        
 // #endregion
 // #region General API Schemas
 const APIStatus: OpenAPIV3_1.SchemaObject = {
@@ -492,7 +526,7 @@ const zCreateVersion: SchemaObject = {
         dependencies: VersionDBObject.properties!.dependencies,
         platform: VersionDBObject.properties!.platform,
     }
-}
+};
 
 const zUpdateProject: SchemaObject = {
     type: `object`,
@@ -770,6 +804,7 @@ const doc = {
             VersionAPIPublicResponse,
             UserAPIPublicResponse,
             GameVersionAPIPublicResponse,
+            GameAPIPublicResponse,
             APIStatus,
             zCreateProject,
             zCreateVersion,

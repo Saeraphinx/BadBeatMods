@@ -25,7 +25,6 @@ import { GetModRoutes } from './api/routes/getMod.ts';
 import { UpdateProjectRoutes } from './api/routes/updateMod.ts';
 import { AuthRoutes } from './api/routes/auth.ts';
 import { VersionsRoutes } from './api/routes/versions.ts';
-import { ImportRoutes } from './api/routes/import.ts';
 import { AdminRoutes } from './api/routes/admin.ts';
 import { ApprovalRoutes } from './api/routes/approval.ts';
 import { BeatModsRoutes } from './api/routes/beatmods.ts';
@@ -221,7 +220,6 @@ function init() {
     new UpdateProjectRoutes(apiRouter);
     new ApprovalRoutes(apiRouter);
     new AuthRoutes(apiRouter);
-    new ImportRoutes(apiRouter);
     new AdminRoutes(apiRouter);
     new VersionsRoutes(apiRouter);
     new MOTDRoutes(apiRouter);
@@ -274,7 +272,7 @@ function init() {
                         url: `${Config.server.url}${Config.server.apiRoute}/swagger/public.json`,
                         name: `Public API`,
                     }
-                ]
+                ],
             }
         }));
     }

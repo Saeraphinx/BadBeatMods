@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Categories, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
 import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
@@ -17,7 +17,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
     declare summary: string;
     declare description: string;
     declare gameName: SupportedGames;
-    declare category: Categories;
+    declare category: Category;
     declare authorIds: number[];
     declare status: Status;
     declare iconFileName: string;
@@ -137,6 +137,10 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
     }
 
     public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, project: Project}> {
+        if (DatabaseHelper.isValidCategory(object.category, object.gameName || this.gameName) === false) {
+            throw new Error(`Invalid category: ${object.category}`);
+        }
+
         if (this.status !== Status.Verified && this.status !== Status.Unverified) {
             await this.update({ ...object, lastUpdatedById: submitter.id });
             sendProjectLog(this, submitter, WebhookLogType.Text_Updated);

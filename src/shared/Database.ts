@@ -1,18 +1,19 @@
 import path from "path";
 import { exit } from "process";
-import { DataTypes, ModelStatic, QueryInterface, Sequelize } from "sequelize";
+import { DataTypes, ModelStatic, Sequelize } from "sequelize";
 import { Logger } from "./Logger.ts";
-import { SemVer, valid, validRange } from "semver";
+import { SemVer, validRange } from "semver";
 import { Config } from "./Config.ts";
 import { SequelizeStorage, Umzug } from "umzug";
-import { DatabaseHelper, Platform, ContentHash, SupportedGames, StatusHistory, UserRoles } from "./database/DBHelper.ts";
+import { DatabaseHelper, Platform, ContentHash, StatusHistory, UserRoles } from "./database/DBHelper.ts";
 import { EditQueue } from "./database/models/EditQueue.ts";
 import { GameVersion } from "./database/models/GameVersion.ts";
 import { Project } from "./database/models/Project.ts";
 import { Version } from "./database/models/Version.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
-import { updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
+import { populateGamesAndMigrateCategories, updateDependencies, updateRoles } from "./database/ValueUpdater.ts";
+import { Game } from "./database/models/Game.ts";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -21,6 +22,7 @@ export * from "./database/models/Project.ts";
 export * from "./database/models/Version.ts";
 export * from "./database/models/MOTD.ts";
 export * from "./database/models/User.ts";
+export * from "./database/models/Game.ts";
 export * from "./database/DBHelper.ts";
 
 function isValidDialect(dialect: string): dialect is `sqlite` |`postgres` {
@@ -37,6 +39,7 @@ export class DatabaseManager {
     public GameVersions: ModelStatic<GameVersion>;
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
+    public Games: ModelStatic<Game>;
     public serverAdmin: User;
     public umzug: Umzug<Sequelize>;
 
@@ -152,6 +155,9 @@ export class DatabaseManager {
                     Logger.warn(`Database health check is only available for SQLite databases.`);
                 }
             }
+
+            // this is fine for now... eventually a system for this should be made, but umzug doesn't seem to do it i think :(
+            await populateGamesAndMigrateCategories();
         }).catch((error) => {
             if (Config.database.dialect === `postgres`) {
                 if (error.name == `SequelizeConnectionError` && error.message.includes(`database "bbm_database" does not exist`)) {
@@ -325,7 +331,6 @@ export class DatabaseManager {
             gameName: {
                 type: DataTypes.STRING,
                 allowNull: false,
-                defaultValue: SupportedGames.BeatSaber,
             },
             category: {
                 type: DataTypes.TEXT,
@@ -664,6 +669,44 @@ export class DatabaseManager {
             paranoid: true,
 
         });
+        // #endregion
+        // #region Applications
+        this.Games = Game.init({
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                unique: true,
+                primaryKey: true,
+            },
+            displayName: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                defaultValue: ``,
+            },
+            categories: {
+                type: DataTypes.JSON,
+                allowNull: false,
+                defaultValue: [`Core`, `Essentials`, `Other`],
+            },
+            webhookConfig: {
+                type: DataTypes.JSON,
+                allowNull: false,
+                defaultValue: [],
+            },
+            default: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: false,
+            },
+            createdAt: DataTypes.DATE, // just so that typescript isn't angy
+            updatedAt: DataTypes.DATE,
+            deletedAt: DataTypes.DATE,
+        }, {
+            sequelize: this.sequelize,
+            modelName: `games`,
+            tableName: `games`,
+            paranoid: true,
+        });
 
         // #region Hooks
         this.Users.afterSync(async () => {
@@ -684,7 +727,6 @@ export class DatabaseManager {
             await Promise.all(promises);
         });
 
-
         this.Projects.afterValidate(async (project) => {
             await Project.checkForExistingMod(project.name).then((existingMod) => {
                 if (existingMod) {
@@ -696,6 +738,22 @@ export class DatabaseManager {
 
             if (project.authorIds.length == 0) {
                 throw new Error(`Project must have at least one author.`);
+            }
+
+            if (DatabaseHelper.isSupportedGame(project.gameName) == false) {
+                throw new Error(`Project must have a valid gameName.`);
+            }
+
+            if (DatabaseHelper.isValidCategory(project.category, project.gameName) == false) {
+                throw new Error(`Project must have a valid category.`);
+            }
+        });
+
+        this.Users.afterValidate(async (user) => {
+            for (let game of Object.keys(user.roles.perGame)) {
+                if (DatabaseHelper.isSupportedGame(game) == false) {
+                    throw new Error(`User cannot have roles for an unsupported game: ${game}. Please contact a site administrator.`);
+                }
             }
         });
 
@@ -800,7 +858,36 @@ export class DatabaseManager {
             });
         });
 
+        this.Games.beforeCreate(async (game) => {
+            await Game.findOne({ where: { default: true }}).then((existingVersion) => {
+                if (!existingVersion) {
+                    game.default = true;
+                }
+            });
+        });
+
+        this.Games.afterValidate(async (game) => {
+            if (game.default) {
+                Game.findAll({ where: { default: true } }).then((result) => {
+                    result.forEach((g) => {
+                        if (g.name != game.name) {
+                            g.update({ default: false }, { hooks: false }).then(() => {
+                                Logger.log(`Game ${g.name} is no longer the default game.`);
+                            }).catch((error) => {
+                                Logger.error(`Error updating game ${g.name} to no longer be the default game: ${error}`);
+                            });
+                        }
+                    });
+                });
+                Game.defaultGame = game; // update the default game in the cache
+            }
+        });
+
         this.GameVersions.afterValidate(async (gameVersion) => {
+            if (DatabaseHelper.isSupportedGame(gameVersion.gameName) == false) {
+                throw new Error(`Game Version must have a valid gameName.`);
+            }
+
             if (gameVersion.linkedVersionIds.length > 0) {
                 let linkedVersions = await this.GameVersions.findAll({ where: { id: gameVersion.linkedVersionIds } });
                 // ensure that all linked versions are valid and for the same game
