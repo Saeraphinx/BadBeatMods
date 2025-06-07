@@ -1,4 +1,58 @@
-# db-overhaul (Backend refactor & addition of tests)
+# Project/Version rename, Multi game support, and dependency overhaul (e.g. The Great ChroMapper Migration) - 06/2025
+> [!CAUTION]
+> This is a major update that includes breaking changes to the API and database. Please read through the changes.
+
+## Server Changes
+### Renamed Mods & ModVersions to Projects & Versions
+This is to hopefully reduce confusion between the two as having "mod" in both names is confusing.
+- All mentions of "mod" and "modVersion" in the API and database have been changed to "project" and "version" respectively.
+- All mentions of "mod" and "modVersion" in the codebase have been changed to "project" and "version" respectively, aside from in a few places.
+- DB table names have not been changed to due to how the edit approval queue is structured.
+
+### Dependency Overhaul
+Dependencies are no longer tied to a version of a project, they are now tied to the project itself. The object looks like this now:
+```json
+"dependencies": [
+  {
+    "parentId": 1,
+    "sv": "^1.0.0",
+  }
+]
+```
+
+### Multi Game Support
+Games are no longer hardcoded, and can be added through the API. The following restrictions have been added:
+- A project's `gameName` must match a game's `name`.
+- A project category must be a category within the game specified by the project's `gameName`.
+- A game version's `gameName` must match a game's `name`.
+
+In addition, the following changes have been made:
+- Webhook configuration is now per-game.
+- Categories are now per-game.
+
+### Other Changes
+- If there is already a pending edit for a object, the edit will be updated instead of overwriting the original.
+- BeatMods importer has been removed.
+- BA route linkversionexclude now  also takes statuses into account when checking for duplicate entries in the array. 
+- Messages refrencing invalid parameters from the server should now be more descriptive.
+
+## API Changes
+- All mentions of "mod" and "modVersion" in the API have been changed to "project" and "version" respectively.
+- Many endpoints have been refactored to not wrap responses in an object.
+- Documentation has been updated to reflect changes & also has been checked to make sure all non-deprecated endpoints are documented.
+### Endpoint Changes
+- Reworked `GET /games` to get all games.
+- Added `POST /games` to add a new game.
+- Added `GET /games/:gameName` to get a specific game.
+- Added `POST /games/:gameName/versions` to add a new game version.
+- Added `POST /games/:gameName/categories` to add a new category to a game.
+- Deprecated `GET /versions`
+- Deprecated `POST /versions`
+- Deprecated `GET /versions/default`
+- Deprecated `POST /versions/default`
+
+
+# db-overhaul (Backend refactor & addition of tests) - 04/2025
 
 ## Server Changes
 - **Preparation for the renaming of Mods & ModVersions to Projects & Versions**
