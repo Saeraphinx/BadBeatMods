@@ -137,7 +137,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
     }
 
     public async edit(object: ProjectEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, project: Project}> {
-        if (DatabaseHelper.isValidCategory(object.category, object.gameName || this.gameName) === false) {
+        if (DatabaseHelper.isValidCategory(object.category || this.category, object.gameName || this.gameName) === false) {
             throw new Error(`Invalid category: ${object.category}`);
         }
 

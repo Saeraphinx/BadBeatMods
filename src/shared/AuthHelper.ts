@@ -12,7 +12,7 @@ declare module 'express-session' {
 // eslint-disable-next-line quotes
 declare module 'express-serve-static-core' {
     interface Request {
-      bbmAuth?: {
+        bbmAuth?: {
             userId: number;
             isApiAuth: boolean;
         }

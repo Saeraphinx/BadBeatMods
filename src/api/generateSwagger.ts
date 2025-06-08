@@ -369,12 +369,7 @@ const VersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
         zipHash: VersionDBObject.properties!.zipHash,
         contentHashes: VersionDBObject.properties!.contentHashes,
         status: VersionDBObject.properties!.status,
-        dependencies: {
-            type: `array`,
-            items: {
-                type: `number`,
-            }
-        },
+        dependencies: VersionDBObject.properties!.dependencies,
         supportedGameVersions: {
             type: `array`,
             items: { allOf: [{ $ref: `#/components/schemas/GameVersionAPIPublicResponse` }] },
@@ -416,36 +411,32 @@ const GameAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
 // #region General API Schemas
 const APIStatus: OpenAPIV3_1.SchemaObject = {
     type: `object`,
+    description: `The status & additional information of the API.`,
     properties: {
         message: {
             type: `string`,
             description: `Status message.`,
             example: `API is running.`,
-            default: `API is running.`
         },
         veryImportantMessage: {
             type: `string`,
             description: `Very important message.`,
             example: `pink cute, era cute, lillie cute, william gay`,
-            default: `pink cute, era cute, lillie cute, william gay`
         },
         apiVersion: {
             type: `string`,
             description: `API version (as seen in documentation).`,
             example: `0.0.1`,
-            default: `Version not found.`
         },
         gitVersion: {
             type: `string`,
             description: `Git commit hash.`,
             example: `3d94a00`,
-            default: `Version not found.`
         },
         isDocker: {
             type: `boolean`,
             description: `Whether the API is running in Docker or not.`,
             example: true,
-            default: false
         }
     }
 };

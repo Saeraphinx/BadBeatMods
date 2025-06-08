@@ -208,6 +208,7 @@ function init() {
                 Logger.winston.log(`http`, `${req.method} ${req.url}`);
             }
         }
+        
         next();
     });
 

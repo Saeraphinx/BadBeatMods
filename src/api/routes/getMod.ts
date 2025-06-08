@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse, Platform } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
-import { SemVer } from 'semver';
+import { SemVer, satisfies } from 'semver';
 import { Utils } from '../../shared/Utils.ts';
 
 export class GetModRoutes {
@@ -63,17 +63,6 @@ export class GetModRoutes {
                 return res.status(400).send({ message: Utils.parseErrorMessage(reqQuery.error, `Invalid parameters.`), errors: reqQuery.error.issues });
             }
 
-            // set the default gameversion if it's not provided
-            if (reqQuery.data.gameVersion === undefined || reqQuery.data.gameVersion === null) {
-                await GameVersion.getDefaultVersion(reqQuery.data.gameName).then((gameVersion) => {
-                    if (gameVersion) {
-                        reqQuery.data.gameVersion = undefined;
-                    } else {
-                        return res.status(400).send({ message: `Invalid game version.` });
-                    }
-                });
-            }
-
             let gameVersion = reqQuery.data.gameVersion ? DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === reqQuery.data.gameVersion && gameVersion.gameName === reqQuery.data.gameName) : null;
 
             if (gameVersion === undefined) {
@@ -100,7 +89,7 @@ export class GetModRoutes {
             let mods: {project: ProjectAPIPublicResponse, version: VersionAPIPublicResponse | null}[] = [];
             let preLength = undefined;
             let invalidIds: number[] = [];
-            if (gameVersion === null) {
+            if (gameVersion === null) { // just get all the mods
                 let projectDb = DatabaseHelper.cache.projects.filter((p) => p.gameName == reqQuery.data.gameName && statuses.includes(p.status));
 
                 for (let project of projectDb) {
@@ -113,7 +102,7 @@ export class GetModRoutes {
                     let latest = versions[0];
 
                     if (latest) {
-                        let latestVer = await latest.toAPIResponse(latest.supportedGameVersionIds[0], statuses);
+                        let latestVer = await latest.toAPIResponse();
                         if (latestVer) {
                             mods.push({ project: project.toAPIResponse(), version: latestVer });
                         }
@@ -124,27 +113,26 @@ export class GetModRoutes {
                 preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    mods.push({ project: retMod.project.toAPIResponse(), version: await retMod.version.toAPIResponse(gameVersion.id, statuses) });
+                    mods.push({ project: retMod.project.toAPIResponse(), version: await retMod.version.toAPIResponse() });
                 }
                 
                 mods = mods.filter((mod) => {
-                    if (!mod?.version) {
-                        invalidIds.push(mod.project.id);
-                        return false;
-                    }
-
-                    if (!mod?.version?.dependencies) {
+                    if (!mod.version || !mod?.version?.dependencies) {
                         invalidIds.push(mod.project.id);
                         return false;
                     }
 
                     for (let dependency of mod.version.dependencies) {
-                        if (!mods.find((mod) => mod?.version?.id === dependency)) {
+                        if (!mods.find((m) => {
+                            if (!m.version || !m?.version?.modVersion) {
+                                return false;
+                            }
+                            return m.project.id === dependency.parentId && satisfies(m.version.modVersion, dependency.sv);
+                        })) {
                             invalidIds.push(mod.project.id);
                             return false;
                         }
                     }
-
                     return true;
                 });
 
@@ -217,7 +205,7 @@ export class GetModRoutes {
                         [Status.Verified, Status.Unverified, Status.Pending, Status.Removed, Status.Private] :
                         [Status.Verified, Status.Unverified, Status.Pending];
 
-                    let resolvedVersion = await version.toAPIResponse(undefined, acceptableStatuses);
+                    let resolvedVersion = await version.toAPIResponse();
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
@@ -277,7 +265,7 @@ export class GetModRoutes {
             if (raw === `true`) {
                 return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: version.toRawAPIResponse() });
             } else {
-                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]) });
+                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: await version.toAPIResponse() });
             }
         });
 
@@ -340,7 +328,7 @@ export class GetModRoutes {
                 if (raw === `true`) {
                     retVal.push({ project: project.toAPIResponse(), version: version.toRawAPIResponse() });
                 } else {
-                    retVal.push({ project: project.toAPIResponse(), version: await version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified, Status.Pending, Status.Removed]) });
+                    retVal.push({ project: project.toAPIResponse(), version: await version.toAPIResponse() });
                 }
             }
 
@@ -392,7 +380,7 @@ export class GetModRoutes {
                     if (raw) {
                         retVal.push(Promise.resolve(version.toRawAPIResponse()));
                     } else {
-                        retVal.push(version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
+                        retVal.push(version.toAPIResponse());
                     }
                 }
                 for (const fileHash of version.contentHashes) {
@@ -400,7 +388,7 @@ export class GetModRoutes {
                         if (raw) {
                             retVal.push(Promise.resolve(version.toRawAPIResponse()));
                         } else {
-                            retVal.push(version.toAPIResponse(version.supportedGameVersionIds[0], [Status.Verified, Status.Unverified]));
+                            retVal.push(version.toAPIResponse());
                         }
                     }
                 }

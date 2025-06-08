@@ -404,4 +404,15 @@ describe.sequential(`Projects - Editing`, async () => {
         expect(sendProjectLog).toHaveBeenNthCalledWith(1, mod, testUser1, WebhookLogType.Text_StatusChanged);
         expect(sendProjectLog).toHaveBeenNthCalledWith(2, mod, testUser1, expectedLogType, `test`);
     });
+
+    test(`category update validation is working`, async () => {
+        let mod = await db.Projects.create({
+            ...defaultModData,
+            name: `Test Status Mod`,
+            status: Status.Private, // private so that we dontdeal with the edit queue
+        });
+
+        await expect(mod.edit({ category: `NotARealCategory` }, testUser1)).rejects.toThrow(`Invalid category`);
+        await expect(mod.edit({ category: `Core` }, testUser1)).resolves.not.toThrow();
+    })
 });

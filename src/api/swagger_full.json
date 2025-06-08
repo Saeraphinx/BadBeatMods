@@ -3036,7 +3036,18 @@
           "dependencies": {
             "type": "array",
             "items": {
-              "type": "number"
+              "type": "object",
+              "properties": {
+                "parentId": {
+                  "type": "integer",
+                  "description": "The ID of the project this version depends on."
+                },
+                "sv": {
+                  "type": "string",
+                  "description": "The comapre version string. This is used to identify the version of the mod. This must be SemVer compliant.",
+                  "example": "^1.0.0"
+                }
+              }
             }
           },
           "supportedGameVersions": {

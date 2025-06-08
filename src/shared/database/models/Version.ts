@@ -322,13 +322,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         };
     }
 
-    public async toAPIResponse(gameVersionId: number = this.supportedGameVersionIds[0], statusesToSearchFor:Status[]): Promise<VersionAPIPublicResponse|null> {
-        let dependencies = await this.getDependencyObjs(gameVersionId, statusesToSearchFor);
-        if (!dependencies) {
-            Logger.debugWarn(`Failed to find dependencies for ${this.id}`);
-            return null;
-        }
-
+    public async toAPIResponse(): Promise<VersionAPIPublicResponse|null> {
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
         if (!author) {
             let dbAuthor = await DatabaseHelper.database.Users.findByPk(this.authorId);
@@ -348,7 +342,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             platform: this.platform,
             zipHash: this.zipHash,
             status: this.status,
-            dependencies: dependencies.flatMap((dependency) => dependency.id),
+            dependencies: this.dependencies,
             contentHashes: this.contentHashes,
             downloadCount: this.downloadCount,
             supportedGameVersions: await this.getSupportedGameVersions(),

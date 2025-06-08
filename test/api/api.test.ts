@@ -11,7 +11,7 @@ let shouldAuthenticateWithRole: UserRoles | false | true = false;
 
 // eslint-disable-next-line quotes
 import * as fakeData from '../fakeData.json' with { type: 'json' };
-import { SemVer } from 'semver';
+import { satisfies, SemVer } from 'semver';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
 import { ApprovalAction } from '../../src/api/routes/approval.ts';
 
@@ -219,7 +219,7 @@ describe.sequential(`API`, async () => {
             for (let currentMod of mods) {
                 expect(currentMod).toHaveProperty(`project`);
                 expect(currentMod).toHaveProperty(`version`);
-                let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+                let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
                 expect(dependancies.length).toBe(currentMod.version.dependencies.length);
                 expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
             }
@@ -236,7 +236,7 @@ describe.sequential(`API`, async () => {
             for (let currentMod of mods) {
                 expect(currentMod).toHaveProperty(`project`);
                 expect(currentMod).toHaveProperty(`version`);
-                let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+                let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
                 expect(dependancies.length).toBe(currentMod.version.dependencies.length);
                 expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
                 expect(currentMod.version.platform).toBe(Platform.UniversalPC);
@@ -599,7 +599,7 @@ async function testGetMod(statuses:Status[], statusString:string) {
     for (let currentMod of mods) {
         expect(currentMod).toHaveProperty(`project`);
         expect(currentMod).toHaveProperty(`version`);
-        let dependancies = mods.filter((mod) => currentMod.version.dependencies.includes(mod.version.id));
+        let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
         expect(dependancies.length).toBe(currentMod.version.dependencies.length);
         expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
         expect(currentMod.version.platform).toBe(Platform.UniversalPC);

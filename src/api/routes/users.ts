@@ -97,7 +97,7 @@ export class UserRoutes {
 
                     let latest = await project.getLatestVersion(undefined, undefined, [status.data]);
                     if (latest) {
-                        mods.push({project: project.toAPIResponse(), version: latest.toAPIResponse(undefined, [status.data])});
+                        mods.push({project: project.toAPIResponse(), version: latest.toAPIResponse()});
                     } else {
                         mods.push({project: project.toAPIResponse(), version: null});
                     }

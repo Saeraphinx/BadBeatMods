@@ -54,7 +54,7 @@ export type VersionAPIPublicResponse = {
     zipHash: string;
     contentHashes: ContentHash[];
     status: Status;
-    dependencies: number[];
+    dependencies: Dependency[];
     supportedGameVersions: GameVersionAPIPublicResponse[];
     downloadCount: number;
     statusHistory: StatusHistory[];
