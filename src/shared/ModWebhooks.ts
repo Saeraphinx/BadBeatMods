@@ -1,11 +1,11 @@
 import { APIEmbed, APIMessage, Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
-import { DatabaseHelper, EditQueue, Project, ProjectEdit, ProjectInfer, Version, VersionEdit, VersionInfer, Status, User } from "./Database.ts";
+import { DatabaseHelper, EditQueue, Project, ProjectEdit, ProjectInfer, Version, VersionEdit, VersionInfer, Status, User, Game } from "./Database.ts";
 import { Config } from "./Config.ts";
 import { Logger } from "./Logger.ts";
 import { SemVer } from "semver";
 
-let webhookClient1: WebhookClient;
-let webhookClient2: WebhookClient;
+type WebhookClientWithTags = { tags: WebhookLogType[], client: WebhookClient }
+const WebhookClients: Map<string, WebhookClientWithTags[]> = new Map();
 
 export enum WebhookLogType {
     SetToPending = `setToPending`, // submitted for approval
@@ -22,40 +22,99 @@ export enum WebhookLogType {
     Text_EditBypassed = `editBypassed`,
     Text_Updated = `updated`,
 }
+const allWebhookTypes = Object.values(WebhookLogType);
 
-async function sendToWebhooks(content: string | MessagePayload | WebhookMessageCreateOptions, logType: WebhookLogType): Promise<APIMessage[]> {
-    let retVal: Promise<APIMessage>[] = [];
-    if (Config.webhooks.enableWebhooks) {
-        if (!webhookClient1 && Config.webhooks.modLogUrl.length > 8) {
-            webhookClient1 = new WebhookClient({ url: Config.webhooks.modLogUrl });
-        }
+async function generateWebhookClients(gameName: string | Game): Promise<WebhookClientWithTags[]> {
+    let webhooks: WebhookClientWithTags[] = [];
+    let game = typeof gameName === `string` ? await DatabaseHelper.database.Games.findOne({ where: { name: gameName } }) : gameName;
+    if (!game) {
+        Logger.error(`Game not found for webhook generation: ${game}`);
+        return webhooks;
+    }
 
-        if (!webhookClient2 && Config.webhooks.modLog2Url.length > 8) {
-            webhookClient2 = new WebhookClient({ url: Config.webhooks.modLog2Url });
-        }
-        if (webhookClient1) {
-            if (Config.webhooks.modLogTags.includes(logType) || (Config.webhooks.modLogTags.length === 1 && Config.webhooks.modLogTags[0] === `all`)) {
-                retVal.push(webhookClient1.send(content));
-            }
-        }
-
-        if (webhookClient2) {
-            if (Config.webhooks.modLog2Tags.includes(logType) || (Config.webhooks.modLog2Tags.length === 1 && Config.webhooks.modLog2Tags[0] === `all`)) {
-                retVal.push(webhookClient2.send(content));
+    if (game.webhookConfig && game.webhookConfig.length > 0) {
+        for (let config of game.webhookConfig) {
+            if (config.url && config.types && config.types.length > 0) {
+                try {
+                    let client = new WebhookClient({ url: config.url });
+                    webhooks.push({ 
+                        tags: config.types[0] === `all` ? allWebhookTypes : config.types as WebhookLogType[], 
+                        client: client 
+                    });
+                } catch (error) {
+                    Logger.error(`Failed to create webhook client for ${gameName}: ${error}`);
+                }
             }
         }
     }
 
+    return webhooks;
+}
+
+export async function generateWebhooksForGame(gameName: Game | string): Promise<boolean> {
+    if (typeof gameName === `string`) {
+        let game = DatabaseHelper.cache.games.find((g) => g.name === gameName);
+        if (game) {
+            gameName = game;
+        } else {
+            Logger.error(`Game not found in cache for webhook generation: ${gameName}`);
+            return false;
+        }
+    }
+
+    if (!gameName) {
+        Logger.error(`Game not found for webhook generation: ${gameName}`);
+        return false;
+    }
+
+    let webhooks = await generateWebhookClients(gameName);
+    if (webhooks.length === 0) {
+        Logger.debugWarn(`No webhooks configured for game ${gameName.name}. Skipping webhook logging.`);
+        return false;
+    }
+    WebhookClients.set(gameName.name, webhooks);
+    Logger.debug(`Generated ${webhooks.length} webhooks for game ${gameName.name}`);
+    return true;
+}
+
+async function sendToWebhooks(content: string | MessagePayload | WebhookMessageCreateOptions, logType: WebhookLogType, gameName:string): Promise<APIMessage[] | undefined> {
+    let retVal: Promise<APIMessage>[] = [];
+    let webhooks = WebhookClients.get(gameName);
+    if (!webhooks) {
+        webhooks = await generateWebhookClients(gameName);
+        WebhookClients.set(gameName, webhooks);
+    }
+
+    if (webhooks.length === 0) {
+        Logger.debugWarn(`No webhooks configured for game ${gameName}. Skipping webhook logging.`);
+        return;
+    }
+
+    for (let webhook of webhooks) {
+        if (webhook.tags.includes(logType)) {
+            try {
+                if (typeof content === `string`) {
+                    retVal.push(webhook.client.send({ content: content }));
+                } else if (content instanceof MessagePayload || content instanceof EmbedBuilder) {
+                    retVal.push(webhook.client.send(content));
+                } else {
+                    retVal.push(webhook.client.send({ embeds: [content as APIEmbed] }));
+                }
+            } catch (error) {
+                Logger.error(`Failed to send webhook for ${gameName} with type ${logType}: ${error}`);
+            }
+        }
+    }
     return Promise.all(retVal);
 }
 
-async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, logType: WebhookLogType) {
+async function sendEmbedToWebhooks(embed: APIEmbed | JSONEncodable<APIEmbed>, logType: WebhookLogType, gameName:string) {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     sendToWebhooks({
         username: `BadBeatMods`,
         avatarURL: faviconUrl,
         embeds: [embed]
-    }, logType);
+    }, logType, gameName);
 }
 
 export async function sendProjectLog(project: Project, userMakingChanges: User, logType: WebhookLogType, reason?: string) {
@@ -89,7 +148,7 @@ export async function sendProjectLog(project: Project, userMakingChanges: User, 
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Updated by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         case WebhookLogType.Text_StatusChanged:
             color = Colors.Blue;
@@ -97,14 +156,14 @@ export async function sendProjectLog(project: Project, userMakingChanges: User, 
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Status changed to ${project.status} by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         case WebhookLogType.Text_Created:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name}](<${Config.server.url}/mods/${project.id}>)** - Created by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         default:
             return Logger.error(`Invalid log type ${logType} for Project Log`);
@@ -114,7 +173,7 @@ export async function sendProjectLog(project: Project, userMakingChanges: User, 
         return Logger.error(`Failed to generate embed for project ${project.name}`);
     }
 
-    sendEmbedToWebhooks(embed, logType);
+    sendEmbedToWebhooks(embed, logType, project.gameName);
 }
 
 export async function sendVersionLog(version: Version, userMakingChanges: User, logType: WebhookLogType, projectObj?: Project, reason?: string) {
@@ -153,21 +212,21 @@ export async function sendVersionLog(version: Version, userMakingChanges: User, 
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Updated by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         case WebhookLogType.Text_StatusChanged:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Status changed to ${version.status} by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         case WebhookLogType.Text_Created:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name} v${version.modVersion.raw}](<${Config.server.url}/mods/${project.id}#${version.id}>)** - Created by ${userMakingChanges.username}`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         default:
             return Logger.error(`Invalid log type ${logType} for Version Log`);
@@ -178,7 +237,7 @@ export async function sendVersionLog(version: Version, userMakingChanges: User, 
         return Logger.error(`Failed to generate embed for mod ${project.name}`);
     }
 
-    sendEmbedToWebhooks(embed, logType);
+    sendEmbedToWebhooks(embed, logType, project.gameName);
 }
 
 export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) {
@@ -227,14 +286,14 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name}${versionString}](<${Config.server.url}/mods/${project.id}>)** - Edit ${edit.id} updated by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>).`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         case WebhookLogType.Text_EditBypassed:
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,
                 content: `**[${project.name}${versionString}](<${Config.server.url}/mods/${project.id}>)** - Edit ${edit.id} ${edit.approved ? `approved` : `rejected`} (bypassed by [${userMakingChanges.username}](<${Config.server.url}/user/${userMakingChanges.id}>)).`,
-            }, logType);
+            }, logType, project.gameName);
             break;
         default:
             return Logger.error(`Invalid log type ${logType} for Edit Log`);
@@ -244,7 +303,7 @@ export async function sendEditLog(edit: EditQueue, userMakingChanges: User, logT
         return Logger.error(`Failed to generate embed for edit ${edit.id}`);
     }
 
-    sendEmbedToWebhooks(embed, logType);
+    sendEmbedToWebhooks(embed, logType, project.gameName);
 }
 
 //#region Generate Embeds
