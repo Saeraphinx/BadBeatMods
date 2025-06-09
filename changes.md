@@ -8,40 +8,89 @@ This is to hopefully reduce confusion between the two as having "mod" in both na
 - All mentions of "mod" and "modVersion" in the API and database have been changed to "project" and "version" respectively.
 - All mentions of "mod" and "modVersion" in the codebase have been changed to "project" and "version" respectively, aside from in a few places.
 - DB table names have not been changed to due to how the edit approval queue is structured.
+- The `modId` property on a version has been changed to `projectId`.
 
 ### Dependency Overhaul
 Dependencies are no longer tied to a version of a project, they are now tied to the project itself. The object looks like this now:
 ```json
 "dependencies": [
   {
-    "parentId": 1,
-    "sv": "^1.0.0",
+    "parentId": 1, // The ID of the project that this dependency is for
+    "sv": "^1.0.0", // The semver version range of the dependency 
   }
 ]
 ```
+All mods returned by the `/mods` endpoint will still have their dependencies validated, so you can assume that all dependencies are present in the response.
 
 ### Multi Game Support
 Games are no longer hardcoded, and can be added through the API. The following restrictions have been added:
 - A project's `gameName` must match a game's `name`.
 - A project category must be a category within the game specified by the project's `gameName`.
 - A game version's `gameName` must match a game's `name`.
+- A user's `perGame` permissions must match a game's `name`.
 
 In addition, the following changes have been made:
 - Webhook configuration is now per-game.
 - Categories are now per-game.
+- Categories must be between 1 and 64 characters long.
 
 ### Other Changes
 - If there is already a pending edit for a object, the edit will be updated instead of overwriting the original.
 - BeatMods importer has been removed.
-- BA route linkversionexclude now  also takes statuses into account when checking for duplicate entries in the array. 
+  - The `enableBeatModsDownloads` flag has been removed
+- BA route linkversionexclude now also takes statuses into account when checking for duplicate entries in the array. 
 - Messages refrencing invalid parameters from the server should now be more descriptive.
+- Reversed the order of game version strings that are compared by `localCompare` to match the semver comparison.
+- `getLatestVersion()` has had all of its paramters marked as optional.
+- Edits now check for certain properties before allowing the edit to be submitted.
+- Edit types for both Projects & Versions are now using `Pick<>` instead of `Omit<>`.
+- The `toApiResponse()` for versions no longer takes any parameters, as it does not resolve dependencies anymore.
 
 ## API Changes
 - All mentions of "mod" and "modVersion" in the API have been changed to "project" and "version" respectively.
 - Many endpoints have been refactored to not wrap responses in an object.
 - Documentation has been updated to reflect changes & also has been checked to make sure all non-deprecated endpoints are documented.
 ### Endpoint Changes
-- Reworked `GET /games` to get all games.
+- Updated documentation for every endpoint to reflect changes.
+- All instances of `modId` in request bodies have been changed to `projectId`.
+- All instances of a `VersionAPIPublicResponse` now have the new structure for `dependencies`.
+- Changed almost all instances of `mods` & `modVersions` to `projects` & `versions`
+- Changed all instances of `mod` & `modVersion` to `project` & `version`
+
+- Renamed `POST /mods/create` to `POST /projects/create`. Both endpoints will still work for the time being.
+- Renamed `POST /mods/:modIdParam/upload` to `POST /projects/:projectIdParam/create`. Both endpoints will still work for the time being. Additionally, both `upload` and `create` will work for the time being.
+- Renamed `GET /mods/:modIdParam` to `GET /projects/:projectIdParam`. Both endpoints will still work for the time being.
+- Renamed `GET /modversions/:modVersionIdParam` to `GET /versions/:versionIdParam`. Both endpoints will still work for the time being.
+- Renamed `GET /mods/:modIdParam/versions` to `GET /projects/:projectIdParam/versions`. Both endpoints will still work for the time being.
+
+- Renamed `GET /multi/modversions` to `GET /multi/versions`.
+- Renamed `POST /approval/mod/:modIdParam/approve` to `POST /approval/project/:projectIdParam/approve`.
+- Renamed `POST /approval/modVersion/:modVersionIdParam/approve` to `POST /approval/version/:versionIdParam/approve`.
+- Renamed the `modVersionIdsToExclude` body parameter to `versionIdsToExclude` `POST /ba/linkVersionsExclude`.
+- Fixed the `error` field in `GET /auth/github/callback` to be `message`.
+- `GET /ba/linkVersionsExclude` now considers the `status` of the versions when checking for duplicates.
+- Updated the `message` field for the `PATCH /approval/edit/:editIdParam` endpoint to be more descriptive.
+- Updated the `message` field in the `POST /projects/create` endpoint to be more descriptive.
+- Updated the `message` field in the `POST /projects/:projectIdParam/create` endpoint to be more descriptive.
+- Updated the `message` field in the `GET /mods` endpoint to be more descriptive.
+- Updated the `message` field in the `GET /motd` endpoint to be more descriptive.
+- Updated the `message` field in the `POST /motd` endpoint to be more descriptive.
+
+- `GET /mods` now returns the additional properties:
+  - `total`: The total number of projects found.
+  - `invalidCount`: The number of projects that are invalid (e.g. missing dependencies).
+  - `invalidIds`: An array of IDs of the invalid projects.
+
+- `GET /mods/:modIdParam` not longer wraps the response in an object.
+- `GET /multi/versions` no longer wraps the response in an object.
+- `GET /hashlookup` no longer wraps the response in an object.
+- `GET /multi/hashlookup` no longer wraps the response in an object.
+- `GET /user/:id/mods` no longer wraps the response in an object.
+- `GET /users` no longer wraps the response in an object.
+
+- Removed the `platform` query parameter from the `GET /user/:id/mods` endpoint.
+
+- Reworked `GET /games` to get all games, versions and categories.
 - Added `POST /games` to add a new game.
 - Added `GET /games/:gameName` to get a specific game.
 - Added `POST /games/:gameName/versions` to add a new game version.
