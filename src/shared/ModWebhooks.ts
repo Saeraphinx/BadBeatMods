@@ -293,7 +293,7 @@ async function generateProjectEmbed(project: Project, userMakingChanges: User, c
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Project ID: ${project.id}`,
+                text: `Project ID: ${project.id} | Game: ${project.gameName}`,
                 icon_url: faviconUrl,
             },
         };
@@ -338,7 +338,7 @@ async function generateProjectEmbed(project: Project, userMakingChanges: User, c
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Project ID: ${project.id}`,
+                text: `Project ID: ${project.id} | Game: ${project.gameName}`,
                 icon_url: faviconUrl,
             },
         };
@@ -401,7 +401,7 @@ async function generateVersionEmbed(project: Project, version: Version, userMaki
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Project ID: ${project.id} | Version ID: ${version.id}`,
+                text: `Project ID: ${project.id} | Version ID: ${version.id} | Game: ${project.gameName}`,
                 icon_url: faviconUrl,
             },
         };
@@ -455,7 +455,7 @@ async function generateVersionEmbed(project: Project, version: Version, userMaki
             color: color,
             timestamp: new Date().toISOString(),
             footer: {
-                text: `Project ID: ${project.id} | Version ID: ${version.id}`,
+                text: `Project ID: ${project.id} | Version ID: ${version.id} | Game: ${project.gameName}`,
                 icon_url: faviconUrl,
             },
         };
