@@ -212,9 +212,14 @@ export class VersionsRoutes {
             }
 
             game.categories.push(newCategory.data);
-            await game.save();
-            DatabaseHelper.refreshCache(`games`);
-            Logger.log(`Category ${newCategory.data} added to game ${game.name} by ${session.user.username}.`);
+            await game.save().then(() => {
+                DatabaseHelper.refreshCache(`games`);
+                Logger.log(`Category ${newCategory.data} added to game ${game.name} by ${session.user.username}.`);
+                return res.status(200).send(game.toAPIResponse());
+            }).catch((error) => {
+                Logger.error(`Error adding category: ${error}`);
+                return res.status(500).send({ message: `Error adding category: ${error}` });
+            });
         });
 
         // Deprecated routes, kept since they still work.
