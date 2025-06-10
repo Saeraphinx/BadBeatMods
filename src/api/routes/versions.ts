@@ -222,6 +222,60 @@ export class VersionsRoutes {
             });
         });
 
+        this.router.get(`/games/:gameName/webhooks`, async (req, res) => {
+            /*
+            #swagger.tags = ['Versions']
+            #swagger.summary = 'Get webhooks for a game.'
+            #swagger.description = 'Returns the webhooks for the specified game.'
+            #swagger.parameters['gameName'] = {
+                description: 'The name of the game to get webhooks for.',
+                type: 'string',
+                required: true
+            }
+            #swagger.responses[200] = {
+                description: 'Returns the webhooks for the specified game.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    url: { type: 'string' },
+                                    types: { type: 'array', items: { type: 'string' } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            if (!gameName.success) {
+                return res.status(400).send({ message: `Invalid gameName` });
+            }
+            let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
+            if (!session.user) {
+                return;
+            }
+
+            let game = DatabaseHelper.cache.games.find(g => g.name === gameName.data);
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            return res.status(200).send(game.webhookConfig.map(webhook => ({
+                // replace the last of the URL with a placeholder for security
+                url: webhook.url.slice(0, -60) + `**************************************`,
+                types: webhook.types
+            })));
+        });
+
+        this.router.post(`/games/:gameName/webhooks`, async (req, res) => {
+            /*
+            */
+        });
+
         // Deprecated routes, kept since they still work.
         this.router.get(`/versions`, async (req, res) => {
             // #swagger.tags = ['Versions']
