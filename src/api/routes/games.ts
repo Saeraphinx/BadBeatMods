@@ -51,20 +51,10 @@ export class VersionsRoutes {
             #swagger.tags = ['Games']
             #swagger.summary = 'Get game by name.'
             #swagger.description = 'Returns a specific game and its versions by name.'
-            #swagger.parameters['gameName'] = {
-                description: 'The name of the game to get versions for.',
-                type: 'string',
-                required: true
+            #swagger.parameters['gameName'] = { $ref: '#/components/parameters/gameName' }
             }
             #swagger.responses[200] = {
-                description: 'Returns the game versions for the specified game.',
-                content: {
-                    'application/json': {
-                        schema: {
-                            $ref: '#/components/schemas/GameAPIPublicResponse'
-                        }
-                    }
-                }
+                $ref: '#/components/responses/GameAPIPublicResponse'
             }
             */
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
@@ -84,11 +74,7 @@ export class VersionsRoutes {
             #swagger.tags = ['Games']
             #swagger.summary = 'Add a version to a game.'
             #swagger.description = 'Adds a new version to the specified game.'
-            #swagger.parameters['gameName'] = {
-                description: 'The name of the game to add a version to.',
-                type: 'string',
-                required: true
-            }
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
             #swagger.requestBody = {
                 description: 'The version to add to the game.',
                 required: true,
@@ -108,14 +94,7 @@ export class VersionsRoutes {
                 }
             }
             #swagger.responses[200] = {
-                description: 'Version added successfully.',
-                content: {
-                    'application/json': {
-                        schema: {
-                            $ref: '#/components/schemas/GameAPIPublicResponse'
-                        }
-                    }
-                }
+                $ref: '#/components/responses/GameAPIPublicResponse'
             }
             */
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
@@ -154,7 +133,7 @@ export class VersionsRoutes {
             #swagger.tags = ['Games']
             #swagger.summary = 'Add a category to a game.'
             #swagger.description = 'Adds a new category to the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.'
-            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
             #swagger.requestBody = { $ref: '#/components/requestBodies/GameCategoryBody' }
             #swagger.responses[200] = { $ref: '#/components/responses/GameAPIPublicResponse' }
             #swagger.responses[400]
@@ -193,7 +172,7 @@ export class VersionsRoutes {
             #swagger.tags = ['Games']
             #swagger.summary = 'Remove a category from a game.'
             #swagger.description = 'Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be removed or have their position changed.'
-            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
             #swagger.requestBody = {
                 description: `The category to add or remove from the game.`,
                 content: {
@@ -255,7 +234,7 @@ export class VersionsRoutes {
             #swagger.tags = ['Games']
             #swagger.summary = 'Remove a category from a game.'
             #swagger.description = 'Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.'
-            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
             #swagger.requestBody = { $ref: '#/components/requestBodies/GameCategoryBody' }
             #swagger.responses[200] = { $ref: '#/components/responses/GameAPIPublicResponse' }
             */
