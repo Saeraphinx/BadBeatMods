@@ -35,6 +35,7 @@ const ZodGameName = z.custom<SupportedGames>((val) => {
 }, {
     message: `Invalid game name`
 });
+const ZodCategory = z.string().min(1).max(64);
 const ZodPostType = z.nativeEnum(PostType);
 const ZodUserRoles = z.nativeEnum(UserRoles);
 
@@ -44,7 +45,7 @@ const ZodProject = z.object({
     name: z.string().min(3).max(64),
     summary: z.string().min(3).max(160),
     description: z.string().min(3).max(4096),
-    category: z.string().min(1).max(64),
+    category: ZodCategory,
     gitUrl: z.string().min(5).max(256).url(),
     gameName: ZodGameName, //z.string().min(3).max(256),
     authorIds: ZodDBIDArray
@@ -74,6 +75,7 @@ export class Validator {
     public static readonly zStatus = ZodStatus;
     public static readonly zPlatform = ZodPlatform;
     public static readonly zGameName = ZodGameName;
+    public static readonly zCategory = ZodCategory;
     public static readonly zPostType = ZodPostType;
     public static readonly zUserRoles = ZodUserRoles;
     public static readonly zHashStringOrArray = z.union([z.string().min(8), z.array(z.string().min(8))]);

@@ -725,6 +725,17 @@ const ProjectVersionsPairResponse: OpenAPIV3_1.ResponseObject = {
         }
     }
 };
+
+const GameAPIPublicResponseObject: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a game object.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                $ref: `#/components/schemas/GameAPIPublicResponse`
+            }
+        }
+    }
+}
 // #endregion
 // #region Full API Request Bodies
 const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
@@ -733,6 +744,27 @@ const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
         [`application/json`]: {
             schema: {
                 $ref: `#/components/schemas/zApproveObject`
+            }
+        }
+    }
+};
+
+const GameCategoryBody: OpenAPIV3_1.RequestBodyObject = {
+    description: `The category to add or remove from the game.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                properties: {
+                    category: {
+                        type: `string`,
+                        description: `The category to add or remove from the game.`,
+                        example: `Essentials`,
+                        maxLength: 64,
+                        minLength: 1,
+                    }
+                },
+                required: [`category`]
             }
         }
     }
@@ -746,6 +778,18 @@ const rawParameter: OpenAPIV3_1.ParameterObject = {
     required: false,
     schema: {
         type: `boolean`,
+    }
+};
+const gameNameParameter: OpenAPIV3_1.ParameterObject = {
+    name: `gameName`,
+    in: `path`,
+    description: `The name of a game.`,
+    required: true,
+    schema: {
+        type: `string`,
+        example: `BeatSaber`,
+        minLength: 1,
+        maxLength: 64,
     }
 };
 // #endregion
@@ -768,7 +812,7 @@ const doc = {
     tags: [
         { name: `Status`, description: `Status related endpoints` },
         { name: `Mods`, description: `` },
-        { name: `Versions`, description: `Version Management` },
+        { name: `Games`, description: `Game, GameVersion, category, and webhook management` },
         //{ name: `MOTD`, description: `Message of the Day related endpoints` },
         { name: `Approval`, description: `Approval related endpoints` },
         { name: `Users`, description: `User related endpoints` },
@@ -776,6 +820,7 @@ const doc = {
         { name: `Bulk Actions`, description: `Actions that allow you to skip calling the same endpoint over and over again` },
         { name: `Auth`, description: `Authentication related endpoints` },
         { name: `BeatMods`, description: `Legacy BeatMods API endpoints` },
+        { name: `Versions`, description: `Deprecated - Version Management` },
     ],
     components: {
         securitySchemes: {
@@ -818,12 +863,15 @@ const doc = {
             UserResponse: UserResponse,
             ProjectVersionPairResponse: ProjectVersionPairResponse,
             ProjectVersionsPairResponse: ProjectVersionsPairResponse,
+            GameAPIPublicResponse: GameAPIPublicResponseObject,
         },
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,
+            GameCategoryBody: GameCategoryBody,
         },
         "parameters": {
             raw: rawParameter,
+            gameName: gameNameParameter,
         },
     }
 };
@@ -835,7 +883,7 @@ const routes = [
     `./routes/createMod.ts`,
     `./routes/updateMod.ts`,
     `./routes/auth.ts`,
-    `./routes/versions.ts`,
+    `./routes/games.ts`,
     //`./routes/import.ts`,
     `./routes/admin.ts`,
     `./routes/approval.ts`,

@@ -24,7 +24,7 @@ import { CreateModRoutes } from './api/routes/createMod.ts';
 import { GetModRoutes } from './api/routes/getMod.ts';
 import { UpdateProjectRoutes } from './api/routes/updateMod.ts';
 import { AuthRoutes } from './api/routes/auth.ts';
-import { VersionsRoutes } from './api/routes/versions.ts';
+import { VersionsRoutes } from './api/routes/games.ts';
 import { AdminRoutes } from './api/routes/admin.ts';
 import { ApprovalRoutes } from './api/routes/approval.ts';
 import { BeatModsRoutes } from './api/routes/beatmods.ts';
