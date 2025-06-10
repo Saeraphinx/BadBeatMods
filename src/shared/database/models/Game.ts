@@ -6,7 +6,7 @@ import { Utils } from "../../../shared/Utils.ts";
 export type GameWebhookConfig = {
     id: string;
     url: string;
-    types: WebhookLogType[] | [`all`];
+    types: WebhookLogType[];
 };
 
 export type GameInfer = InferAttributes<Game>;
@@ -84,7 +84,7 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
     // #endregion
 
     // #region Webhooks
-    public async addWebhook(webhook: Omit<GameWebhookConfig, `id`>): Promise<Game | undefined> {
+    public async addWebhook(webhook: Omit<GameWebhookConfig, `id`>): Promise<{game: Game, webhook: GameWebhookConfig}> {
         if (!this.webhookConfig) {
             this.webhookConfig = [];
         }
@@ -96,32 +96,48 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
                 url: webhook.url,
                 types: webhook.types
             });
+            return { game: await this.save(), webhook: { ...webhook, id } };
         } else {
             throw new Error(`Webhook with URL ${webhook.url} already exists.`);
         }
-        return await this.save();
     }
 
-    public async removeWebhook(webhookId: string): Promise<Game | undefined> {
+    public async removeWebhook(webhookId: string): Promise<Game> {
         if (this.webhookConfig) {
             this.webhookConfig = this.webhookConfig.filter((w) => w.id !== webhookId);
             return await this.save();
         }
-        return undefined;
+        throw new Error(`Webhook with ID ${webhookId} does not exist.`);
     }
 
-    public async setWebhook(webhookId: string, webhook: Omit<GameWebhookConfig, `id`>): Promise<Game | undefined> {
-        if (this.webhookConfig) {
-            let oldWebhook = this.webhookConfig.find((w) => w.id === webhookId);
-            if (oldWebhook) {
-                this.webhookConfig.splice(this.webhookConfig.indexOf(oldWebhook), 1, {
-                    id: webhookId,
-                    url: webhook.url,
-                    types: webhook.types
-                });
-                return await this.save();
-            }
+    public async setWebhook(webhookId: string, webhook: Omit<GameWebhookConfig, `id`>): Promise<Game> {
+        if (!this.webhookConfig) {
+            this.webhookConfig = [];
         }
+
+        let oldWebhook = this.webhookConfig.find((w) => w.id === webhookId);
+        if (oldWebhook) {
+            this.webhookConfig.splice(this.webhookConfig.indexOf(oldWebhook), 1, {
+                id: webhookId,
+                url: webhook.url,
+                types: webhook.types
+            });
+            return await this.save();
+        } else {
+            throw new Error(`Webhook with ID ${webhookId} does not exist.`);
+        }
+    }
+
+    public async getAPIWebhooks(): Promise<GameWebhookConfig[]> {
+        if (!this.webhookConfig) {
+            this.webhookConfig = [];
+        }
+        
+        return this.webhookConfig.map((w) => ({
+            id: w.id,
+            url: w.url.slice(0, 60) + `*`.repeat(60), 
+            types: w.types
+        }));
     }
 
     private generateWebhookId(): string {

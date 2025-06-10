@@ -3,6 +3,7 @@ import { Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
 import { ApprovalAction } from './routes/approval.ts';
+import { WebhookLogType } from '../shared/ModWebhooks.ts';
 type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
@@ -735,7 +736,39 @@ const GameAPIPublicResponseObject: OpenAPIV3_1.ResponseObject = {
             }
         }
     }
-}
+};
+
+const GameWebhookConfigResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns the webhook configuration for a game.`,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `array`,
+                items: {
+                    type: `object`,
+                    properties: {
+                        id: {
+                            type: `string`,
+                            description: `The ID of the webhook configuration.`,
+                            example: `UTUA6Jn8NJM`
+                        },
+                        url: {
+                            type: `string`,
+                            description: `The URL of the webhook.`,
+                            example: `https://example.com/webhook`
+                        },
+                        types: {
+                            type: `array`,
+                            items: {
+                                enum: Object.values(WebhookLogType),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
 // #endregion
 // #region Full API Request Bodies
 const ApproveObjectBody: OpenAPIV3_1.RequestBodyObject = {
@@ -864,6 +897,7 @@ const doc = {
             ProjectVersionPairResponse: ProjectVersionPairResponse,
             ProjectVersionsPairResponse: ProjectVersionsPairResponse,
             GameAPIPublicResponse: GameAPIPublicResponseObject,
+            GameWebhookConfigResponse: GameWebhookConfigResponse,
         },
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,

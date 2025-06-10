@@ -21,6 +21,8 @@ export enum WebhookLogType {
     Text_StatusChanged = `statusChanged`,
     Text_EditBypassed = `editBypassed`,
     Text_Updated = `updated`,
+
+    All = `all`, // used to indicate all types, not a real type
 }
 const allWebhookTypes = Object.values(WebhookLogType);
 
@@ -91,7 +93,7 @@ async function sendToWebhooks(content: string | MessagePayload | WebhookMessageC
     }
 
     for (let webhook of webhooks) {
-        if (webhook.tags.includes(logType)) {
+        if (webhook.tags.includes(logType) || webhook.tags.includes(WebhookLogType.All)) {
             try {
                 if (typeof content === `string`) {
                     retVal.push(webhook.client.send({ content: content }));

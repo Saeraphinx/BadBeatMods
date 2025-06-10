@@ -5,6 +5,7 @@ import { Logger } from '../../shared/Logger.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { coerce } from 'semver';
 import { Utils } from '../../shared/Utils.ts';
+import { WebhookLogType } from '../../shared/ModWebhooks.ts';
 
 export class VersionsRoutes {
     private router: Router;
@@ -248,6 +249,98 @@ export class VersionsRoutes {
 
 
         });
+
+        this.router.get(`/games/:gameName/webhooks`, async (req, res) => {
+            /*
+            #swagger.tags = ['Games']
+            #swagger.summary = 'Get webhooks for a game.'
+            #swagger.description = 'Returns a list of webhooks for the specified game.'
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/GameWebhookConfigResponse'
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            if (!gameName.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            }
+            let session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+            if (!session.user) {
+                return;
+            }
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            let webhooks = game.webhookConfig.map(webhook => ({
+                id: webhook.id,
+                url: webhook.url.slice(0, 60) + `*`.repeat(60),
+                types: webhook.types
+            }));
+            return res.status(200).send(webhooks);
+        });
+
+        this.router.post(`/games/:gameName/webhooks`, async (req, res) => {
+            /*
+            #swagger.tags = ['Games']
+            #swagger.summary = 'Add a webhook to a game.'
+            #swagger.description = 'Adds a new webhook to the specified game.'
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
+            #swagger.requestBody = {
+                description: 'The webhook to add to the game.',
+                required: true,
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                url: { type: 'string', description: 'The URL of the webhook.' },
+                                types: { type: 'array', items: { type: 'string' }, description: 'The types of events the webhook should listen to.' }
+                            },
+                            required: ['url', 'types']
+                        }
+                    }
+                }
+            }
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/GameWebhookConfigResponse'
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let webhookConfig = Validator.z.object({
+                url: Validator.z.string().url().min(60).max(256),
+                types: Validator.z.array(Validator.z.nativeEnum(WebhookLogType)).nonempty()
+            }).safeParse(req.body);
+            if (!gameName.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!webhookConfig.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(webhookConfig.error, `Invalid webhookConfig`) });
+            }
+
+            let session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+            if (!session.user) {
+                return;
+            }
+
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            game.addWebhook({
+                url: webhookConfig.data.url,
+                types: webhookConfig.data.types
+            }).then((g) => {
+                Logger.log(`Webhook ${g.webhook.id} added to game ${gameName.data} by ${session.user.username}.`);
+                DatabaseHelper.refreshCache(`games`);
+                return res.status(200).send(game.getAPIWebhooks());
+            }).catch((error) => {
+                Logger.error(`Error adding webhook: ${error}`);
+                return res.status(500).send({ message: `Error adding webhook: ${Utils.parseErrorMessage(error)}` });
+            });
+        });
+
 
         //#region Deprecated routes, kept since they still work.
         this.router.get(`/versions`, async (req, res) => {
