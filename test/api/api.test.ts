@@ -586,6 +586,9 @@ describe.sequential(`API`, async () => {
             })
         });
     });
+
+    describe.sequential.skip(`Games`, () => {
+    });
 });
 
 async function testGetMod(statuses:Status[], statusString:string) {

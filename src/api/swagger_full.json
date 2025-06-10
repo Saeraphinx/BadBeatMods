@@ -20,8 +20,8 @@
       "description": ""
     },
     {
-      "name": "Versions",
-      "description": "Version Management"
+      "name": "Games",
+      "description": "Game, GameVersion, category, and webhook management"
     },
     {
       "name": "Approval",
@@ -46,6 +46,10 @@
     {
       "name": "BeatMods",
       "description": "Legacy BeatMods API endpoints"
+    },
+    {
+      "name": "Versions",
+      "description": "Deprecated - Version Management"
     }
   ],
   "paths": {
@@ -1165,7 +1169,7 @@
     "/games": {
       "get": {
         "tags": [
-          "Versions"
+          "Games"
         ],
         "summary": "Get all games & their versions.",
         "description": "Returns a list of all games and their versions.",
@@ -1201,7 +1205,7 @@
     "/games/{gameName}": {
       "get": {
         "tags": [
-          "Versions"
+          "Games"
         ],
         "summary": "Get game by name.",
         "description": "Returns a specific game and its versions by name.",
@@ -1239,7 +1243,7 @@
     "/games/{gameName}/version": {
       "post": {
         "tags": [
-          "Versions"
+          "Games"
         ],
         "summary": "Add a version to a game.",
         "description": "Adds a new version to the specified game.",
@@ -1300,31 +1304,19 @@
     "/games/{gameName}/category": {
       "post": {
         "tags": [
-          "Versions"
+          "Games"
         ],
         "summary": "Add a category to a game.",
-        "description": "Adds a new category to the specified game.",
+        "description": "Adds a new category to the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.",
         "parameters": [
           {
-            "name": "gameName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The name of the game to add a category to."
+            "$ref": "#/components/requestBodies/gameName"
           }
         ],
         "responses": {
           "200": {
-            "description": "Category added successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GameAPIPublicResponse"
-                }
-              }
-            }
+            "description": "OK",
+            "$ref": "#/components/responses/GameAPIPublicResponse"
           },
           "400": {
             "description": "Bad Request"
@@ -1332,29 +1324,77 @@
           "404": {
             "description": "Not Found"
           },
-          "409": {
-            "description": "Conflict"
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "requestBody": {
-          "description": "The category to add to the game.",
-          "required": true,
+          "$ref": "#/components/requestBodies/GameCategoryBody"
+        }
+      },
+      "put": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Remove a category from a game.",
+        "description": "Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be removed or have their position changed.",
+        "parameters": [
+          {
+            "$ref": "#/components/requestBodies/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "$ref": "#/components/responses/GameAPIPublicResponse"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "description": "The category to add or remove from the game.",
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "category": {
-                    "type": "string",
-                    "description": "The category to add."
-                  }
-                },
-                "required": [
-                  "category"
-                ]
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "The category to add or remove from the game."
+                }
               }
             }
           }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Remove a category from a game.",
+        "description": "Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.",
+        "parameters": [
+          {
+            "$ref": "#/components/requestBodies/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GameAPIPublicResponse",
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/GameCategoryBody"
         }
       }
     },
@@ -2821,6 +2861,16 @@
             }
           }
         }
+      },
+      "GameAPIPublicResponse": {
+        "description": "Returns a game object.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GameAPIPublicResponse"
+            }
+          }
+        }
       }
     },
     "requestBodies": {
@@ -2830,6 +2880,28 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/zApproveObject"
+            }
+          }
+        }
+      },
+      "GameCategoryBody": {
+        "description": "The category to add or remove from the game.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "description": "The category to add or remove from the game.",
+                  "example": "Essentials",
+                  "maxLength": 64,
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "category"
+              ]
             }
           }
         }
@@ -2843,6 +2915,18 @@
         "required": false,
         "schema": {
           "type": "boolean"
+        }
+      },
+      "gameName": {
+        "name": "gameName",
+        "in": "path",
+        "description": "The name of a game.",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "BeatSaber",
+          "minLength": 1,
+          "maxLength": 64
         }
       }
     },
@@ -3236,36 +3320,32 @@
       },
       "APIStatus": {
         "type": "object",
+        "description": "The status & additional information of the API.",
         "properties": {
           "message": {
             "type": "string",
             "description": "Status message.",
-            "example": "API is running.",
-            "default": "API is running."
+            "example": "API is running."
           },
           "veryImportantMessage": {
             "type": "string",
             "description": "Very important message.",
-            "example": "pink cute, era cute, lillie cute, william gay",
-            "default": "pink cute, era cute, lillie cute, william gay"
+            "example": "pink cute, era cute, lillie cute, william gay"
           },
           "apiVersion": {
             "type": "string",
             "description": "API version (as seen in documentation).",
-            "example": "0.0.1",
-            "default": "Version not found."
+            "example": "0.0.1"
           },
           "gitVersion": {
             "type": "string",
             "description": "Git commit hash.",
-            "example": "3d94a00",
-            "default": "Version not found."
+            "example": "3d94a00"
           },
           "isDocker": {
             "type": "boolean",
             "description": "Whether the API is running in Docker or not.",
-            "example": true,
-            "default": false
+            "example": true
           }
         }
       },

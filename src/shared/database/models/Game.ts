@@ -1,8 +1,10 @@
 import { CreationOptional, InferAttributes, InferCreationAttributes, Model, NonAttribute } from "sequelize";
 import { DatabaseHelper, GameVersion } from "../../Database.ts";
 import { WebhookLogType } from "../../ModWebhooks.ts";
+import { Utils } from "../../../shared/Utils.ts";
 
 export type GameWebhookConfig = {
+    id: string;
     url: string;
     types: WebhookLogType[] | [`all`];
 };
@@ -47,4 +49,87 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
             throw new Error(`Cannot set default game to a non-default game.`);
         }
     }
+
+    // #region Categories
+    public async addCategory(category: string): Promise<Game | undefined> {
+        if (!this.categories) {
+            this.categories = [`Core`, `Essentials`, `Other`];
+        }
+
+        if (!this.categories.includes(category)) {
+            let last = this.categories.pop();
+            this.categories.push(category);
+            if (last) {
+                this.categories.push(last);
+            }
+
+            return await this.save();
+        }
+        return undefined;
+    }
+
+    public async removeCategory(category: string): Promise<Game | undefined> {
+        if (this.categories && this.categories.includes(category)) {
+            this.categories = this.categories.filter((c) => c !== category);
+            return await this.save();
+        }
+        return undefined;
+    }
+
+    public async setCategories(categories: string[]): Promise<Game | undefined> {
+        let newCategories = [`Core`, `Essentials`, ...categories, `Other`];
+        this.categories = newCategories;
+        return await this.save();
+    }
+    // #endregion
+
+    // #region Webhooks
+    public async addWebhook(webhook: Omit<GameWebhookConfig, `id`>): Promise<Game | undefined> {
+        if (!this.webhookConfig) {
+            this.webhookConfig = [];
+        }
+
+        if (!this.webhookConfig.some((w) => webhook.url === w.url)) {
+            let id = this.generateWebhookId();
+            this.webhookConfig.push({
+                id: id,
+                url: webhook.url,
+                types: webhook.types
+            });
+        } else {
+            throw new Error(`Webhook with URL ${webhook.url} already exists.`);
+        }
+        return await this.save();
+    }
+
+    public async removeWebhook(webhookId: string): Promise<Game | undefined> {
+        if (this.webhookConfig) {
+            this.webhookConfig = this.webhookConfig.filter((w) => w.id !== webhookId);
+            return await this.save();
+        }
+        return undefined;
+    }
+
+    public async setWebhook(webhookId: string, webhook: Omit<GameWebhookConfig, `id`>): Promise<Game | undefined> {
+        if (this.webhookConfig) {
+            let oldWebhook = this.webhookConfig.find((w) => w.id === webhookId);
+            if (oldWebhook) {
+                this.webhookConfig.splice(this.webhookConfig.indexOf(oldWebhook), 1, {
+                    id: webhookId,
+                    url: webhook.url,
+                    types: webhook.types
+                });
+                return await this.save();
+            }
+        }
+    }
+
+    private generateWebhookId(): string {
+        let id = Utils.createRandomString(8);
+        while (this.webhookConfig?.some((w) => w.id === id)) {
+            id = Utils.createRandomString(8);
+        }
+        return id;
+    }
+    // #endregion
 }

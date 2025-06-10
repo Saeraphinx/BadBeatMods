@@ -4,6 +4,7 @@ import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { coerce } from 'semver';
+import { Utils } from '../../shared/Utils.ts';
 
 export class VersionsRoutes {
     private router: Router;
@@ -16,7 +17,7 @@ export class VersionsRoutes {
     private async loadRoutes() {
         this.router.get(`/games`, async (req, res) => {
             /*
-            #swagger.tags = ['Versions']
+            #swagger.tags = ['Games']
             #swagger.summary = 'Get all games & their versions.'
             #swagger.description = 'Returns a list of all games and their versions.'
             #swagger.parameters['shouldShowVersions'] = {
@@ -47,7 +48,7 @@ export class VersionsRoutes {
 
         this.router.get(`/games/:gameName`, async (req, res) => {
             /*
-            #swagger.tags = ['Versions']
+            #swagger.tags = ['Games']
             #swagger.summary = 'Get game by name.'
             #swagger.description = 'Returns a specific game and its versions by name.'
             #swagger.parameters['gameName'] = {
@@ -80,7 +81,7 @@ export class VersionsRoutes {
 
         this.router.post(`/games/:gameName/version`, async (req, res) => {
             /*
-            #swagger.tags = ['Versions']
+            #swagger.tags = ['Games']
             #swagger.summary = 'Add a version to a game.'
             #swagger.description = 'Adds a new version to the specified game.'
             #swagger.parameters['gameName'] = {
@@ -118,18 +119,17 @@ export class VersionsRoutes {
             }
             */
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let version = Validator.z.string().safeParse(req.body.version);
             if (!gameName.success) {
-                return res.status(400).send({ message: `Invalid gameName` });
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!version.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(version.error, `Invalid version`) });
             }
             let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
             if (!session.user) {
                 return;
             }
-            let version = Validator.z.string().safeParse(req.body.version);
-            if (!version.success) {
-                return res.status(400).send({ message: `Invalid version`, errors: version.error.issues });
-            }
-
+            
             let versions = await DatabaseHelper.database.GameVersions.findAll({ where: { version: version.data, gameName: gameName.data} });
             if (versions.length > 0) {
                 return res.status(409).send({ message: `Version already exists.` });
@@ -151,47 +151,20 @@ export class VersionsRoutes {
             
         this.router.post(`/games/:gameName/category`, async (req, res) => {
             /*
-            #swagger.tags = ['Versions']
+            #swagger.tags = ['Games']
             #swagger.summary = 'Add a category to a game.'
-            #swagger.description = 'Adds a new category to the specified game.'
-            #swagger.parameters['gameName'] = {
-                description: 'The name of the game to add a category to.',
-                type: 'string',
-                required: true
-            }
-            #swagger.requestBody = {
-                description: 'The category to add to the game.',
-                required: true,
-                content: {
-                    'application/json': {
-                        schema: {
-                            type: 'object',
-                            properties: {
-                                category: {
-                                    type: 'string',
-                                    description: 'The category to add.'
-                                }
-                            },
-                            required: ['category']
-                        }
-                    }
-                }
-            }
-            #swagger.responses[200] = {
-                description: 'Category added successfully.',
-                content: {
-                    'application/json': {
-                        schema: {
-                            $ref: '#/components/schemas/GameAPIPublicResponse'
-                        }
-                    }
-                }
-            }
+            #swagger.description = 'Adds a new category to the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.'
+            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.requestBody = { $ref: '#/components/requestBodies/GameCategoryBody' }
+            #swagger.responses[200] = { $ref: '#/components/responses/GameAPIPublicResponse' }
             #swagger.responses[400]
             */
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let newCategory = Validator.zCategory.safeParse(req.body.category);
             if (!gameName.success) {
-                return res.status(400).send({ message: `Invalid gameName` });
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!newCategory.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(newCategory.error, `Invalid category`) });
             }
             let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
             if (!session.user) {
@@ -201,28 +174,103 @@ export class VersionsRoutes {
             if (!game) {
                 return res.status(404).send({ message: `Game not found` });
             }
-            let newCategory = Validator.z.string().min(1).max(64).safeParse(req.body.category);
-            if (!newCategory.success) {
-                return res.status(400).send({ message: `Invalid category`, errors: newCategory.error.issues });
-            }
 
-            // Check if the category already exists
-            if (game.categories.includes(newCategory.data)) {
-                return res.status(409).send({ message: `Category already exists for this game.` });
-            }
-
-            game.categories.push(newCategory.data);
-            await game.save().then(() => {
+            game.addCategory(newCategory.data).then((updatedGame) => {
+                if (!updatedGame) {
+                    return res.status(400).send({ message: `Category already exists` });
+                }
+                Logger.log(`Category ${newCategory.data} added to game ${gameName.data} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`games`);
-                Logger.log(`Category ${newCategory.data} added to game ${game.name} by ${session.user.username}.`);
-                return res.status(200).send(game.toAPIResponse());
+                return res.status(200).send(updatedGame.toAPIResponse());
             }).catch((error) => {
                 Logger.error(`Error adding category: ${error}`);
-                return res.status(500).send({ message: `Error adding category: ${error}` });
+                return res.status(500).send({ message: `Error adding category: ${Utils.parseErrorMessage(error)}` });
             });
         });
 
-        // Deprecated routes, kept since they still work.
+        this.router.put(`/games/:gameName/category`, async (req, res) => {
+            /*
+            #swagger.tags = ['Games']
+            #swagger.summary = 'Remove a category from a game.'
+            #swagger.description = 'Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be removed or have their position changed.'
+            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.requestBody = {
+                description: `The category to add or remove from the game.`,
+                content: {
+                    [`application/json`]: {
+                        schema: {
+                            type: `array`,
+                            items: {
+                                type: `string`,
+                                description: `The category to add or remove from the game.`
+                            }
+                        }
+                    }
+                }
+            }
+            #swagger.responses[200] = { $ref: '#/components/responses/GameAPIPublicResponse' }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let categoriesToAdd = Validator.zCategory.array().safeParse(req.body.categories);
+            if (!gameName.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!categoriesToAdd.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(categoriesToAdd.error, `Invalid categories`) });
+            }
+
+            let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
+            if (!session.user) {
+                return;
+            }
+
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            let setCategories = categoriesToAdd.data.filter(async (category) => {
+                if (category === `Core` || category === `Essentials` || category === `Other`) {
+                    return false; // these categories are reserved and cannot be removed or have their order changed
+                } else {
+                    return true;
+                }
+            });
+
+            game.setCategories(setCategories).then((updatedGame) => {
+                if (!updatedGame) {
+                    return res.status(400).send({ message: `Categories already exist, are invalid, or another error occurred.` });
+                }
+
+                Logger.log(`Categories ${setCategories.join(`, `)} set for game ${gameName.data} by ${session.user.username}.`);
+                DatabaseHelper.refreshCache(`games`);
+                return res.status(200).send(updatedGame.toAPIResponse());
+            }).catch((error) => {
+                Logger.error(`Error setting categories: ${error}`);
+                return res.status(500).send({ message: `Error setting categories: ${Utils.parseErrorMessage(error)}` });
+            });
+        });
+
+        this.router.delete(`/games/:gameName/category`, async (req, res) => {
+            /*
+            #swagger.tags = ['Games']
+            #swagger.summary = 'Remove a category from a game.'
+            #swagger.description = 'Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.'
+            #swagger.parameters['$ref'] = ['#/components/requestBodies/gameName']
+            #swagger.requestBody = { $ref: '#/components/requestBodies/GameCategoryBody' }
+            #swagger.responses[200] = { $ref: '#/components/responses/GameAPIPublicResponse' }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let categoryToRemove = Validator.zCategory.safeParse(req.body.category);
+            if (!gameName.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!categoryToRemove.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(categoryToRemove.error, `Invalid category`) });
+            }
+
+
+        });
+
+        //#region Deprecated routes, kept since they still work.
         this.router.get(`/versions`, async (req, res) => {
             // #swagger.tags = ['Versions']
             // #swagger.deprecated = true
@@ -357,5 +405,6 @@ export class VersionsRoutes {
             DatabaseHelper.refreshCache(`gameVersions`);
             return res.status(200).send({ message: `Default version set`, gameVersion, previousDefault });
         });
+        //#endregion
     }
 }
