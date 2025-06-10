@@ -47,8 +47,4 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
             throw new Error(`Cannot set default game to a non-default game.`);
         }
     }
-
-    public static async addCategory(gameName: string, category: string): Promise<void> {
-        
-    }
 }
