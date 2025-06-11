@@ -3,7 +3,7 @@ import { DatabaseHelper, GameVersion, Version, Platform, Status, SupportedGames,
 import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
 import { ApprovalAction } from "../api/routes/approval.ts";
-import e from "express";
+import { WebhookLogType } from "./ModWebhooks.ts";
 
 //generic types that I use a lot
 const ZodDBID = z.number({coerce: true}).int().positive();
@@ -78,6 +78,7 @@ export class Validator {
     public static readonly zCategory = ZodCategory;
     public static readonly zPostType = ZodPostType;
     public static readonly zUserRoles = ZodUserRoles;
+    public static readonly zWebhookLogTypes = z.array(z.nativeEnum(WebhookLogType));
     public static readonly zHashStringOrArray = z.union([z.string().min(8), z.array(z.string().min(8))]);
     public static readonly zUrl = z.string().url().refine((url) => {
         try {

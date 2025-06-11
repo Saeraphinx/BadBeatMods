@@ -1211,25 +1211,13 @@
         "description": "Returns a specific game and its versions by name.",
         "parameters": [
           {
-            "name": "gameName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The name of the game to get versions for."
+            "$ref": "#/components/parameters/gameName"
           }
         ],
         "responses": {
           "200": {
-            "description": "Returns the game versions for the specified game.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GameAPIPublicResponse"
-                }
-              }
-            }
+            "description": "OK",
+            "$ref": "#/components/responses/GameAPIPublicResponse"
           },
           "400": {
             "description": "Bad Request"
@@ -1249,22 +1237,16 @@
         "description": "Adds a new version to the specified game.",
         "parameters": [
           {
-            "name": "gameName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The name of the game to add a version to."
+            "$ref": "#/components/parameters/gameName"
           }
         ],
         "responses": {
           "200": {
-            "description": "Version added successfully.",
+            "description": "Returns the created version.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GameAPIPublicResponse"
+                  "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
                 }
               }
             }
@@ -1310,7 +1292,7 @@
         "description": "Adds a new category to the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.",
         "parameters": [
           {
-            "$ref": "#/components/requestBodies/gameName"
+            "$ref": "#/components/parameters/gameName"
           }
         ],
         "responses": {
@@ -1340,7 +1322,7 @@
         "description": "Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be removed or have their position changed.",
         "parameters": [
           {
-            "$ref": "#/components/requestBodies/gameName"
+            "$ref": "#/components/parameters/gameName"
           }
         ],
         "responses": {
@@ -1381,7 +1363,7 @@
         "description": "Removes a category from the specified game. The `Core`, `Essentials`, and `Other` categories cannot be added, removed, or have their position changed.",
         "parameters": [
           {
-            "$ref": "#/components/requestBodies/gameName"
+            "$ref": "#/components/parameters/gameName"
           }
         ],
         "responses": {
@@ -1395,6 +1377,126 @@
         },
         "requestBody": {
           "$ref": "#/components/requestBodies/GameCategoryBody"
+        }
+      }
+    },
+    "/games/{gameName}/webhooks": {
+      "get": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Get webhooks for a game.",
+        "description": "Returns a list of webhooks for the specified game.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "$ref": "#/components/responses/GameWebhookConfigResponse"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Add a webhook to a game.",
+        "description": "Adds a new webhook to the specified game.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "$ref": "#/components/responses/GameWebhookConfigResponse"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "description": "The webhook to add to the game.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "The URL of the webhook."
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The types of events the webhook should listen to."
+                  }
+                },
+                "required": [
+                  "url",
+                  "types"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/{gameName}/webhooks/{id}": {
+      "put": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Update the types setup for a webhook config.",
+        "description": "Updates the types setup for a webhook config.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/WebhookTypeConfigBody"
         }
       }
     },
@@ -2871,6 +2973,51 @@
             }
           }
         }
+      },
+      "GameWebhookConfigResponse": {
+        "description": "Returns the webhook configuration for a game.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "The ID of the webhook configuration.",
+                    "example": "UTUA6Jn8NJM"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "The URL of the webhook.",
+                    "example": "https://example.com/webhook"
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "setToPending",
+                        "verified",
+                        "unverified",
+                        "verificationRevoked",
+                        "removed",
+                        "editSubmitted",
+                        "editApproved",
+                        "editRejected",
+                        "created",
+                        "statusChanged",
+                        "editBypassed",
+                        "updated",
+                        "all"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "requestBodies": {
@@ -2902,6 +3049,41 @@
               "required": [
                 "category"
               ]
+            }
+          }
+        }
+      },
+      "WebhookTypeConfigBody": {
+        "description": "The configuration for a webhook type.",
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "setToPending",
+                      "verified",
+                      "unverified",
+                      "verificationRevoked",
+                      "removed",
+                      "editSubmitted",
+                      "editApproved",
+                      "editRejected",
+                      "created",
+                      "statusChanged",
+                      "editBypassed",
+                      "updated",
+                      "all"
+                    ]
+                  },
+                  "description": "The types of events to log for this webhook."
+                }
+              }
             }
           }
         }
@@ -3288,6 +3470,13 @@
           "defaultVersion": {
             "type": "boolean",
             "description": "Whether this version is the default version for the game."
+          },
+          "linkedVersionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "The IDs of the linked versions. This is used to link multiple versions of the same game together."
           }
         }
       },

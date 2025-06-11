@@ -277,7 +277,12 @@ const GameVersionDBObject: OpenAPIV3_1.SchemaObject = {
         defaultVersion: {
             type: `boolean`,
             description: `Whether this version is the default version for the game.`,
-        }
+        },
+        linkedVersionIds: {
+            type: `array`,
+            items: { type: `integer` },
+            description: `The IDs of the linked versions. This is used to link multiple versions of the same game together.`
+        },
     }
 };
 const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
@@ -802,6 +807,28 @@ const GameCategoryBody: OpenAPIV3_1.RequestBodyObject = {
         }
     }
 };
+
+const WebhookTypeConfigBody: OpenAPIV3_1.RequestBodyObject = {
+    description: `The configuration for a webhook type.`,
+    required: true,
+    content: {
+        [`application/json`]: {
+            schema: {
+                type: `object`,
+                properties: {
+                    types: {
+                        type: `array`,
+                        items: {
+                            type: `string`,
+                            enum: Object.values(WebhookLogType),
+                        },
+                        description: `The types of events to log for this webhook.`
+                    }
+                }
+            }
+        }
+    }
+};
 // #endregion
 // #region Full API Parameters
 const rawParameter: OpenAPIV3_1.ParameterObject = {
@@ -902,6 +929,7 @@ const doc = {
         "requestBodies": {
             ApproveObjectBody: ApproveObjectBody,
             GameCategoryBody: GameCategoryBody,
+            WebhookTypeConfigBody: WebhookTypeConfigBody,
         },
         "parameters": {
             raw: rawParameter,

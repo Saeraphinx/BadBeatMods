@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
 import { Server } from 'http';
-import { DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, DatabaseManager, EditQueue, GameVersion, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
 const api = supertest(`http://localhost:8486/api`);
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -587,7 +587,90 @@ describe.sequential(`API`, async () => {
         });
     });
 
-    describe.sequential.skip(`Games`, () => {
+    describe.sequential(`Games`, () => {
+        let gameName = fakeData.games[0].name;
+        test(`GET /games/:gameName`, async () => {
+            const response = await api.get(`/games/${gameName}`);
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toHaveProperty(`name`);
+            expect(response.body.name).toBe(gameName);
+            expect(response.body).toHaveProperty(`displayName`);
+            expect(response.body.displayName).toBe(fakeData.games[0].displayName);
+            expect(response.body).toHaveProperty(`categories`);
+            expect(response.body.categories).toBeInstanceOf(Array);
+            expect(response.body.categories.length).toBeGreaterThan(0);
+        });
+
+        test(`GET /games/:gameName/versions`, async () => {
+            shouldAuthenticateWithRole = UserRoles.GameManager;
+            const response = await api.post(`/games/${gameName}/version`).send({
+                version: `123.123.123`
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            let gameVersion = await server.database.GameVersions.findOne({
+                where: {
+                    gameName: gameName,
+                    version: `123.123.123`
+                }
+            });
+            expect(gameVersion).toBeDefined();
+            expect(response.body).toEqual(gameVersion?.toAPIResponse());
+        });
+
+        test(`POST /games/:gameName/category`, async () => {
+            shouldAuthenticateWithRole = UserRoles.GameManager;
+            const response = await api.post(`/games/${gameName}/category`).send({
+                category: `Test Category`
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            let game = await server.database.Games.findByPk(gameName);
+            expect(game).toBeDefined();
+            expect(response.body).toEqual(game?.toAPIResponse());
+        });
+
+        test(`PUT /games/:gameName/category`, async () => {
+            shouldAuthenticateWithRole = UserRoles.GameManager;
+            const response = await api.put(`/games/${gameName}/category`).send({
+                categories: [`Core`, `Test Category`, `Other`]
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            let game = await server.database.Games.findByPk(gameName);
+            expect(game).toBeDefined();
+            expect(response.body).toEqual(game?.toAPIResponse());
+            expect(game?.categories).toEqual([`Core`, `Essentials`, `Test Category`, `Other`]);
+        });
+
+        test(`DELETE /games/:gameName/category`, async () => {
+            shouldAuthenticateWithRole = UserRoles.GameManager;
+            const response = await api.delete(`/games/${gameName}/category`).send({
+                category: `Test Category`
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            let game = await server.database.Games.findByPk(gameName);
+            expect(game).toBeDefined();
+            expect(response.body).toEqual(game?.toAPIResponse());
+            expect(game?.categories).toEqual([`Core`, `Essentials`, `Other`]);
+        });
+
+        test(`GET /games/:gameName/webhooks`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Admin;
+            const response = await api.get(`/games/${gameName}/webhooks`);
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Array);
+            expect(response.body.length).toBeGreaterThan(0);
+            for (let webhook of response.body) {
+                expect(webhook).toHaveProperty(`id`);
+                expect(webhook).toHaveProperty(`url`);
+                expect(webhook).toHaveProperty(`gameName`);
+                expect(webhook.url.endsWith(`*`.repeat(60))).toBeTruthy(); // check that the url is obfuscated
+            }
+        });
     });
 });
 

@@ -22,6 +22,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
             gameName: this.gameName,
             version: this.version,
             defaultVersion: this.defaultVersion,
+            linkedVersionIds: this.linkedVersionIds,
         };
     }
 

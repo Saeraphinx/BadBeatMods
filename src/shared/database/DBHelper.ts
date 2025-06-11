@@ -27,6 +27,7 @@ export type GameVersionAPIPublicResponse = {
     gameName: SupportedGames;
     version: string;
     defaultVersion: boolean;
+    linkedVersionIds: number[];
 };
 export type ProjectAPIPublicResponse = {
     id: number;

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import e, { Router } from 'express';
 import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
@@ -16,6 +16,7 @@ export class VersionsRoutes {
     }
 
     private async loadRoutes() {
+        // #region Get Games
         this.router.get(`/games`, async (req, res) => {
             /*
             #swagger.tags = ['Games']
@@ -69,6 +70,7 @@ export class VersionsRoutes {
 
             return res.status(200).send(game.toAPIResponse());
         });
+        // #endregion
 
         this.router.post(`/games/:gameName/version`, async (req, res) => {
             /*
@@ -95,7 +97,14 @@ export class VersionsRoutes {
                 }
             }
             #swagger.responses[200] = {
-                $ref: '#/components/responses/GameAPIPublicResponse'
+                description: 'Returns the created version.',
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/GameVersionAPIPublicResponse'
+                        }
+                    }
+                }
             }
             */
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
@@ -122,13 +131,13 @@ export class VersionsRoutes {
             }).then((version) => {
                 Logger.log(`Version ${version.gameName} ${version.version} added by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`gameVersions`);
-                return res.status(200).send(version);
+                return res.status(200).send(version.toAPIResponse());
             }).catch((error) => {
-                Logger.error(`Error creating version: ${error}`);
-                return res.status(500).send({ message: `Error creating version: ${error}` });
+                Logger.error(`Error creating version: ${Utils.parseErrorMessage(error)}`);
+                return res.status(500).send({ message: `Error creating version: ${Utils.parseErrorMessage(error)}` });
             });
         });
-            
+        // #region get categories
         this.router.post(`/games/:gameName/category`, async (req, res) => {
             /*
             #swagger.tags = ['Games']
@@ -247,9 +256,31 @@ export class VersionsRoutes {
                 return res.status(400).send({ message: Utils.parseErrorMessage(categoryToRemove.error, `Invalid category`) });
             }
 
+            let session = await validateSession(req, res, UserRoles.GameManager, gameName.data);
+            if (!session.user) {
+                return;
+            }
 
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            game.removeCategory(categoryToRemove.data).then((updatedGame) => {
+                if (!updatedGame) {
+                    return res.status(400).send({ message: `Category does not exist or another error occurred.` });
+                }
+
+                Logger.log(`Category ${categoryToRemove.data} removed from game ${gameName.data} by ${session.user.username}.`);
+                DatabaseHelper.refreshCache(`games`);
+                return res.status(200).send(updatedGame.toAPIResponse());
+            }).catch((error) => {
+                Logger.error(`Error removing category: ${Utils.parseErrorMessage(error)}`);
+                return res.status(500).send({ message: `Error removing category: ${Utils.parseErrorMessage(error)}` });
+            });
         });
-
+        // #endregion
+        // #region Webhooks
         this.router.get(`/games/:gameName/webhooks`, async (req, res) => {
             /*
             #swagger.tags = ['Games']
@@ -273,12 +304,7 @@ export class VersionsRoutes {
                 return res.status(404).send({ message: `Game not found` });
             }
 
-            let webhooks = game.webhookConfig.map(webhook => ({
-                id: webhook.id,
-                url: webhook.url.slice(0, 60) + `*`.repeat(60),
-                types: webhook.types
-            }));
-            return res.status(200).send(webhooks);
+            return res.status(200).send(game.getAPIWebhooks());
         });
 
         this.router.post(`/games/:gameName/webhooks`, async (req, res) => {
@@ -310,7 +336,7 @@ export class VersionsRoutes {
             let gameName = Validator.zGameName.safeParse(req.params.gameName);
             let webhookConfig = Validator.z.object({
                 url: Validator.z.string().url().min(60).max(256),
-                types: Validator.z.array(Validator.z.nativeEnum(WebhookLogType)).nonempty()
+                types: Validator.zWebhookLogTypes
             }).safeParse(req.body);
             if (!gameName.success) {
                 return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
@@ -341,6 +367,63 @@ export class VersionsRoutes {
             });
         });
 
+        this.router.put(`/games/:gameName/webhooks/:id`, async (req, res) => {
+            /**
+            #swagger.tags = ['Games']
+            #swagger.summary = 'Update the types setup for a webhook config.'
+            #swagger.description = 'Updates the types setup for a webhook config.'
+            #swagger.parameters['$ref'] = ['#/components/parameters/gameName']
+            #swagger.parameters['id'] = {
+                description: 'The ID of the webhook config to update.',
+                in: 'path',
+                required: true,
+                schema: {
+                    type: 'string',
+                }
+            }
+            #swagger.requestBody = {
+                $ref: '#/components/requestBodies/WebhookTypeConfigBody'
+            }
+            */
+            let gameName = Validator.zGameName.safeParse(req.params.gameName);
+            let webhookId = Validator.z.string().safeParse(req.params.id);
+            let webhookTypes = Validator.zWebhookLogTypes.safeParse(req.body.types);
+            if (!gameName.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(gameName.error, `Invalid gameName`) });
+            } else if (!webhookId.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(webhookId.error, `Invalid webhookId`) });
+            } else if (!webhookTypes.success) {
+                return res.status(400).send({ message: Utils.parseErrorMessage(webhookTypes.error, `Invalid webhook types`) });
+            }
+
+            let session = await validateSession(req, res, UserRoles.Admin, gameName.data);
+            if (!session.user) {
+                return;
+            }
+
+            let game = await DatabaseHelper.database.Games.findOne({ where: { name: gameName.data } });
+            if (!game) {
+                return res.status(404).send({ message: `Game not found` });
+            }
+
+            let webhook = game.webhookConfig.find(w => w.id === webhookId.data);
+            if (!webhook) {
+                return res.status(404).send({ message: `Webhook not found` });
+            }
+
+            game.webhookConfig.splice(game.webhookConfig.indexOf(webhook), 1);
+            webhook.types = webhookTypes.data;
+            game.webhookConfig.push(webhook);
+            game.save().then((g) => {
+                Logger.log(`Webhook ${webhook.id} updated for game ${gameName.data} by ${session.user.username}.`);
+                DatabaseHelper.refreshCache(`games`);
+                return res.status(200).send(g.getAPIWebhooks());
+            }).catch((error) => {
+                Logger.error(`Error updating webhook: ${error}`);
+                return res.status(500).send({ message: `Error updating webhook: ${Utils.parseErrorMessage(error)}` });
+            });
+        });
+        // #endregion
 
         //#region Deprecated routes, kept since they still work.
         this.router.get(`/versions`, async (req, res) => {

@@ -12,6 +12,7 @@ export type GameWebhookConfig = {
 export type GameInfer = InferAttributes<Game>;
 export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<Game>> {
     private static _defaultGame: NonAttribute<Game>;
+    private static _defaultCategories: string[] = [`Core`, `Essentials`, `Other`];
 
     declare name: string;
     declare displayName: string;
@@ -51,52 +52,71 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
     }
 
     // #region Categories
-    public async addCategory(category: string): Promise<Game | undefined> {
+    public async addCategory(category: string): Promise<Game> {
         if (!this.categories) {
-            this.categories = [`Core`, `Essentials`, `Other`];
+            this.categories = Game._defaultCategories;
+        }
+
+        if (category === `Core` || category === `Essentials` || category === `Other`) {
+            throw new Error(`Cannot remove required categories: Core, Essentials, or Other.`);
+        }
+
+        if (this.categories.includes(category)) {
+            throw new Error(`Category ${category} already exists.`);
+        }
+
+        let last = this.categories.length > 0 ? this.categories.pop() : undefined;
+        let newCategories = this.categories.filter((c) => c !== last);
+        newCategories.push(category);
+        if (last) {
+            newCategories.push(last);
+        }
+
+        return await this.update({
+            categories: newCategories
+        });
+    }
+
+    public async removeCategory(category: string): Promise<Game> {
+        if (!this.categories) {
+            this.categories = Game._defaultCategories;
+        }
+
+        if (category === `Core` || category === `Essentials` || category === `Other`) {
+            throw new Error(`Cannot remove required categories: Core, Essentials, or Other.`);
         }
 
         if (!this.categories.includes(category)) {
-            let last = this.categories.pop();
-            this.categories.push(category);
-            if (last) {
-                this.categories.push(last);
-            }
-
-            return await this.save();
+            throw new Error(`Category ${category} does not exist.`);
         }
-        return undefined;
-    }
 
-    public async removeCategory(category: string): Promise<Game | undefined> {
-        if (this.categories && this.categories.includes(category)) {
-            this.categories = this.categories.filter((c) => c !== category);
-            return await this.save();
-        }
-        return undefined;
+        let newCategories = this.categories.filter((c) => c !== category);
+        return await this.update({
+            categories: newCategories
+        });
     }
 
     public async setCategories(categories: string[]): Promise<Game | undefined> {
-        let newCategories = [`Core`, `Essentials`, ...categories, `Other`];
-        this.categories = newCategories;
-        return await this.save();
+        let noReqdCats = categories.filter((c) => c !== `Core` && c !== `Essentials` && c !== `Other`);
+        let newCategories = [`Core`, `Essentials`, ...noReqdCats, `Other`];
+        return await this.update({
+            categories: newCategories
+        });
     }
     // #endregion
 
     // #region Webhooks
     public async addWebhook(webhook: Omit<GameWebhookConfig, `id`>): Promise<{game: Game, webhook: GameWebhookConfig}> {
-        if (!this.webhookConfig) {
-            this.webhookConfig = [];
-        }
+        let newWebhooks = this.webhookConfig || [];
 
-        if (!this.webhookConfig.some((w) => webhook.url === w.url)) {
+        if (!newWebhooks.some((w) => webhook.url === w.url)) {
             let id = this.generateWebhookId();
-            this.webhookConfig.push({
+            newWebhooks.push({
                 id: id,
                 url: webhook.url,
                 types: webhook.types
             });
-            return { game: await this.save(), webhook: { ...webhook, id } };
+            return { game: await this.update({ webhookConfig: newWebhooks }), webhook: { ...webhook, id } };
         } else {
             throw new Error(`Webhook with URL ${webhook.url} already exists.`);
         }
@@ -104,38 +124,36 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
 
     public async removeWebhook(webhookId: string): Promise<Game> {
         if (this.webhookConfig) {
-            this.webhookConfig = this.webhookConfig.filter((w) => w.id !== webhookId);
-            return await this.save();
+            let newWebhooks = this.webhookConfig.filter((w) => w.id !== webhookId);
+            return await this.update({ webhookConfig: newWebhooks });
         }
         throw new Error(`Webhook with ID ${webhookId} does not exist.`);
     }
 
     public async setWebhook(webhookId: string, webhook: Omit<GameWebhookConfig, `id`>): Promise<Game> {
-        if (!this.webhookConfig) {
-            this.webhookConfig = [];
-        }
+        let newWebhooks = this.webhookConfig || [];
 
-        let oldWebhook = this.webhookConfig.find((w) => w.id === webhookId);
+        let oldWebhook = newWebhooks.find((w) => w.id === webhookId);
         if (oldWebhook) {
-            this.webhookConfig.splice(this.webhookConfig.indexOf(oldWebhook), 1, {
+            newWebhooks.splice(newWebhooks.indexOf(oldWebhook), 1, {
                 id: webhookId,
                 url: webhook.url,
                 types: webhook.types
             });
-            return await this.save();
+            return await this.update({ webhookConfig: newWebhooks });
         } else {
             throw new Error(`Webhook with ID ${webhookId} does not exist.`);
         }
     }
 
-    public async getAPIWebhooks(): Promise<GameWebhookConfig[]> {
+    public getAPIWebhooks(): GameWebhookConfig[] {
         if (!this.webhookConfig) {
             this.webhookConfig = [];
         }
         
         return this.webhookConfig.map((w) => ({
             id: w.id,
-            url: w.url.slice(0, 60) + `*`.repeat(60), 
+            url: w.url.length > 60 ? w.url.slice(0, w.url.length - 60) : `` + `*`.repeat(60),
             types: w.types
         }));
     }
