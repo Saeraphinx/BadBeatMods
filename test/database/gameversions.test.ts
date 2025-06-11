@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll, describe, afterEach } from 'vitest';
-import { DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer, GameWebhookConfig } from '../../src/shared/Database.ts';
 // eslint-disable-next-line quotes
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
@@ -54,6 +54,7 @@ describe.sequential(`Game Versions - Hooks`, () => {
         await db.init();
         await db.Games.bulkCreate(fakeData.games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })), { individualHooks: true });
@@ -156,6 +157,13 @@ describe.sequential(`Game Versions - Hooks`, () => {
         expect(version1.linkedVersionIds).toContain(version2.id);
         expect(version2.linkedVersionIds).toContain(version1.id);
     });
+
+    test(`should not allow gameNames that are not in the database`, async () => {
+        await expect(db.GameVersions.create({
+            gameName: `NonExistentGame`,
+            version: `1.0.0`,
+        })).rejects.toThrow();
+    });
 });
 
 describe.sequential(`Game Versions - GV`, () => {
@@ -165,6 +173,7 @@ describe.sequential(`Game Versions - GV`, () => {
         await db.init();
         await db.Games.bulkCreate(fakeData.games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })), { individualHooks: true });
@@ -210,6 +219,7 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
         await db.init();
         await db.Games.bulkCreate(fakeData.games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })), { individualHooks: true });

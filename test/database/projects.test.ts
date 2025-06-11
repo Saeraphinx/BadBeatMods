@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 import { SemVer } from "semver";
 import { projects, users, games } from '../fakeData.json' with { type: 'json' };
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { DatabaseManager, GameVersion, SupportedGames, Platform, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, Project, Version, ProjectInfer, VersionInfer } from "../../src/shared/Database";
+import { DatabaseManager, GameVersion, SupportedGames, Platform, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, Project, Version, ProjectInfer, VersionInfer, GameWebhookConfig } from "../../src/shared/Database";
 import { WebhookLogType } from "../../src/shared/ModWebhooks.ts";
 
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
@@ -24,6 +24,7 @@ describe.sequential(`Projects - Hooks`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })));
@@ -90,6 +91,7 @@ describe.sequential(`Projects - Getting Mods`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })));
@@ -181,6 +183,7 @@ describe.sequential(`Projects - Permissions`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })));
@@ -334,6 +337,7 @@ describe.sequential(`Projects - Editing`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })));

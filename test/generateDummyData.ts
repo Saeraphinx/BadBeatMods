@@ -2,6 +2,8 @@ import { SemVer } from "semver";
 import { ContentHash, GameVersionInfer, Platform, ProjectInfer, Status, SupportedGames, UserInfer, UserRoles, VersionInfer, GameInfer } from "../src/shared/Database";
 import {de, faker} from "@faker-js/faker";
 import * as fs from 'fs';
+import { WebhookLogType } from "../src/shared/ModWebhooks";
+import { Utils } from "../src/shared/Utils";
 
 let fakeGameVersionData: GameVersionInfer[] = [];
 let fakeUserData: UserInfer[] = [];
@@ -12,7 +14,11 @@ let fakeGameData: GameInfer[] = [
         name: `BeatSaber`,
         displayName: `Game 1`,
         categories: [`cat1`, `cat2`],
-        webhookConfig: [],
+        webhookConfig: [{
+            id: Utils.createRandomString(8),
+            url: `https://notdiscord.com/notdiscordapi/webhooks/1234567890123456789/abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz`,
+            types: [WebhookLogType.All]
+        }],
         default: true,
         createdAt: faker.date.recent(),
         updatedAt: faker.date.recent(),
@@ -21,7 +27,7 @@ let fakeGameData: GameInfer[] = [
         name: `Chromapper`,
         displayName: `Game 2`,
         categories: [`cat1`, `cat3`],
-        webhookConfig: [],
+        webhookConfig: [ ],
         default: false,
         createdAt: faker.date.recent(),
         updatedAt: faker.date.recent(),

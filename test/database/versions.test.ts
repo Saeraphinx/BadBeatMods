@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll, beforeEach, describe, afterEach, vi } from 'vitest';
-import { DatabaseManager, GameVersion, Status, SupportedGames, Platform, User, DatabaseHelper, UserRoles, EditQueue, Version, VersionInfer, Project, ProjectInfer, Game } from '../../src/shared/Database.ts';
+import { DatabaseManager, GameVersion, Status, SupportedGames, Platform, User, DatabaseHelper, UserRoles, EditQueue, Version, VersionInfer, Project, ProjectInfer, Game, GameWebhookConfig } from '../../src/shared/Database.ts';
 import { UniqueConstraintError } from 'sequelize';
 // eslint-disable-next-line quotes
 import { projects, users, games } from '../fakeData.json' with { type: 'json' };
@@ -32,6 +32,7 @@ describe.sequential(`Versions - Hooks`, async () => {
         try {
             testGames = await db.Games.bulkCreate(games.map((game) => ({
                 ...game,
+                webhookConfig: game.webhookConfig as GameWebhookConfig[],
                 createdAt: new Date(game.createdAt),
                 updatedAt: new Date(game.updatedAt),
             })));
@@ -290,6 +291,7 @@ describe.sequential(`Versions - Permissions`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
                 ...game,
+                webhookConfig: game.webhookConfig as GameWebhookConfig[],
                 createdAt: new Date(game.createdAt),
                 updatedAt: new Date(game.updatedAt),
         })));
@@ -472,6 +474,7 @@ describe.sequential(`Versions - Editing`, async () => {
         await db.init();
         await db.Games.bulkCreate(games.map((game) => ({
                 ...game,
+                webhookConfig: game.webhookConfig as GameWebhookConfig[],
                 createdAt: new Date(game.createdAt),
                 updatedAt: new Date(game.updatedAt),
         })));

@@ -12,7 +12,7 @@ export type GameWebhookConfig = {
 export type GameInfer = InferAttributes<Game>;
 export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<Game>> {
     private static _defaultGame: NonAttribute<Game>;
-    private static _defaultCategories: string[] = [`Core`, `Essentials`, `Other`];
+    private static readonly _defaultCategories: string[] = [`Core`, `Essentials`, `Other`];
 
     declare name: string;
     declare displayName: string;
@@ -53,20 +53,17 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
 
     // #region Categories
     public async addCategory(category: string): Promise<Game> {
-        if (!this.categories) {
-            this.categories = Game._defaultCategories;
-        }
+        let newCategories = this.categories ? [...this.categories] : Game._defaultCategories;
 
         if (category === `Core` || category === `Essentials` || category === `Other`) {
             throw new Error(`Cannot remove required categories: Core, Essentials, or Other.`);
         }
 
-        if (this.categories.includes(category)) {
+        if (newCategories.includes(category)) {
             throw new Error(`Category ${category} already exists.`);
         }
 
-        let last = this.categories.length > 0 ? this.categories.pop() : undefined;
-        let newCategories = this.categories.filter((c) => c !== last);
+        let last = newCategories.pop();
         newCategories.push(category);
         if (last) {
             newCategories.push(last);
@@ -78,19 +75,17 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
     }
 
     public async removeCategory(category: string): Promise<Game> {
-        if (!this.categories) {
-            this.categories = Game._defaultCategories;
-        }
+        let newCategories = this.categories ? [...this.categories] : Game._defaultCategories;
 
         if (category === `Core` || category === `Essentials` || category === `Other`) {
             throw new Error(`Cannot remove required categories: Core, Essentials, or Other.`);
         }
 
-        if (!this.categories.includes(category)) {
+        if (!newCategories.includes(category)) {
             throw new Error(`Category ${category} does not exist.`);
         }
 
-        let newCategories = this.categories.filter((c) => c !== category);
+        newCategories = newCategories.filter((c) => c !== category);
         return await this.update({
             categories: newCategories
         });
@@ -107,7 +102,7 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
 
     // #region Webhooks
     public async addWebhook(webhook: Omit<GameWebhookConfig, `id`>): Promise<{game: Game, webhook: GameWebhookConfig}> {
-        let newWebhooks = this.webhookConfig || [];
+        let newWebhooks = this.webhookConfig ? [...this.webhookConfig] : []; // you have to make a new array if youre saving stuff to the db
 
         if (!newWebhooks.some((w) => webhook.url === w.url)) {
             let id = this.generateWebhookId();
@@ -116,7 +111,8 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
                 url: webhook.url,
                 types: webhook.types
             });
-            return { game: await this.update({ webhookConfig: newWebhooks }), webhook: { ...webhook, id } };
+            let updatedGame = await this.update({ webhookConfig: newWebhooks });
+            return { game: updatedGame, webhook: { id, ...webhook } };
         } else {
             throw new Error(`Webhook with URL ${webhook.url} already exists.`);
         }
@@ -131,7 +127,7 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
     }
 
     public async setWebhook(webhookId: string, webhook: Omit<GameWebhookConfig, `id`>): Promise<Game> {
-        let newWebhooks = this.webhookConfig || [];
+        let newWebhooks = this.webhookConfig ? [...this.webhookConfig] : [];
 
         let oldWebhook = newWebhooks.find((w) => w.id === webhookId);
         if (oldWebhook) {
@@ -151,11 +147,16 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
             this.webhookConfig = [];
         }
         
-        return this.webhookConfig.map((w) => ({
-            id: w.id,
-            url: w.url.length > 60 ? w.url.slice(0, w.url.length - 60) : `` + `*`.repeat(60),
-            types: w.types
-        }));
+
+        return this.webhookConfig.map((w) => {
+            let halfLength = w.url.length / 2;
+
+            return {
+                id: w.id,
+                url: `${w.url.length > 4 ? w.url.slice(0, halfLength) : ``}${`*`.repeat(halfLength)}`,
+                types: w.types
+            };
+        });
     }
 
     private generateWebhookId(): string {

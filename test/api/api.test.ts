@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
 import { Server } from 'http';
-import { DatabaseHelper, DatabaseManager, EditQueue, GameVersion, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, DatabaseManager, EditQueue, GameVersion, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
 const api = supertest(`http://localhost:8486/api`);
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -142,6 +142,7 @@ describe.sequential(`API`, async () => {
         server = await startServer();
         await server.database.Games.bulkCreate(fakeData.games.map((game) => ({
             ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
             createdAt: new Date(game.createdAt),
             updatedAt: new Date(game.updatedAt),
         })), { individualHooks: true });
@@ -667,8 +668,9 @@ describe.sequential(`API`, async () => {
             for (let webhook of response.body) {
                 expect(webhook).toHaveProperty(`id`);
                 expect(webhook).toHaveProperty(`url`);
-                expect(webhook).toHaveProperty(`gameName`);
-                expect(webhook.url.endsWith(`*`.repeat(60))).toBeTruthy(); // check that the url is obfuscated
+                console.log(webhook.url);
+                expect(webhook.url.includes(`***`)).toBeTruthy(); // url should be masked
+                expect(webhook).toHaveProperty(`types`);
             }
         });
     });
