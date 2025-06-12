@@ -4,6 +4,7 @@ import { Project } from "./Project.ts";
 import { Version } from "./Version.ts";
 import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper.ts";
 import { coerce } from "semver";
+import { Logger } from "../../../shared/Logger.ts";
 
 export type GameVersionInfer = InferAttributes<GameVersion>;
 export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
@@ -83,5 +84,55 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
             }
         }
         return games;
+    }
+
+    public async addLinkToGameVersion(versionToLinkTo: GameVersion) {
+        let thisLinkedIDs = this.linkedVersionIds ? [...this.linkedVersionIds] : [];
+
+        if (thisLinkedIDs.includes(versionToLinkTo.id)) {
+            throw new Error(`Version ${versionToLinkTo.id} is already linked to this version.`);
+        }
+
+        if (versionToLinkTo.id === this.id) {
+            throw new Error(`Cannot link version ${versionToLinkTo.id} to itself.`);
+        }
+
+        if (versionToLinkTo.gameName !== this.gameName) {
+            throw new Error(`Cannot link version ${versionToLinkTo.id} to version ${this.id} because they are from different games.`);
+        }
+
+        thisLinkedIDs.push(versionToLinkTo.id);
+        let thisObj = await this.update({
+            linkedVersionIds: thisLinkedIDs 
+        });
+        // the linked version gets linked to this version in hooks.
+        await versionToLinkTo.update({
+            linkedVersionIds: [...(versionToLinkTo.linkedVersionIds || []), this.id]
+        });
+        return thisObj;
+    }
+
+    public async removeLinkToGameVersion(versionToUnlink: GameVersion) {
+        let thisLinkedIds = this.linkedVersionIds ? [...this.linkedVersionIds] : [];
+
+        if (!thisLinkedIds.includes(versionToUnlink.id)) {
+            throw new Error(`Version ${versionToUnlink.id} is not linked to this version.`);
+        }
+
+        let updatedVersion = await this.update({
+            linkedVersionIds: thisLinkedIds.filter((id) => id !== versionToUnlink.id) // the linked version gets unlinked from this version in hooks.
+        }).catch((err) => {
+            Logger.error(`Failed to unlink version ${versionToUnlink.id} from ${this.id}: ${err.message}`);
+            throw err;
+        });
+
+        await versionToUnlink.update({
+            linkedVersionIds: versionToUnlink.linkedVersionIds.filter((id) => id !== this.id) // remove this version from the linked versions of the other version, as the hook doesn't process this atm.
+        }).catch((err) => {
+            Logger.error(`Failed to unlink version ${this.id} from ${versionToUnlink.id}: ${err.message}`);
+            throw err;
+        });
+
+        return updatedVersion;
     }
 }

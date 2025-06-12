@@ -605,7 +605,7 @@ describe.sequential(`API`, async () => {
 
         test(`GET /games/:gameName/versions`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.post(`/games/${gameName}/version`).send({
+            const response = await api.post(`/games/${gameName}/versions`).send({
                 version: `123.123.123`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -620,9 +620,9 @@ describe.sequential(`API`, async () => {
             expect(response.body).toEqual(gameVersion?.toAPIResponse());
         });
 
-        test(`POST /games/:gameName/category`, async () => {
+        test(`POST /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.post(`/games/${gameName}/category`).send({
+            const response = await api.post(`/games/${gameName}/categories`).send({
                 category: `Test Category`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -632,9 +632,9 @@ describe.sequential(`API`, async () => {
             expect(response.body).toEqual(game?.toAPIResponse());
         });
 
-        test(`PUT /games/:gameName/category`, async () => {
+        test(`PUT /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.put(`/games/${gameName}/category`).send({
+            const response = await api.put(`/games/${gameName}/categories`).send({
                 categories: [`Core`, `Test Category`, `Other`]
             });
             expect(response.status, response.body.message).toBe(200);
@@ -645,9 +645,9 @@ describe.sequential(`API`, async () => {
             expect(game?.categories).toEqual([`Core`, `Essentials`, `Test Category`, `Other`]);
         });
 
-        test(`DELETE /games/:gameName/category`, async () => {
+        test(`DELETE /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.delete(`/games/${gameName}/category`).send({
+            const response = await api.delete(`/games/${gameName}/categories`).send({
                 category: `Test Category`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -668,10 +668,105 @@ describe.sequential(`API`, async () => {
             for (let webhook of response.body) {
                 expect(webhook).toHaveProperty(`id`);
                 expect(webhook).toHaveProperty(`url`);
-                console.log(webhook.url);
                 expect(webhook.url.includes(`***`)).toBeTruthy(); // url should be masked
                 expect(webhook).toHaveProperty(`types`);
             }
+        });
+
+        test(`POST /games/:gameName/webhooks`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Admin;
+            const response = await api.post(`/games/${gameName}/webhooks`).send({
+                url: `https://example.com/webhook`,
+                types: [WebhookLogType.Verified]
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Array);
+            expect(response.body.length).toBeGreaterThan(0);
+            let expectedWebhook = response.body.find((w: GameWebhookConfig) => w.types[0] === WebhookLogType.Verified);
+            expect(expectedWebhook).toBeDefined();
+            expect(expectedWebhook.url.startsWith(`https://example.com/webhook`)).toBeFalsy();
+            expect(expectedWebhook.url.includes(`***`)).toBeTruthy(); // url should be masked
+            expect(expectedWebhook).toHaveProperty(`types`);
+            expect(expectedWebhook.types).toEqual([WebhookLogType.Verified]);
+        });
+
+        test(`PUT /games/:gameName/webhooks/:id`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Admin;
+            let game = await server.database.Games.findByPk(gameName);
+            expect(game).toBeDefined();
+            let webhook = game?.webhookConfig[0];
+            const response = await api.put(`/games/${gameName}/webhooks/${webhook?.id}`).send({
+                types: [WebhookLogType.Text_Created]
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Array);
+            let editedWebhook = response.body.find((w: GameWebhookConfig) => w.id === webhook?.id);
+            expect(editedWebhook).toBeDefined();
+            expect(editedWebhook.url.startsWith(`https://example.com/webhook2`)).toBeFalsy();
+            expect(editedWebhook.url.includes(`***`)).toBeTruthy(); // url should be masked
+            expect(editedWebhook.types).toEqual([WebhookLogType.Text_Created]);
+        });
+
+        test(`DELETE /games/:gameName/webhooks/:id`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Admin;
+            let game = await server.database.Games.findByPk(gameName);
+            expect(game).toBeDefined();
+            let webhook = game?.webhookConfig[0];
+            const response = await api.delete(`/games/${gameName}/webhooks/${webhook?.id}`);
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Array);
+            let deletedWebhook = response.body.find((w: GameWebhookConfig) => w.id === webhook?.id);
+            expect(deletedWebhook).toBeUndefined();
+        });
+
+        test(`POST /games/:gameName/versions/link`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            let version1 = await server.database.GameVersions.create({
+                gameName: gameName,
+                version: `1324.0.0`,
+            });
+            let version2 = await server.database.GameVersions.create({
+                gameName: gameName,
+                version: `1324.0.1`,
+            });
+            const response = await api.post(`/games/${gameName}/versions/link`).send({
+                versionAId: version1.id,
+                versionBId: version2.id,
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Object);
+            expect(response.body.versionA).toBeDefined();
+            expect(response.body.versionB).toBeDefined();
+            expect(response.body.versionA.linkedVersionIds).toContain(response.body.versionB.id);
+            expect(response.body.versionB.linkedVersionIds).toContain(response.body.versionA.id);
+        });
+
+        test(`POST /games/:gameName/versions/unlink`, async () => {
+            shouldAuthenticateWithRole = UserRoles.Approver;
+            let version1 = await server.database.GameVersions.create({
+                gameName: gameName,
+                version: `5431.0.0`,
+            });
+            let version2 = await server.database.GameVersions.create({
+                gameName: gameName,
+                version: `5431.0.1`,
+            });
+            await version1.addLinkToGameVersion(version2);
+            const response = await api.post(`/games/${gameName}/versions/unlink`).send({
+                versionAId: version1.id,
+                versionBId: version2.id,
+            });
+            expect(response.status, response.body.message).toBe(200);
+            expect(response.body).toBeDefined();
+            expect(response.body).toBeInstanceOf(Object);
+            expect(response.body.versionA).toBeDefined();
+            expect(response.body.versionB).toBeDefined();
+            expect(response.body.versionA.linkedVersionIds).not.toContain(response.body.versionB.id);
+            expect(response.body.versionB.linkedVersionIds).not.toContain(response.body.versionA.id);
         });
     });
 });

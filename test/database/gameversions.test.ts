@@ -1,8 +1,9 @@
-import { test, expect, beforeAll, afterAll, describe, afterEach } from 'vitest';
+import { test, expect, beforeAll, afterAll, describe, afterEach, beforeEach } from 'vitest';
 import { DatabaseManager, GameVersion, GameVersionInfer, SupportedGames, Status, Platform, DatabaseHelper, UserInfer, ProjectInfer, VersionInfer, GameWebhookConfig } from '../../src/shared/Database.ts';
 // eslint-disable-next-line quotes
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
+import { b } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
 
 let gameVersions: GameVersionInfer[] = [];
 for (let gv of fakeData.gameVersions) {
@@ -305,4 +306,102 @@ describe.sequential(`Game Versions - Getting Mods`, () => {
         expect(hasSeenUnverified).toBe(true);
     });
 
+});
+
+describe.sequential(`Game Versions - Linking`, () => {
+    let db: DatabaseManager;
+    beforeAll(async () => {
+        db = new DatabaseManager();
+        await db.init();
+        await db.Games.bulkCreate(fakeData.games.map((game) => ({
+            ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })), { individualHooks: true });
+        await DatabaseHelper.refreshAllCaches();
+    });
+
+    afterAll(async () => {
+        await db.sequelize.close();
+    });
+
+    beforeEach(async () => {
+        await db.GameVersions.truncate({ force: true });
+    });
+
+    test(`should link versions correctly`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.0.0`,
+        });
+
+        let version2 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.1.0`,
+        });
+
+        await version1.addLinkToGameVersion(version2);
+  
+        version1 = await version1.reload();
+        version2 = await version2.reload();
+        expect(version1.linkedVersionIds).toContain(version2.id);
+        expect(version2.linkedVersionIds).toContain(version1.id);
+    });
+
+    test(`should not allow linking to self`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.0.0`,
+        });
+
+        await expect(version1.addLinkToGameVersion(version1)).rejects.toThrow();
+    });
+
+    test(`should not allow linking to non-existent version`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.0.0`,
+        });
+
+        version1.linkedVersionIds = [9999];
+        await expect(version1.save()).rejects.toThrow();
+    });
+
+    test(`should not allow linking to version of different game`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.0.0`,
+        });
+
+        let version2 = await db.GameVersions.create({
+            gameName: `Chromapper`,
+            version: `1.0.0`,
+        });
+
+        await expect(version1.addLinkToGameVersion(version2)).rejects.toThrow();
+        await expect(version2.addLinkToGameVersion(version1)).rejects.toThrow();
+    });
+
+    test(`should unlink versions correctly`, async () => {
+        let version1 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.0.0`,
+        });
+
+        let version2 = await db.GameVersions.create({
+            gameName: `BeatSaber`,
+            version: `1.1.0`,
+        });
+
+        await version1.addLinkToGameVersion(version2);
+        version1 = await version1.reload();
+        version2 = await version2.reload();
+        await version1.removeLinkToGameVersion(version2);
+        let dbVersion1 = await db.GameVersions.findByPk(version1.id);
+        let dbVersion2 = await db.GameVersions.findByPk(version2.id);
+        
+        expect(dbVersion1?.linkedVersionIds).not.toContain(version2.id);
+        expect(dbVersion2?.linkedVersionIds).not.toContain(version1.id);
+    });
 });

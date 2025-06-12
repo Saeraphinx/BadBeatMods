@@ -1228,7 +1228,7 @@
         }
       }
     },
-    "/games/{gameName}/version": {
+    "/games/{gameName}/versions": {
       "post": {
         "tags": [
           "Games"
@@ -1261,6 +1261,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The version to add to the game.",
           "required": true,
@@ -1283,7 +1289,155 @@
         }
       }
     },
-    "/games/{gameName}/category": {
+    "/games/{gameName}/versions/link": {
+      "post": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Link two versions together.",
+        "description": "Links two game versions together. This is used to indicate that two versions are identical and mods can be used interchangeably between them. Game versions that are linked together will cause any version to add the other version if it is not already in the supported game version array.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the linked versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versionA": {
+                      "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+                    },
+                    "versionB": {
+                      "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "description": "The versions to link together.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionAId": {
+                    "type": "number",
+                    "description": "The ID of the first version."
+                  },
+                  "versionBId": {
+                    "type": "number",
+                    "description": "The ID of the second version."
+                  }
+                },
+                "required": [
+                  "versionAId",
+                  "versionBId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/{gameName}/versions/unlink": {
+      "post": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Unlink two versions.",
+        "description": "Unlinks two game versions that were previously linked together.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the unlinked versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versionA": {
+                      "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+                    },
+                    "versionB": {
+                      "$ref": "#/components/schemas/GameVersionAPIPublicResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "description": "The versions to unlink.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "versionAId": {
+                    "type": "number",
+                    "description": "The ID of the first version."
+                  },
+                  "versionBId": {
+                    "type": "number",
+                    "description": "The ID of the second version."
+                  }
+                },
+                "required": [
+                  "versionAId",
+                  "versionBId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/{gameName}/categories": {
       "post": {
         "tags": [
           "Games"
@@ -1310,6 +1464,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "$ref": "#/components/requestBodies/GameCategoryBody"
         }
@@ -1340,6 +1500,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The category to add or remove from the game.",
           "content": {
@@ -1368,13 +1534,25 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/components/responses/GameAPIPublicResponse",
-            "description": "OK"
+            "description": "OK",
+            "$ref": "#/components/responses/GameAPIPublicResponse"
           },
           "400": {
             "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "$ref": "#/components/requestBodies/GameCategoryBody"
         }
@@ -1403,7 +1581,13 @@
           "404": {
             "description": "Not Found"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -1431,6 +1615,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "description": "The webhook to add to the game.",
           "required": true,
@@ -1495,9 +1685,65 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ],
         "requestBody": {
           "$ref": "#/components/requestBodies/WebhookTypeConfigBody"
         }
+      },
+      "delete": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "Remove a webhook from a game.",
+        "description": "Removes a webhook from the specified game.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/gameName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the updated list of webhooks for the game.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameWebhookConfigResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
       }
     },
     "/versions": {
