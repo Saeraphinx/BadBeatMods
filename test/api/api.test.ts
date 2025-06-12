@@ -197,7 +197,7 @@ describe.sequential(`API`, async () => {
 
     describe.sequential(`Get Mods`, () => {
         test(`/mods - no param`, async () => {
-            const response = await api.get(`/mods`);
+            const response = await api.get(`/projects`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -210,7 +210,7 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/mods - gv only`, async () => {
-            const response = await api.get(`/mods?gameVersion=1.0.0`);
+            const response = await api.get(`/projects?gameVersion=1.0.0`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -227,7 +227,7 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/mods - gv and universal platform`, async () => {
-            const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}`);
+            const response = await api.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -773,7 +773,7 @@ describe.sequential(`API`, async () => {
 
 async function testGetMod(statuses:Status[], statusString:string) {
     let seenStatuses: Status[] = [];
-    const response = await api.get(`/mods?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
+    const response = await api.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
     expect(response.status, response.body.message).toBe(200);
     expect(response.body).toHaveProperty(`mods`);
     expect(response.body.mods).toBeInstanceOf(Array);
