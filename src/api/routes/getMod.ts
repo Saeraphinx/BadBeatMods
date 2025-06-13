@@ -583,7 +583,7 @@ export class GetModRoutes {
                             return false;
                         });
                         if (dep) {
-                            dependencyIds.push(dep.mod.id);
+                            dependencyIds.push(dep.latest.id);
                         }
                     }
                 }
