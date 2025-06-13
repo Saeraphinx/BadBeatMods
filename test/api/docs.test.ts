@@ -207,7 +207,7 @@ describe.sequential(`Documentation`, async () => {
     describe(`GET No Params`, () => {
         test.each([
             [`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay`, 200],
-            [`/mods`, 200],
+            [`/projects`, 200],
             [`/projects/1`, 200, `/projects/{projectIdParam}`],
             [`/user`, 200],
             [`/user/1`, 200, `/user/{id}`],

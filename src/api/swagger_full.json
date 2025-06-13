@@ -187,7 +187,7 @@
         "deprecated": true
       }
     },
-    "/mods": {
+    "/projects": {
       "get": {
         "tags": [
           "Mods"
@@ -408,6 +408,58 @@
             "description": "Hash not found."
           }
         }
+      }
+    },
+    "/mods": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get all mods for a specified version.",
+        "description": "Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.",
+        "parameters": [
+          {
+            "name": "gameName",
+            "description": "The game name.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameVersion",
+            "description": "The game version (ex. '1.29.1', '1.40.0'). IF YOU DO NOT SPECIFY A VERSION, DEPENDENCIES ARE NOT GARUNTEED TO BE 100% ACCURATE.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "description": "The status of the mod. Available status are: 'verified'. Typing anything other than that will show you unverified mods too.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platform",
+            "description": "The platform of the mod. Available platforms are: 'oculuspc', 'universalpc', 'steampc'",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid gameVersion."
+          }
+        },
+        "deprecated": true
       }
     },
     "/projects/{projectIdParam}": {
@@ -1722,7 +1774,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/GameWebhookConfigResponse"
+                    "$ref": "#/components/responses/GameWebhookConfigResponse"
                   }
                 }
               }

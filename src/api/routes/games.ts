@@ -650,7 +650,7 @@ export class VersionsRoutes {
                         schema: {
                             type: 'array',
                             items: {
-                                $ref: '#/components/schemas/GameWebhookConfigResponse'
+                                $ref: '#/components/responses/GameWebhookConfigResponse'
                             }
                         }
                     }

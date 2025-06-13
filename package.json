@@ -65,7 +65,7 @@
     "rimraf": "^5.0.10",
     "supertest": "^7.0.0",
     "swagger-autogen": "^2.23.7",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.2",
     "vitest": "^3.0.7"
   }
