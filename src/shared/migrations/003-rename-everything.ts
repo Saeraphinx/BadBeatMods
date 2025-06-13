@@ -1,4 +1,3 @@
-import { DataTypes } from "sequelize";
 import { Migration } from "../Database.ts";
 
 /*

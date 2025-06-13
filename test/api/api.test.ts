@@ -1,9 +1,7 @@
 import { test, expect, describe, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import supertest from 'supertest';
-import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
-import { Server } from 'http';
-import { DatabaseHelper, DatabaseManager, EditQueue, GameVersion, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
 const api = supertest(`http://localhost:8486/api`);
 let server: Awaited<ReturnType<typeof startServer>>;

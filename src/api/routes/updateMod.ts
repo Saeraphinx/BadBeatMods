@@ -7,7 +7,6 @@ import { SemVer } from 'semver';
 import path from 'node:path';
 import { Config } from '../../shared/Config.ts';
 import { Utils } from '../../shared/Utils.ts';
-import { version } from 'node:os';
 
 export class UpdateProjectRoutes {
     private router: Router;

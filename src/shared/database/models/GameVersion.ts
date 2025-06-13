@@ -103,7 +103,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
 
         thisLinkedIDs.push(versionToLinkTo.id);
         let thisObj = await this.update({
-            linkedVersionIds: thisLinkedIDs 
+            linkedVersionIds: thisLinkedIDs
         });
         // the linked version gets linked to this version in hooks.
         await versionToLinkTo.update({

@@ -1,12 +1,10 @@
-import e, { Router } from 'express';
+import { Router } from 'express';
 import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { coerce } from 'semver';
 import { Utils } from '../../shared/Utils.ts';
-import { WebhookLogType } from '../../shared/ModWebhooks.ts';
-import { version } from 'os';
 
 export class VersionsRoutes {
     private router: Router;

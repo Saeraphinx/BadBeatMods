@@ -39,9 +39,9 @@ async function generateWebhookClients(gameName: string | Game): Promise<WebhookC
             if (config.url && config.types && config.types.length > 0) {
                 try {
                     let client = new WebhookClient({ url: config.url });
-                    webhooks.push({ 
-                        tags: config.types[0] === `all` ? allWebhookTypes : config.types as WebhookLogType[], 
-                        client: client 
+                    webhooks.push({
+                        tags: config.types[0] === `all` ? allWebhookTypes : config.types as WebhookLogType[],
+                        client: client
                     });
                 } catch (error) {
                     Logger.error(`Failed to create webhook client for ${gameName}: ${error}`);

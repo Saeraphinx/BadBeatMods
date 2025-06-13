@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import { Migration } from "../Database.ts";
-import { query } from "express";
 
 /*
     Adding fileSize column to modVersions table.

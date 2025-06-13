@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../shared/Database.ts';
+import { DatabaseHelper, MOTD, UserRoles } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { Utils } from '../../shared/Utils.ts';

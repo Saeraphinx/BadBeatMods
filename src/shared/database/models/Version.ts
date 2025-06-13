@@ -1,4 +1,4 @@
-import { SemVer, satisfies } from "semver";
+import { SemVer } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";

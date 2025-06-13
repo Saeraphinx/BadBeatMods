@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse, Platform } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ProjectAPIPublicResponse, GameVersion, VersionAPIPublicResponse } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
@@ -201,10 +201,6 @@ export class GetModRoutes {
                     returnVal.push(version.toRawAPIResponse());
                 } else {
                     // resort to default behavior, which does return no matter what iirc.
-                    let acceptableStatuses = await version.isAllowedToEdit(session.user, project) ?
-                        [Status.Verified, Status.Unverified, Status.Pending, Status.Removed, Status.Private] :
-                        [Status.Verified, Status.Unverified, Status.Pending];
-
                     let resolvedVersion = await version.toAPIResponse();
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);

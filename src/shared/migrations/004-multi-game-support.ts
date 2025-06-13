@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { Migration, Project } from "../Database.ts";
+import { Migration } from "../Database.ts";
 
 /*
     Info on the Migration System can be found here: https://github.com/sequelize/umzug?tab=readme-ov-file#minimal-example
