@@ -43,6 +43,7 @@ export type ProjectAPIPublicResponse = {
     lastApprovedById: number | null;
     lastUpdatedById: number;
     statusHistory: StatusHistory[];
+    versions: VersionAPIPublicResponse[];
     createdAt: Date;
     updatedAt: Date;
 };

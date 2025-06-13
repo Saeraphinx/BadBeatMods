@@ -78,7 +78,7 @@ export class UserRoutes {
 
             let user = DatabaseHelper.cache.users.find((u) => u.id === id.data);
             if (user) {
-                let mods: {project: ProjectAPIPublicResponse, version: any }[] = [];
+                let mods: ProjectAPIPublicResponse[] = [];
                 if (status.data !== Status.Verified && status.data !== Status.Unverified) {
                     session = await validateSession(req, res, false, null, true);
                     if (!session.user) {
@@ -102,9 +102,9 @@ export class UserRoutes {
 
                     let latest = await project.getLatestVersion(undefined, undefined, [status.data]);
                     if (latest) {
-                        mods.push({project: project.toAPIResponse(), version: latest.toAPIResponse()});
+                        mods.push(await project.toAPIResponse(latest));
                     } else {
-                        mods.push({project: project.toAPIResponse(), version: null});
+                        mods.push(await project.toAPIResponse(null));
                     }
                 }
                 return res.status(200).send(mods);

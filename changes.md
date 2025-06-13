@@ -2,6 +2,9 @@
 > [!CAUTION]
 > This is a major update that includes breaking changes to the API and database. Please read through the changes.
 
+## Additinal changes
+- ProjectVersion pair has been removed, added `versions` to the `ProjectAPIPublicResponse` instead.
+
 ## Server Changes
 ### Renamed Mods & ModVersions to Projects & Versions
 This is to hopefully reduce confusion between the two as having "mod" in both names is confusing.

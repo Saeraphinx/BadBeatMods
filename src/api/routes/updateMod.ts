@@ -113,7 +113,7 @@ export class UpdateProjectRoutes {
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return;
                 } else {
-                    res.status(200).send({ message: `Project updated.`, project: project.project.toAPIResponse() });
+                    res.status(200).send({ message: `Project updated.`, project: project.project.toAPIResponse(null) });
                     DatabaseHelper.refreshCache(`projects`);
                 }
             }).catch((error) => {
@@ -205,7 +205,7 @@ export class UpdateProjectRoutes {
                         project.save();
                         return res.status(500).send({ message: `Error moving icon.` });
                     }
-                    res.status(200).send({ message: `Icon updated.`, project: project.toAPIResponse() });
+                    res.status(200).send({ message: `Icon updated.`, project: project.toAPIResponse(null) });
                 });
             });
         });

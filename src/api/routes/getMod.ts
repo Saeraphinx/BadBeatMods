@@ -21,7 +21,7 @@ export class GetModRoutes {
             #swagger.summary = 'Get all mods for a specified version.'
             #swagger.description = 'Get all mods.<br><br>If gameName is not provided, it will default to Beat Saber.<br>If gameVersion is not provided, it will default to whatever is set as the lastest version for the selected game.'
             #swagger.parameters['gameName'] = { description: 'The game name.', type: 'string' }
-            #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). This parameter is required for dependency resolution to work.', type: 'string' }
+            #swagger.parameters['gameVersion'] = { description: 'The game version (ex. \'1.29.1\', \'1.40.0\'). This parameter is required if you want to make sure all dependencies refrenced are present in the response.', type: 'string' }
             #swagger.parameters['status'] = { description: 'The mod status. (ex. \'all\', \'verified\', \'unverified\', \'pending\')', type: 'string' }
             #swagger.parameters['platform'] = { description: 'The platform. (ex. \'pc\', \'oculus\')', type: 'string' }
             #swagger.responses[200] = {
@@ -34,7 +34,7 @@ export class GetModRoutes {
                                 mods: {
                                     type: 'array',
                                     items: {
-                                        $ref: '#/components/schemas/ProjectVersionPair'
+                                        $ref: '#/components/schemas/ProjectAPIPublicResponse'
                                     }
                                 },
                                 total: {
@@ -86,7 +86,7 @@ export class GetModRoutes {
                     break;
             }
                 
-            let mods: {project: ProjectAPIPublicResponse, version: VersionAPIPublicResponse | null}[] = [];
+            let mods: ProjectAPIPublicResponse[] = [];
             let preLength = undefined;
             let invalidIds: number[] = [];
             if (gameVersion === null) { // just get all the mods
@@ -102,10 +102,7 @@ export class GetModRoutes {
                     let latest = versions[0];
 
                     if (latest) {
-                        let latestVer = await latest.toAPIResponse();
-                        if (latestVer) {
-                            mods.push({ project: project.toAPIResponse(), version: latestVer });
-                        }
+                        mods.push(await project.toAPIResponse(latest));
                     }
                 }
             } else {
@@ -113,23 +110,23 @@ export class GetModRoutes {
                 preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    mods.push({ project: retMod.project.toAPIResponse(), version: await retMod.version.toAPIResponse() });
+                    mods.push(await retMod.project.toAPIResponse(retMod.version));
                 }
                 
                 mods = mods.filter((mod) => {
-                    if (!mod.version || !mod?.version?.dependencies) {
-                        invalidIds.push(mod.project.id);
+                    if (!mod.versions[0] || !mod?.versions[0]?.dependencies) {
+                        invalidIds.push(mod.id);
                         return false;
                     }
 
-                    for (let dependency of mod.version.dependencies) {
+                    for (let dependency of mod.versions[0].dependencies) {
                         if (!mods.find((m) => {
-                            if (!m.version || !m?.version?.modVersion) {
+                            if (!m.versions[0] || !m?.versions[0]?.modVersion) {
                                 return false;
                             }
-                            return m.project.id === dependency.parentId && satisfies(m.version.modVersion, dependency.sv);
+                            return m.id === dependency.parentId && satisfies(m.versions[0].modVersion, dependency.sv);
                         })) {
-                            invalidIds.push(mod.project.id);
+                            invalidIds.push(mod.id);
                             return false;
                         }
                     }
@@ -163,7 +160,7 @@ export class GetModRoutes {
             #swagger.description = 'Get a specific project by ID. This will also return every version associated with the project.'
             #swagger.parameters['projectIdParam'] = { in: 'path', description: 'The project ID.', type: 'number', required: true }
             #swagger.parameters['raw'] = { $ref: '#/components/parameters/raw' }
-            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionsPairResponse' }
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectAPIPublicResponse' }
             #swagger.responses[400]
             #swagger.responses[404]
             #swagger.end
@@ -218,7 +215,7 @@ export class GetModRoutes {
                 }
             });
 
-            return res.status(200).send({ project: raw ? project : project.toAPIResponse(), versions: returnVal });
+            return res.status(200).send(raw ? project : project.toAPIResponse(returnVal));
         });
 
         this.router.get([`/modversions/:versionIdParam`, `/versions/:versionIdParam`], async (req, res) => {
@@ -233,7 +230,7 @@ export class GetModRoutes {
             }]
             #swagger.summary = 'Get a specific version by ID.'
             #swagger.description = 'Get a specific version by ID.'
-            #swagger.responses[200] = { $ref: '#/components/responses/ProjectVersionPairResponse' }
+            #swagger.responses[200] = { $ref: '#/components/responses/ProjectAPIPublicResponse' }
             #swagger.responses[400]
             #swagger.responses[404]
             #swagger.parameters['versionIdParam'] = { in: 'path', description: 'The version ID.', type: 'number', required: true }
@@ -259,9 +256,9 @@ export class GetModRoutes {
             }
 
             if (raw === `true`) {
-                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: version.toRawAPIResponse() });
+                return res.status(200).send(version.toRawAPIResponse());
             } else {
-                return res.status(200).send({ project: project ? project.toAPIResponse() : undefined, version: await version.toAPIResponse() });
+                return res.status(200).send(await project?.toAPIResponse(version));
             }
         });
 
@@ -305,7 +302,7 @@ export class GetModRoutes {
 
             let dedupedIds = Array.from(new Set(versionIds.data));
 
-            let retVal: {project: ProjectAPIPublicResponse, version: any}[] = [];
+            let retVal: ProjectAPIPublicResponse|any[] = [];
             for (const id of dedupedIds) {
                 let version = DatabaseHelper.mapCache.versions.get(id);
                 if (!version) {
@@ -322,9 +319,9 @@ export class GetModRoutes {
                 }
 
                 if (raw === `true`) {
-                    retVal.push({ project: project.toAPIResponse(), version: version.toRawAPIResponse() });
+                    retVal.push(version.toRawAPIResponse());
                 } else {
-                    retVal.push({ project: project.toAPIResponse(), version: await version.toAPIResponse() });
+                    retVal.push(await project.toAPIResponse(version));
                 }
             }
 
@@ -524,8 +521,12 @@ export class GetModRoutes {
 
                     if (latest) {
                         let latestVer = await latest.toAPIResponse();
+                        let project = await mod.toAPIResponse(null);
                         if (latestVer) {
-                            mods.push({ mod: mod.toAPIResponse(), latest: {
+                            mods.push({ mod: {
+                                ...project,
+                                versions: undefined, // remove the versions from the response
+                            }, latest: {
                                 ...latestVer,
                                 projectId: undefined, // remove the projectId from the response
                                 modId: mod.id, // add the modId to the response
@@ -538,9 +539,12 @@ export class GetModRoutes {
                 let preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    let mod = retMod.project.toAPIResponse();
+                    let mod = await retMod.project.toAPIResponse(null);
                     let latest = await retMod.version.toAPIResponse();
-                    mods.push({ mod, latest: {
+                    mods.push({ mod : {
+                        ...mod,
+                        versions: undefined, // remove the versions from the response
+                    }, latest: {
                         ...latest,
                         projectId: undefined, // remove the projectId from the response
                         modId: mod.id, // add the modId to the response

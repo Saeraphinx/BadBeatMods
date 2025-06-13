@@ -322,6 +322,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         };
     }
 
+    // temporary private to force usage of new obj in projects
     public async toAPIResponse(): Promise<VersionAPIPublicResponse|null> {
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
         if (!author) {

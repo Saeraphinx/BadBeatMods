@@ -4,6 +4,7 @@ import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
 import { ApprovalAction } from './routes/approval.ts';
 import { WebhookLogType } from '../shared/ModWebhooks.ts';
+import { versions } from 'process';
 type SchemaObject = OpenAPIV3_1.SchemaObject;
 
 // docs: https://swagger-autogen.github.io/docs/getting-started/quick-start/
@@ -358,6 +359,10 @@ const ProjectAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
         statusHistory: ProjectDBObject.properties!.statusHistory,
         lastApprovedById: ProjectDBObject.properties!.lastApprovedById,
         lastUpdatedById: ProjectDBObject.properties!.lastUpdatedById,
+        versions: {
+            type: `array`,
+            items: { allOf: [{ $ref: `#/components/schemas/VersionAPIPublicResponse` }] },
+        },
         createdAt: ProjectDBObject.properties!.createdAt,
         updatedAt: ProjectDBObject.properties!.updatedAt,
     }
@@ -588,17 +593,6 @@ const zApproveObject: SchemaObject = {
         },
     }
 };
-const ProjectVersionPair: OpenAPIV3_1.SchemaObject = {
-    type: `object`,
-    properties: {
-        project: {
-            $ref: `#/components/schemas/ProjectAPIPublicResponse`
-        },
-        version: {
-            $ref: `#/components/schemas/VersionAPIPublicResponse`,
-        }
-    }
-};
 // #endregion
 
 // #region Full API Responses
@@ -699,34 +693,12 @@ const UserResponse: OpenAPIV3_1.ResponseObject = {
     }
 };
 
-const ProjectVersionPairResponse: OpenAPIV3_1.ResponseObject = {
-    description: `Returns a project and version pair (e.g. a mod).`,
+const ProjectAPIPublicResponseResponse: OpenAPIV3_1.ResponseObject = {
+    description: `Returns a project.`,
     content: {
         [`application/json`]: {
             schema: {
-                $ref: `#/components/schemas/ProjectVersionPair`
-            }
-        }
-    }
-};
-
-const ProjectVersionsPairResponse: OpenAPIV3_1.ResponseObject = {
-    description: `Returns a project and version pair (e.g. a mod). \`versions\` is a list of all visible versions for a project.`,
-    content: {
-        [`application/json`]: {
-            schema: {
-                type: `object`,
-                properties: {
-                    project: {
-                        $ref: `#/components/schemas/ProjectAPIPublicResponse`
-                    },
-                    versions: {
-                        type: `array`,
-                        items: {
-                            $ref: `#/components/schemas/VersionAPIPublicResponse`
-                        }
-                    }
-                }
+                $ref: `#/components/schemas/ProjectAPIPublicResponse`
             }
         }
     }
@@ -895,7 +867,6 @@ const doc = {
             }
         },
         "@schemas": {
-            ProjectVersionPair: ProjectVersionPair,
             ProjectAPIPublicResponse,
             VersionAPIPublicResponse,
             UserAPIPublicResponse,
@@ -920,9 +891,8 @@ const doc = {
             ServerMessage: ServerMessageResponse,
             ServerMessageWithErrorStringArray: ServerMessageResponseWithErrorStringArray,
             ApprovalQueueResponse: ApprovalQueueResponse,
+            ProjectAPIPublicResponse: ProjectAPIPublicResponseResponse,
             UserResponse: UserResponse,
-            ProjectVersionPairResponse: ProjectVersionPairResponse,
-            ProjectVersionsPairResponse: ProjectVersionsPairResponse,
             GameAPIPublicResponse: GameAPIPublicResponseObject,
             GameWebhookConfigResponse: GameWebhookConfigResponse,
         },

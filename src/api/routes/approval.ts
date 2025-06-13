@@ -76,16 +76,21 @@ export class ApprovalRoutes {
             switch (queueType.data) {
                 case `projects`:
                     //get projects and versions that are unverified (gameName filter on mods only)
-                    response.projects = (await DatabaseHelper.database.Projects.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } })).map((project) => project.toAPIResponse());
+                    response.projects = await Promise.all(
+                        (await DatabaseHelper.database.Projects.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } }))
+                            .map(async (project) => await project.toAPIResponse(null))
+                    );
                     break;
                 case `versions`:
-                    response.versions = (await DatabaseHelper.database.Versions.findAll({ where: { [Op.or]: statusQuery } })).map((version) => {
-                        let project = DatabaseHelper.mapCache.projects.get(version.projectId);
-                        if (!project || project.gameName !== gameName.data) {
-                            return null;
-                        }
-                        return { project: project.toAPIResponse(), version: version.toRawAPIResponse() };
-                    }).filter((obj) => obj !== null);
+                    response.versions = (await Promise.all(
+                        (await DatabaseHelper.database.Versions.findAll({ where: { [Op.or]: statusQuery } })).map(async (version) => {
+                            let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+                            if (!project || project.gameName !== gameName.data) {
+                                return null;
+                            }
+                            return { project: await project.toAPIResponse(null), version: version.toRawAPIResponse() };
+                        })
+                    )).filter((obj) => obj !== null);
                     break;
                 case `edits`:
                     let editQueue = await DatabaseHelper.database.EditApprovalQueue.findAll({where: { approved: null }});
@@ -94,7 +99,7 @@ export class ApprovalRoutes {
                     }
 
                     // filter out edits that don't support the game specified
-                    response.edits = editQueue.map((edit) => {
+                    response.edits = (await Promise.all(editQueue.map(async (edit) => {
                         let isMod = edit.isProject();
                         if (isMod) {
                             let project = DatabaseHelper.mapCache.projects.get(edit.objectId);
@@ -102,7 +107,7 @@ export class ApprovalRoutes {
                                 return null;
                             }
 
-                            return { project: project.toAPIResponse(), original: project, edit: edit };
+                            return { project: await project.toAPIResponse(null), original: project, edit: edit };
                         } else {
                             let version = DatabaseHelper.mapCache.versions.get(edit.objectId);
                             if (!version) {
@@ -113,9 +118,9 @@ export class ApprovalRoutes {
                             if (!project || project.gameName !== gameName.data) {
                                 return null;
                             }
-                            return { project: project.toAPIResponse(), original: version, edit: edit };
+                            return { project: await project.toAPIResponse(null), original: version, edit: edit };
                         }
-                    }).filter((obj) => obj !== null);
+                    }))).filter((obj) => obj !== null);
                     break;
                         
             }

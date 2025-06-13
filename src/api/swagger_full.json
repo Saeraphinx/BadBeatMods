@@ -205,7 +205,7 @@
           },
           {
             "name": "gameVersion",
-            "description": "The game version (ex. '1.29.1', '1.40.0'). This parameter is required for dependency resolution to work.",
+            "description": "The game version (ex. '1.29.1', '1.40.0'). This parameter is required if you want to make sure all dependencies refrenced are present in the response.",
             "in": "query",
             "schema": {
               "type": "string"
@@ -239,7 +239,7 @@
                     "mods": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ProjectVersionPair"
+                        "$ref": "#/components/schemas/ProjectAPIPublicResponse"
                       }
                     },
                     "total": {
@@ -485,7 +485,7 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/components/responses/ProjectVersionsPairResponse",
+            "$ref": "#/components/responses/ProjectAPIPublicResponse",
             "description": "OK"
           },
           "400": {
@@ -600,7 +600,7 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/components/responses/ProjectVersionPairResponse",
+            "$ref": "#/components/responses/ProjectAPIPublicResponse",
             "description": "OK"
           },
           "400": {
@@ -3235,43 +3235,22 @@
           }
         }
       },
+      "ProjectAPIPublicResponse": {
+        "description": "Returns a project.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProjectAPIPublicResponse"
+            }
+          }
+        }
+      },
       "UserResponse": {
         "description": "Returns user information.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/UserAPIPublicResponse"
-            }
-          }
-        }
-      },
-      "ProjectVersionPairResponse": {
-        "description": "Returns a project and version pair (e.g. a mod).",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ProjectVersionPair"
-            }
-          }
-        }
-      },
-      "ProjectVersionsPairResponse": {
-        "description": "Returns a project and version pair (e.g. a mod). `versions` is a list of all visible versions for a project.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "project": {
-                  "$ref": "#/components/schemas/ProjectAPIPublicResponse"
-                },
-                "versions": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/VersionAPIPublicResponse"
-                  }
-                }
-              }
             }
           }
         }
@@ -3425,17 +3404,6 @@
       }
     },
     "schemas": {
-      "ProjectVersionPair": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/ProjectAPIPublicResponse"
-          },
-          "version": {
-            "$ref": "#/components/schemas/VersionAPIPublicResponse"
-          }
-        }
-      },
       "ProjectAPIPublicResponse": {
         "type": "object",
         "properties": {
@@ -3538,6 +3506,16 @@
           },
           "lastUpdatedById": {
             "type": "integer"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/VersionAPIPublicResponse"
+                }
+              ]
+            }
           },
           "createdAt": {
             "type": "string",

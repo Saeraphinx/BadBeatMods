@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles } from "../DBHelper.ts";
+import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles, VersionAPIPublicResponse } from "../DBHelper.ts";
 import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
@@ -247,7 +247,26 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         return count;
     }
 
-    public toAPIResponse(): ProjectAPIPublicResponse {
+    public async toAPIResponse(versions: Version | Version[] | VersionAPIPublicResponse[] | null): Promise<ProjectAPIPublicResponse> {
+        let versionsToReturn: (VersionAPIPublicResponse | null)[] = [];
+        if (Array.isArray(versions) === false && versions !== null) {
+            versions = [versions];
+        }
+
+        for (let obj of (versions || [])) {
+            if (obj instanceof Version) {
+                versionsToReturn.push(await obj.toAPIResponse());
+            } else {
+                versionsToReturn.push(obj);
+            }
+        }
+
+        versionsToReturn = versionsToReturn.filter((v) => v !== null);
+        if (!versionsToReturn || versionsToReturn.length === 0) {
+            versionsToReturn = [];
+        }
+
+
         return {
             id: this.id,
             name: this.name,
@@ -262,6 +281,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             statusHistory: this.statusHistory,
             lastApprovedById: this.lastApprovedById,
             lastUpdatedById: this.lastUpdatedById,
+            versions: versionsToReturn as VersionAPIPublicResponse[] || [],
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };
