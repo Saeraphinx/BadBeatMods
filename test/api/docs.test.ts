@@ -1,9 +1,7 @@
 import { test, expect, describe, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import supertest from 'supertest';
-import { Express } from 'express';
 import { startServer } from '../../src/index.ts';
-import { Server } from 'http';
-import { DatabaseHelper, DatabaseManager, EditQueue, GameVersionInfer, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
 import Ajv from "ajv";
 const ajv = new Ajv({strict: false})
 // #region setup
@@ -168,6 +166,7 @@ describe.sequential(`Documentation`, async () => {
         await server.database.Games.bulkCreate(fakeData.games.map(game => {
             return {
                 ...game,
+                webhookConfig: game.webhookConfig as GameWebhookConfig[],
                 createdAt: new Date(game.createdAt),
                 updatedAt: new Date(game.updatedAt),
             };

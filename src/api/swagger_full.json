@@ -2633,62 +2633,6 @@
         }
       }
     },
-    "/user/{id}/mods": {
-      "get": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Get user information.",
-        "description": "Get user information.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "User ID."
-          },
-          {
-            "name": "status",
-            "description": "Only show this status.",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns mods.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ProjectVersionPair"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters."
-          },
-          "404": {
-            "description": "User not found."
-          }
-        },
-        "security": [
-          {},
-          {
-            "bearerAuth": [],
-            "cookieAuth": []
-          }
-        ]
-      }
-    },
     "/users": {
       "get": {
         "tags": [
@@ -2722,6 +2666,76 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearerAuth": [],
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/user/{id}/projects": {
+      "get": {
+        "tags": [
+          "Mods"
+        ],
+        "summary": "Get user information.",
+        "description": "Get user information.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID."
+          },
+          {
+            "name": "status",
+            "description": "Only show this status.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "username",
+            "description": "Username to search for.",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns user information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserAPIPublicResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized."
+          },
+          "404": {
+            "description": "User not found."
           },
           "500": {
             "description": "Internal server error."

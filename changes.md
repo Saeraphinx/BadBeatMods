@@ -20,7 +20,7 @@ Dependencies are no longer tied to a version of a project, they are now tied to 
   }
 ]
 ```
-All mods returned by the `/mods` endpoint will still have their dependencies validated, so you can assume that all dependencies are present in the response.
+All mods returned by the `/projects` endpoint will still have their dependencies validated, so you can assume that all dependencies are present in the response.
 
 ### Multi Game Support
 Games are no longer hardcoded, and can be added through the API. The following restrictions have been added:
@@ -33,18 +33,25 @@ In addition, the following changes have been made:
 - Webhook configuration is now per-game.
 - Categories are now per-game.
 - Categories must be between 1 and 64 characters long.
+Due to the above changes, the following config options have been removed:
+- `webhooks.modLogUrl`
+- `webhooks.modLogTags`
+- `webhooks.modLog2Url`
+- `webhooks.modLog2Tags`
+- `webhooks.publicUrl`
 
 ### Other Changes
 - If there is already a pending edit for a object, the edit will be updated instead of overwriting the original.
 - BeatMods importer has been removed.
-  - The `enableBeatModsDownloads` flag has been removed
+  - The `enableBeatModsDownloads` flag has been removed from the config.
 - BA route linkversionexclude now also takes statuses into account when checking for duplicate entries in the array. 
 - Messages refrencing invalid parameters from the server should now be more descriptive.
 - Reversed the order of game version strings that are compared by `localCompare` to match the semver comparison.
 - `getLatestVersion()` has had all of its paramters marked as optional.
 - Edits now check for certain properties before allowing the edit to be submitted.
 - Edit types for both Projects & Versions are now using `Pick<>` instead of `Omit<>`.
-- The `toApiResponse()` for versions no longer takes any parameters, as it does not resolve dependencies anymore.
+- The `toApiResponse()` for versions no longer takes any parameters, as it does not need to resolve dependencies anymore.
+- Endpoints for Game Version linking have been added.
 
 ## API Changes
 - All mentions of "mod" and "modVersion" in the API have been changed to "project" and "version" respectively.
@@ -62,6 +69,8 @@ In addition, the following changes have been made:
 - Renamed `GET /mods/:modIdParam` to `GET /projects/:projectIdParam`. Both endpoints will still work for the time being.
 - Renamed `GET /modversions/:modVersionIdParam` to `GET /versions/:versionIdParam`. Both endpoints will still work for the time being.
 - Renamed `GET /mods/:modIdParam/versions` to `GET /projects/:projectIdParam/versions`. Both endpoints will still work for the time being.
+- Renamed `GET /users/:id/mods` to `GET /user/:id/projects`. Both endpoints will still work for the time being.
+- Renamed `GET /mods` to `GET /projects`. Both endpoints will still work for the time being.
 
 - Renamed `GET /multi/modversions` to `GET /multi/versions`.
 - Renamed `POST /approval/mod/:modIdParam/approve` to `POST /approval/project/:projectIdParam/approve`.
@@ -72,20 +81,20 @@ In addition, the following changes have been made:
 - Updated the `message` field for the `PATCH /approval/edit/:editIdParam` endpoint to be more descriptive.
 - Updated the `message` field in the `POST /projects/create` endpoint to be more descriptive.
 - Updated the `message` field in the `POST /projects/:projectIdParam/create` endpoint to be more descriptive.
-- Updated the `message` field in the `GET /mods` endpoint to be more descriptive.
+- Updated the `message` field in the `GET /projects` endpoint to be more descriptive.
 - Updated the `message` field in the `GET /motd` endpoint to be more descriptive.
 - Updated the `message` field in the `POST /motd` endpoint to be more descriptive.
 
-- `GET /mods` now returns the additional properties:
+- `GET /projects` now returns the additional properties:
   - `total`: The total number of projects found.
   - `invalidCount`: The number of projects that are invalid (e.g. missing dependencies).
   - `invalidIds`: An array of IDs of the invalid projects.
 
-- `GET /mods/:modIdParam` not longer wraps the response in an object.
+- `GET /projects/:projectIdParam` not longer wraps the response in an object.
 - `GET /multi/versions` no longer wraps the response in an object.
 - `GET /hashlookup` no longer wraps the response in an object.
 - `GET /multi/hashlookup` no longer wraps the response in an object.
-- `GET /user/:id/mods` no longer wraps the response in an object.
+- `GET /user/:id/projects` no longer wraps the response in an object.
 - `GET /users` no longer wraps the response in an object.
 
 - Removed the `platform` query parameter from the `GET /user/:id/mods` endpoint.
@@ -94,7 +103,17 @@ In addition, the following changes have been made:
 - Added `POST /games` to add a new game.
 - Added `GET /games/:gameName` to get a specific game.
 - Added `POST /games/:gameName/versions` to add a new game version.
+- Added `POST /games/:gameName/versions/link` to link game versions.
+- Added `POST /games/:gameName/versions/unlink` to unlink game versions.
 - Added `POST /games/:gameName/categories` to add a new category to a game.
+- Added `PUT /games/:gameName/categories` to set the categories for a game.
+- Added `DELTE /games/:gameName/categories` to delete a category from a game.
+- Added `GET /games/:gameName/webhooks` endpoints to get the webhooks configured for a game. Note that URLs are censored.
+- Added `POST /games/:gameName/webhooks` to add a new webhook for a game.
+- Added `PUT /games/:gameName/webhooks/:webhookIdParam` to update a webhook for a game.
+- Added `DELETE /games/:gameName/webhooks/:webhookIdParam` to delete a webhook for a game.
+
+- Deprecated `GET /mods`
 - Deprecated `GET /versions`
 - Deprecated `POST /versions`
 - Deprecated `GET /versions/default`

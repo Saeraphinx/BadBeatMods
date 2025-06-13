@@ -51,19 +51,24 @@ export class UserRoutes {
             }
         });
 
-        this.router.get(`/user/:id/mods`, async (req, res) => {
-            // #swagger.tags = ['Users']
-            /* #swagger.security = [{},{
+        this.router.get([`/user/:id/mods`, `/user/:id/projects`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/user/{id}/projects'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get user information.'
-            // #swagger.description = 'Get user information.'
-            // #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
-            // #swagger.parameters['status'] = { description: 'Only show this status.', type: 'string' }
-            // #swagger.responses[200] = { description: 'Returns mods.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ProjectVersionPair' } } } } }
-            // #swagger.responses[404] = { description: 'User not found.' }
-            // #swagger.responses[400] = { description: 'Invalid parameters.' }
+            }]
+            #swagger.summary = 'Get user information.'
+            #swagger.description = 'Get user information.'
+            #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
+            #swagger.parameters['status'] = { description: 'Only show this status.', type: 'string' }
+            #swagger.responses[200] = { description: 'Returns mods.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ProjectVersionPair' } } } } }
+            #swagger.responses[404] = { description: 'User not found.' }
+            #swagger.responses[400] = { description: 'Invalid parameters.' }
+            */
             let session: { user: User | null } = { user: null };
             let id = Validator.zDBID.safeParse(req.params.id);
             let status = Validator.zStatus.default(Status.Verified).safeParse(req.query.status);
