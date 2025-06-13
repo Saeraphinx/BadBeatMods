@@ -1,5 +1,5 @@
 import { Request, Express, Response, Router } from 'express';
-import { Categories, DatabaseHelper, GameVersion, Mod, ModVersion, Platform, SupportedGames, Status } from '../../shared/Database.ts';
+import { DatabaseHelper, GameVersion, Project, Version, Platform, Status } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { Config } from '../../shared/Config.ts';
 import { coerce } from 'semver';
@@ -48,7 +48,7 @@ export class BeatModsRoutes {
             // #swagger.description = 'Legacy BeatMods API endpoint. This is available for mod downloaders that have not been updated to use the new API.<br><br>This endpoint does not work the same way as the old BeatMods API, but it should be close enough to work with most mod downloaders.'
             // #swagger.deprecated = true
             // #swagger.responses[200] = { description: 'Returns all versions.' }
-            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber).flatMap((gameVersion) => gameVersion.version);
+            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`).flatMap((gameVersion) => gameVersion.version);
             versions.sort((a, b) => {
                 let verA = coerce(a, { loose: true });
                 let verB = coerce(b, { loose: true });
@@ -68,7 +68,7 @@ export class BeatModsRoutes {
                 // #swagger.description = 'Legacy BeatMods API endpoint. This is available for mod downloaders that have not been updated to use the new API.<br><br>This endpoint does not work the same way as the old BeatMods API, but it should be close enough to work with most mod downloaders.'
                 // #swagger.deprecated = true
                 // #swagger.responses[200] = { description: 'Returns all versions.' }
-                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber).flatMap((gameVersion) => gameVersion.version);
+                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`).flatMap((gameVersion) => gameVersion.version);
                 versions.sort((a, b) => {
                     let verA = coerce(a, { loose: true });
                     let verB = coerce(b, { loose: true });
@@ -91,7 +91,7 @@ export class BeatModsRoutes {
             // #swagger.responses[200] = { description: 'Returns all aliases.' }
             // #swagger.deprecated = true
             let aliases: any = {};
-            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber);
+            let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`);
             for (let version of versions) {
                 aliases[version.version] = [];
             }
@@ -108,7 +108,7 @@ export class BeatModsRoutes {
             // #swagger.responses[200] = { description: 'Returns all aliases.' }
             // #swagger.deprecated = true
                 let aliases: any = {};
-                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == SupportedGames.BeatSaber);
+                let versions = DatabaseHelper.cache.gameVersions.filter(gV => gV.gameName == `BeatSaber`);
                 for (let version of versions) {
                     aliases[version.version] = [];
                 }
@@ -126,7 +126,7 @@ export class BeatModsRoutes {
             version = undefined;
         }
 
-        let gameVersion = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === version && gameVersion.gameName === SupportedGames.BeatSaber);
+        let gameVersion = DatabaseHelper.cache.gameVersions.find((gameVersion) => gameVersion.version === version && gameVersion.gameName === `BeatSaber`);
         if (!gameVersion && !version) {
             gameVersion = undefined;
         } else if (!gameVersion) {
@@ -139,9 +139,9 @@ export class BeatModsRoutes {
         if (gameVersion) {
             let mods = await gameVersion.getSupportedMods(Platform.UniversalPC, statuses);
             for (let mod of mods) {
-                let convertedMod = await this.convertToBeatmodsMod(mod.mod, mod.latest, gameVersion, true, statuses);
+                let convertedMod = await this.convertToBeatmodsMod(mod.project, mod.version, gameVersion, true, statuses);
                 if (!convertedMod) {
-                    Logger.debugWarn(`Failed to convert mod ${mod.mod.name} v${mod.latest.modVersion.raw} to BeatMods format.`, `getMod`);
+                    Logger.debugWarn(`Failed to convert mod ${mod.project.name} v${mod.version.modVersion.raw} to BeatMods format.`, `getMod`);
                     continue;
                 }
                 modArray.push(convertedMod);
@@ -178,9 +178,9 @@ export class BeatModsRoutes {
                 Logger.debugWarn(`Some mods were removed due to missing dependencies. (${modArray.length} out of ${preLength})`, `getMod`);
             }
         } else {
-            let modVersions = DatabaseHelper.cache.modVersions.filter((mV) => statuses.includes(mV.status));
+            let modVersions = DatabaseHelper.cache.versions.filter((mV) => statuses.includes(mV.status));
             for (let modVersion of modVersions) {
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                 if (!mod) {
                     continue;
                 }
@@ -199,11 +199,11 @@ export class BeatModsRoutes {
         return res.status(200).send(modArray);
     }
 
-    private async convertToBeatmodsMod(mod: Mod, modVersion: ModVersion, gameVersion: GameVersion|null, doResolution: boolean = true, statuses = [Status.Verified]): Promise<BeatModsMod|null> {
+    private async convertToBeatmodsMod(mod: Project, modVersion: Version, gameVersion: GameVersion|null, doResolution: boolean = true, statuses = [Status.Verified]): Promise<BeatModsMod|null> {
         let dependencies: (BeatModsMod | string)[] = [];
-        let mVDeps: ModVersion[] = [];
+        let mVDeps: Version[] = [];
         if (gameVersion) {
-            let intmVDeps = await modVersion.getLiveDependencies(gameVersion.id, statuses);
+            let intmVDeps = await modVersion.getDependencyObjs(gameVersion.id, statuses);
             if (!intmVDeps) {
                 return null;
             }
@@ -223,7 +223,7 @@ export class BeatModsRoutes {
                     if (!dependency) {
                         return null;
                     }
-                    let dependencyMod = DatabaseHelper.mapCache.mods.get(dependency?.modId);
+                    let dependencyMod = DatabaseHelper.mapCache.projects.get(dependency?.projectId);
                     if (!dependencyMod) {
                         return null;
                     }
@@ -317,7 +317,7 @@ export class BeatModsRoutes {
                 })
             }],
             dependencies: doResolution ? dependencies as BeatModsMod[] : dependencies as string[],
-            required: (mod.category === Categories.Core),
+            required: mod.category === `Core`,
         };
     }
 }

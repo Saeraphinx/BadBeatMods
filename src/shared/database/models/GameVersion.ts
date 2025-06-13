@@ -1,9 +1,10 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { SupportedGames } from "../../Database.ts";
-import { Mod } from "./Mod.ts";
-import { ModVersion } from "./ModVersion.ts";
+import { Project } from "./Project.ts";
+import { Version } from "./Version.ts";
 import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper.ts";
 import { coerce } from "semver";
+import { Logger } from "../../../shared/Logger.ts";
 
 export type GameVersionInfer = InferAttributes<GameVersion>;
 export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreationAttributes<GameVersion>> {
@@ -22,6 +23,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
             gameName: this.gameName,
             version: this.version,
             defaultVersion: this.defaultVersion,
+            linkedVersionIds: this.linkedVersionIds,
         };
     }
 
@@ -50,15 +52,15 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         return version;
     }
 
-    public async getSupportedMods(platform: Platform, statusesToSearchFor: Status[]): Promise<{mod: Mod, latest:ModVersion}[]> {
-        let mods = DatabaseHelper.cache.mods.filter((mod) => mod.gameName == this.gameName && statusesToSearchFor.includes(mod.status));
+    public async getSupportedMods(platform: Platform, statusesToSearchFor: Status[]): Promise<{project: Project, version:Version}[]> {
+        let projects = DatabaseHelper.cache.projects.filter((p) => p.gameName == this.gameName && statusesToSearchFor.includes(p.status));
 
-        let supportedMods: {mod: Mod, latest:ModVersion}[] = [];
-        for (let mod of mods) {
-            // get the latest version for the mod, and if it exists, add it to the list of supported mods
-            let latest = await mod.getLatestVersion(this.id, platform, statusesToSearchFor);
+        let supportedMods: {project: Project, version:Version}[] = [];
+        for (let project of projects) {
+            // get the latest version for the project, and if it exists, add it to the list of supported projects
+            let latest = await project.getLatestVersion(this.id, platform, statusesToSearchFor);
             if (latest) {
-                supportedMods.push({mod, latest});
+                supportedMods.push({project: project, version: latest});
             }
         }
         return supportedMods;
@@ -70,7 +72,7 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
         if (svA && svB) {
             return svA.compare(svB); // the earliest version is first in the array
         } else {
-            return b.version.localeCompare(a.version);
+            return a.version.localeCompare(b.version);
         }
     }
 
@@ -82,5 +84,55 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
             }
         }
         return games;
+    }
+
+    public async addLinkToGameVersion(versionToLinkTo: GameVersion) {
+        let thisLinkedIDs = this.linkedVersionIds ? [...this.linkedVersionIds] : [];
+
+        if (thisLinkedIDs.includes(versionToLinkTo.id)) {
+            throw new Error(`Version ${versionToLinkTo.id} is already linked to this version.`);
+        }
+
+        if (versionToLinkTo.id === this.id) {
+            throw new Error(`Cannot link version ${versionToLinkTo.id} to itself.`);
+        }
+
+        if (versionToLinkTo.gameName !== this.gameName) {
+            throw new Error(`Cannot link version ${versionToLinkTo.id} to version ${this.id} because they are from different games.`);
+        }
+
+        thisLinkedIDs.push(versionToLinkTo.id);
+        let thisObj = await this.update({
+            linkedVersionIds: thisLinkedIDs
+        });
+        // the linked version gets linked to this version in hooks.
+        await versionToLinkTo.update({
+            linkedVersionIds: [...(versionToLinkTo.linkedVersionIds || []), this.id]
+        });
+        return thisObj;
+    }
+
+    public async removeLinkToGameVersion(versionToUnlink: GameVersion) {
+        let thisLinkedIds = this.linkedVersionIds ? [...this.linkedVersionIds] : [];
+
+        if (!thisLinkedIds.includes(versionToUnlink.id)) {
+            throw new Error(`Version ${versionToUnlink.id} is not linked to this version.`);
+        }
+
+        let updatedVersion = await this.update({
+            linkedVersionIds: thisLinkedIds.filter((id) => id !== versionToUnlink.id) // the linked version gets unlinked from this version in hooks.
+        }).catch((err) => {
+            Logger.error(`Failed to unlink version ${versionToUnlink.id} from ${this.id}: ${err.message}`);
+            throw err;
+        });
+
+        await versionToUnlink.update({
+            linkedVersionIds: versionToUnlink.linkedVersionIds.filter((id) => id !== this.id) // remove this version from the linked versions of the other version, as the hook doesn't process this atm.
+        }).catch((err) => {
+            Logger.error(`Failed to unlink version ${this.id} from ${versionToUnlink.id}: ${err.message}`);
+            throw err;
+        });
+
+        return updatedVersion;
     }
 }

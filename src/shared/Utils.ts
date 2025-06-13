@@ -1,13 +1,18 @@
 import { UniqueConstraintError, ValidationError } from "sequelize";
 import { randomBytes } from 'crypto';
 import fs from 'fs';
+import { isZodErrorLike, fromZodError } from 'zod-validation-error';
 
 export class Utils {
-    public static parseErrorMessage(err: unknown): string {
+    public static parseErrorMessage(err: unknown, defaultResponse?: string): string {
         if (err instanceof ValidationError || err instanceof UniqueConstraintError) {
             return `${err.message} ${err.errors.map(e => e.message).join(`, `)}`;
+        } else if (isZodErrorLike(err)) {
+            return fromZodError(err).message;
         } else if (err instanceof Error) {
             return `${err.message}`;
+        } else if (defaultResponse && typeof defaultResponse === `string`) {
+            return defaultResponse;
         } else if (typeof err === `string`) {
             return err;
         } else {

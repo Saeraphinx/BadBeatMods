@@ -38,16 +38,16 @@ export class CDNRoutes {
                     return;
                 }
                 let hash = path.basename(file).replace(path.extname(file), ``);
-                let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
-                if (modVersion) {
-                    let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
-                    if (mod) {
-                        res.set(`Content-Disposition`, `attachment; filename="${mod.name} v${modVersion.modVersion}.zip"`);
+                let version = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
+                if (version) {
+                    let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+                    if (project) {
+                        res.set(`Content-Disposition`, `attachment; filename="${project.name} v${version.modVersion}.zip"`);
                     } else {
                         res.set(`Content-Disposition`, `attachment;`);
                     }
-                    modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                        Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                    version.increment(`downloadCount`, { silent: true }).catch((err) => {
+                        Logger.error(`Failed to increment download count for version ${version.id}: ${err}`);
                     });
                 } else {
                     res.set(`Content-Disposition`, `attachment;`);
@@ -80,14 +80,14 @@ export class CDNRoutes {
             }
             let hash = req.params.hash;
             let fileName = `${hash}.zip`;
-            let modVersion = DatabaseHelper.cache.modVersions.find((version) => version.zipHash === hash);
-            if (modVersion) {
-                let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
-                if (mod) {
-                    fileName = `${mod.name} v${modVersion.modVersion}.zip`;
+            let version = DatabaseHelper.cache.versions.find((version) => version.zipHash === hash);
+            if (version) {
+                let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+                if (project) {
+                    fileName = `${project.name} v${version.modVersion}.zip`;
                 }
-                modVersion.increment(`downloadCount`, { silent: true }).catch((err) => {
-                    Logger.error(`Failed to increment download count for mod version ${modVersion.id}: ${err}`);
+                version.increment(`downloadCount`, { silent: true }).catch((err) => {
+                    Logger.error(`Failed to increment download count for version ${version.id}: ${err}`);
                 });
             }
 

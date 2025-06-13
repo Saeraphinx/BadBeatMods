@@ -1,32 +1,38 @@
 import { faker } from "@faker-js/faker";
 import { SemVer } from "semver";
-import { projects, users } from '../fakeData.json' with { type: 'json' };
+import { projects, users, games } from '../fakeData.json' with { type: 'json' };
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { DatabaseManager, Mod, GameVersion, ModVersionInfer, SupportedGames, Categories, Platform, ModInfer, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, ModVersion } from "../../src/shared/Database";
+import { DatabaseManager, GameVersion, SupportedGames, Platform, Status, GameVersionInfer, UserInfer, DatabaseHelper, User, UserRoles, EditQueue, Project, Version, ProjectInfer, VersionInfer, GameWebhookConfig } from "../../src/shared/Database";
 import { WebhookLogType } from "../../src/shared/ModWebhooks.ts";
 
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        sendModLog: vi.fn(async (mod: Mod, userMakingChanges: User, logType: WebhookLogType, reason?:string) => {}),
-        sendModVersionLog: vi.fn(async (modVersion: ModVersion, userMakingChanges: User, logType: WebhookLogType, modObj?: Mod, reason?:string) => {}),
-        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ModInfer | ModVersionInfer) => {}),
+        sendProjectLog: vi.fn(async (project: Project, userMakingChanges: User, logType: WebhookLogType, reason?: string) => { }),
+        sendVersionLog: vi.fn(async (version: Version, userMakingChanges: User, logType: WebhookLogType, modObj?: Project, reason?: string) => { }),
+        sendEditLog: vi.fn(async (edit: EditQueue, userMakingChanges: User, logType: WebhookLogType, originalObj?: ProjectInfer | VersionInfer) => { }),
     };
 });
 
 describe.sequential(`Projects - Hooks`, async () => {
     let db: DatabaseManager;
-    let defaultModData: Omit<ModInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultModData: Omit<ProjectInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -36,6 +42,7 @@ describe.sequential(`Projects - Hooks`, async () => {
             statusHistory: [],
             summary: `Test Summary`,
         };
+        await DatabaseHelper.refreshAllCaches();
     });
 
     afterAll(async () => {
@@ -43,18 +50,18 @@ describe.sequential(`Projects - Hooks`, async () => {
     });
 
     beforeEach(async () => {
-        await db.Mods.truncate();
+        await db.Projects.truncate();
     });
 
     test(`no duplicate mod name`, async () => {
-        let mod1 = await db.Mods.create({
+        let mod1 = await db.Projects.create({
             ...defaultModData,
             name: `Test Mod`,
         });
 
         expect(mod1).toBeDefined();
         await expect(async () => {
-            await db.Mods.create({
+            await db.Projects.create({
                 ...defaultModData,
                 name: `Test Mod`,
             });
@@ -63,7 +70,7 @@ describe.sequential(`Projects - Hooks`, async () => {
 
     test(`require authorIds`, async () => {
         await expect(async () => {
-            await db.Mods.create({
+            await db.Projects.create({
                 ...defaultModData,
                 authorIds: [],
             });
@@ -75,18 +82,25 @@ describe.sequential(`Projects - Getting Mods`, async () => {
     let db: DatabaseManager;
     let testGV1: GameVersion;
     let testGV2: GameVersion;
-    let defaultModData: Omit<ModInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
-    let defaultVersionData: Omit<ModVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultModData: Omit<ProjectInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let defaultVersionData: Omit<VersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
     let defaultGameVersionData: Omit<GameVersionInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
 
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -96,9 +110,9 @@ describe.sequential(`Projects - Getting Mods`, async () => {
             statusHistory: [],
             summary: `Test Summary`,
         };
-        
+
         defaultGameVersionData = {
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             version: `1.29.1`,
             defaultVersion: true,
             linkedVersionIds: [],
@@ -115,7 +129,7 @@ describe.sequential(`Projects - Getting Mods`, async () => {
             platform: Platform.UniversalPC,
             status: Status.Private,
             modVersion: new SemVer(`1.0.0`),
-            modId: 1,
+            projectId: 1,
             zipHash: faker.string.alphanumeric(14),
             fileSize: 1000,
             authorId: 1,
@@ -134,18 +148,18 @@ describe.sequential(`Projects - Getting Mods`, async () => {
     });
 
     beforeEach(async () => {
-        await db.Mods.truncate();
-        await db.ModVersions.truncate();
+        await db.Projects.truncate();
+        await db.Versions.truncate();
     });
 
     test(`get latest version`, async () => {
-        let mod = await db.Mods.create({
+        let mod = await db.Projects.create({
             ...defaultModData,
             status: Status.Verified
         });
-        let mv = await db.ModVersions.create({
+        let mv = await db.Versions.create({
             ...defaultVersionData,
-            modId: mod.id,
+            projectId: mod.id,
             status: Status.Verified,
         });
         await DatabaseHelper.refreshAllCaches();
@@ -167,18 +181,26 @@ describe.sequential(`Projects - Permissions`, async () => {
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
         testUser1 = await db.Users.create({
             ...users[0],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[0].createdAt),
             updatedAt: new Date(users[0].updatedAt),
         });
         testUser2 = await db.Users.create({
             ...users[1],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[1].createdAt),
             updatedAt: new Date(users[1].updatedAt),
         });
+        await DatabaseHelper.refreshAllCaches();
     });
 
     afterAll(async () => {
@@ -186,7 +208,7 @@ describe.sequential(`Projects - Permissions`, async () => {
     });
 
     beforeEach(async () => {
-        await db.Mods.truncate();
+        await db.Projects.truncate();
         await testUser1.reload();
         await testUser2.reload();
         vi.resetAllMocks();
@@ -214,14 +236,14 @@ describe.sequential(`Projects - Permissions`, async () => {
         [Status.Removed, true, UserRoles.GameManager],
         [Status.Removed, false, null],
     ])(`%s isAllowedToView %s for %s`, async (status, expected, role) => {
-        let mod = await db.Mods.create({
+        let mod = await db.Projects.create({
             name: `Test Mod`,
             description: `Test Description`,
             summary: `Test Summary`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             status: status as Status,
             authorIds: [testUser1.id],
-            category: Categories.Core,
+            category: `Core`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastUpdatedById: 1,
@@ -235,16 +257,18 @@ describe.sequential(`Projects - Permissions`, async () => {
             testUser = undefined;
         } else {
             shouldCheckPerGame = true;
-            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser2.roles = { sitewide: [role as UserRoles], perGame: {} };
             testUser = testUser2;
         }
         let isAllowed = await mod.isAllowedToView(testUser);
         expect(isAllowed).toEqual(expected); // check sitewide roles
 
         if (shouldCheckPerGame) {
-            testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
-            }};
+            testUser2.roles = {
+                sitewide: [], perGame: {
+                    [games[0].name]: [role as UserRoles]
+                }
+            };
 
             isAllowed = await mod.isAllowedToView(testUser2);
             expect(isAllowed).toEqual(expected); // check per game roles
@@ -259,21 +283,21 @@ describe.sequential(`Projects - Permissions`, async () => {
         [UserRoles.GameManager, false],
         [null, false],
     ])(`isAllowedToEdit for %s is %s`, async (role, expected) => {
-        let mod = await db.Mods.create({
+        let mod = await db.Projects.create({
             name: `Test Mod`,
             description: `Test Description`,
             summary: `Test Summary`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: games[0].name,
             status: Status.Private,
             authorIds: [testUser1.id],
-            category: Categories.Core,
+            category: `Core`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastUpdatedById: 1,
         });
 
         let testUser;
-        vi.spyOn(Mod.prototype, `isAllowedToView`);
+        vi.spyOn(Project.prototype, `isAllowedToView`);
         let shouldCheckPerGame = false;
         if (role === "author") {
             testUser = testUser1;
@@ -281,21 +305,23 @@ describe.sequential(`Projects - Permissions`, async () => {
             testUser = undefined;
         } else {
             shouldCheckPerGame = true;
-            testUser2.roles = {sitewide: [role as UserRoles], perGame: {}} ;
+            testUser2.roles = { sitewide: [role as UserRoles], perGame: {} };
             testUser = testUser2;
         }
         let isAllowed = await mod.isAllowedToEdit(testUser);
         expect(isAllowed).toEqual(expected); // check sitewide roles
-        expect(Mod.prototype.isAllowedToView).toHaveBeenNthCalledWith(1, testUser);
+        expect(Project.prototype.isAllowedToView).toHaveBeenNthCalledWith(1, testUser);
 
         if (shouldCheckPerGame) {
-            testUser2.roles = {sitewide: [], perGame: {
-                [SupportedGames.BeatSaber]: [role as UserRoles]
-            }};
+            testUser2.roles = {
+                sitewide: [], perGame: {
+                    [`BeatSaber`]: [role as UserRoles]
+                }
+            };
 
             isAllowed = await mod.isAllowedToEdit(testUser);
             expect(isAllowed).toEqual(expected); // check per game roles
-            expect(Mod.prototype.isAllowedToView).toHaveBeenNthCalledWith(2, testUser2);
+            expect(Project.prototype.isAllowedToView).toHaveBeenNthCalledWith(2, testUser2);
         }
     });
 });
@@ -303,29 +329,37 @@ describe.sequential(`Projects - Permissions`, async () => {
 describe.sequential(`Projects - Editing`, async () => {
     let db: DatabaseManager;
     let testUser1: User;
-    let defaultModData: Omit<ModInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
-    let { sendModLog, sendEditLog, sendModVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
+    let defaultModData: Omit<ProjectInfer, `id` | `createdAt` | `updatedAt` | `deletedAt`>;
+    let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
 
     beforeAll(async () => {
         db = new DatabaseManager();
         await db.init();
+        await db.Games.bulkCreate(games.map((game) => ({
+            ...game,
+            webhookConfig: game.webhookConfig as GameWebhookConfig[],
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+        })));
+        await DatabaseHelper.refreshCache(`games`);
+
         testUser1 = await db.Users.create({
             ...users[0],
-            roles: {sitewide: [], perGame: {}},
+            roles: { sitewide: [], perGame: {} },
             createdAt: new Date(users[0].createdAt),
             updatedAt: new Date(users[0].updatedAt),
         });
         await db.GameVersions.create({
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             version: `1.29.1`,
             defaultVersion: true,
             linkedVersionIds: [],
         });
         defaultModData = {
             authorIds: [1],
-            category: Categories.Core,
+            category: `Core`,
             description: `Test Description`,
-            gameName: SupportedGames.BeatSaber,
+            gameName: `BeatSaber`,
             gitUrl: ``,
             iconFileName: `default.png`,
             lastApprovedById: null,
@@ -344,7 +378,7 @@ describe.sequential(`Projects - Editing`, async () => {
     });
 
     beforeEach(async () => {
-        await db.Mods.truncate();
+        await db.Projects.truncate();
         testUser1 = await testUser1.reload();
     });
 
@@ -362,7 +396,7 @@ describe.sequential(`Projects - Editing`, async () => {
         [Status.Verified, Status.Unverified, WebhookLogType.VerificationRevoked],
         [Status.Verified, Status.Removed, WebhookLogType.VerificationRevoked],
     ])(`status %s -> %s should send %s log`, async (currStatus, newStatus, expectedLogType) => {
-        let mod = await db.Mods.create({
+        let mod = await db.Projects.create({
             ...defaultModData,
             name: `Test Status Mod`,
             status: currStatus,
@@ -370,8 +404,19 @@ describe.sequential(`Projects - Editing`, async () => {
 
         await mod.setStatus(newStatus, testUser1, `test`);
         expect(mod.status).toBe(newStatus);
-        expect(sendModLog).toHaveBeenCalledTimes(2);
-        expect(sendModLog).toHaveBeenNthCalledWith(1, mod, testUser1, WebhookLogType.Text_StatusChanged);
-        expect(sendModLog).toHaveBeenNthCalledWith(2, mod, testUser1, expectedLogType, `test`);
+        expect(sendProjectLog).toHaveBeenCalledTimes(2);
+        expect(sendProjectLog).toHaveBeenNthCalledWith(1, mod, testUser1, WebhookLogType.Text_StatusChanged);
+        expect(sendProjectLog).toHaveBeenNthCalledWith(2, mod, testUser1, expectedLogType, `test`);
     });
+
+    test(`category update validation is working`, async () => {
+        let mod = await db.Projects.create({
+            ...defaultModData,
+            name: `Test Status Mod`,
+            status: Status.Private, // private so that we dontdeal with the edit queue
+        });
+
+        await expect(mod.edit({ category: `NotARealCategory` }, testUser1)).rejects.toThrow(`Invalid category`);
+        await expect(mod.edit({ category: `Core` }, testUser1)).resolves.not.toThrow();
+    })
 });

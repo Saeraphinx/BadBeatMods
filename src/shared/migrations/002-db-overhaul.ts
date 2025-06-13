@@ -8,18 +8,19 @@ import { Migration } from "../Database.ts";
 */
 
 export const up: Migration = async ({ context: sequelize }) => {
-    await sequelize.addColumn(`gameVersions`, `linkedVersionIds`, {
+    let query = sequelize.getQueryInterface();
+    await query.addColumn(`gameVersions`, `linkedVersionIds`, {
         type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
     });
 
-    await sequelize.addColumn(`mods`, `statusHistory`, {
+    await query.addColumn(`mods`, `statusHistory`, {
         type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
     });
-    await sequelize.addColumn(`modVersions`, `statusHistory`, {
+    await query.addColumn(`modVersions`, `statusHistory`, {
         type: DataTypes.TEXT,
         allowNull: false,
         defaultValue: `[]`,
@@ -27,8 +28,9 @@ export const up: Migration = async ({ context: sequelize }) => {
 };
 
 export const down: Migration = async ({ context: sequelize }) => {
-    await sequelize.removeColumn(`gameVersions`, `linkedVersionIds`);
+    let query = sequelize.getQueryInterface();
+    await query.removeColumn(`gameVersions`, `linkedVersionIds`);
 
-    await sequelize.removeColumn(`mods`, `statusHistory`);
-    await sequelize.removeColumn(`modVersions`, `statusHistory`);
+    await query.removeColumn(`mods`, `statusHistory`);
+    await query.removeColumn(`modVersions`, `statusHistory`);
 };

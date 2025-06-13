@@ -1,18 +1,54 @@
 import { SemVer } from "semver";
-import { Categories, ContentHash, GameVersionInfer, ModInfer, ModVersionInfer, Platform, Status, SupportedGames, UserInfer, UserRoles } from "../src/shared/Database";
+import { ContentHash, GameVersionInfer, Platform, ProjectInfer, Status, SupportedGames, UserInfer, UserRoles, VersionInfer, GameInfer } from "../src/shared/Database";
 import {de, faker} from "@faker-js/faker";
 import * as fs from 'fs';
+import { WebhookLogType } from "../src/shared/ModWebhooks";
+import { Utils } from "../src/shared/Utils";
 
 let fakeGameVersionData: GameVersionInfer[] = [];
 let fakeUserData: UserInfer[] = [];
-let fakeProjectData: ModInfer[] = [];
-let fakeVersionData: ModVersionInfer[] = [];
+let fakeProjectData: ProjectInfer[] = [];
+let fakeVersionData: VersionInfer[] = [];
+let fakeGameData: GameInfer[] = [
+    {
+        name: `BeatSaber`,
+        displayName: `Game 1`,
+        categories: [`cat1`, `cat2`],
+        webhookConfig: [{
+            id: Utils.createRandomString(8),
+            url: `https://notdiscord.com/notdiscordapi/webhooks/1234567890123456789/abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz`,
+            types: [WebhookLogType.All]
+        }],
+        default: true,
+        createdAt: faker.date.recent(),
+        updatedAt: faker.date.recent(),
+        deletedAt: null
+    }, {
+        name: `Chromapper`,
+        displayName: `Game 2`,
+        categories: [`cat1`, `cat3`],
+        webhookConfig: [ ],
+        default: false,
+        createdAt: faker.date.recent(),
+        updatedAt: faker.date.recent(),
+        deletedAt: null
+    }, {
+        name: `gn3`,
+        displayName: `Game 3`,
+        categories: [`cat2`, `cat3`],
+        webhookConfig: [],
+        default: false,
+        createdAt: faker.date.recent(),
+        updatedAt: faker.date.recent(),
+        deletedAt: null
+    }
+]
 let gvid = 1;
-for (let game of getEnumValues(SupportedGames)) {
+for (let game of fakeGameData) {
     for (let i = 1; i < 10; i++) {
         fakeGameVersionData.push({
             id: gvid++,
-            gameName: game as SupportedGames,
+            gameName: game.name,
             version: `${i}.0.0`,
             defaultVersion: false,
             linkedVersionIds: [],
@@ -44,13 +80,13 @@ for (let i = 2; i < 50; i++) {
 let i = 1;
 for (let i = 1; i < 5; i++) {
     for (let status of getEnumValues(Status)) {
-        for (let game of getEnumValues(SupportedGames)) {
+        for (let game of fakeGameData) {
             fakeProjectData.push({
                 id: i++,
-                gameName: game as SupportedGames,
+                gameName: game.name,
                 name: faker.commerce.productName(),
                 description: faker.commerce.productDescription(),
-                category: faker.helpers.arrayElement(getEnumValues(Categories)) as Categories,
+                category: faker.helpers.arrayElement(game.categories),
                 status: status as Status,
                 authorIds: [2],
                 summary: faker.lorem.sentence(),
@@ -80,7 +116,7 @@ for (let project of fakeProjectData) {
 
         fakeVersionData.push({
             id: j++,
-            modId: project.id,
+            projectId: project.id,
             modVersion: new SemVer(`1.0.0`),
             platform: platform as Platform,
             status: project.status,
@@ -106,6 +142,7 @@ function getEnumValues(enumType: any): string[] {
 }
 
 let fakeData = {
+    games: fakeGameData,
     gameVersions: fakeGameVersionData,
     users: fakeUserData,
     projects: fakeProjectData,
