@@ -51,11 +51,6 @@ export const DEFAULT_CONFIG = {
         // If you don't want to use the webhook, just leave it blank. if a urls is under 8 characters, it will be ignored.
         enableWebhooks: false, // acts as a sort of master switch for all webhooks. useful for dev when you dont want to deal with webhooks.
         loggingUrl: ``, // url for logging - sensitive data might be sent here
-        modLogUrl: ``, // url for mod logging - new, approvals, and rejections
-        modLogTags: [`all`], // tags to send to the mod log webhook
-        modLog2Url: ``, // same as above
-        modLog2Tags: [`all`], // same as above
-        publicUrl: `` // url for public webhook - approved mods only... might have a delay? hasn't been done yet.
     },
     bot: {
         enabled: false,
@@ -116,11 +111,6 @@ export class Config {
     private static _webhooks: {
         enableWebhooks: boolean;
         loggingUrl: string;
-        modLogUrl: string;
-        modLogTags: string[];
-        modLog2Url: string;
-        modLog2Tags: string[];
-        publicUrl: string;
     };
     private static _bot: {
         enabled: boolean;
@@ -544,36 +534,6 @@ export class Config {
                 Config._webhooks.loggingUrl = process.env.WEBHOOKS_LOGGINGURL;
             } else {
                 failedToLoad.push(`webhooks.loggingUrl`);
-            }
-
-            if (process.env.WEBHOOKS_MODLOGURL) {
-                Config._webhooks.modLogUrl = process.env.WEBHOOKS_MODLOGURL;
-            } else {
-                failedToLoad.push(`webhooks.modLogUrl`);
-            }
-
-            if (process.env.WEBHOOKS_MODLOGTAGS) {
-                Config._webhooks.modLogTags = process.env.WEBHOOKS_MODLOGTAGS.split(`,`);
-            } else {
-                failedToLoad.push(`webhooks.modLogTags`);
-            }
-
-            if (process.env.WEBHOOKS_MODLOG2URL) {
-                Config._webhooks.modLog2Url = process.env.WEBHOOKS_MODLOG2URL;
-            } else {
-                failedToLoad.push(`webhooks.modLog2Url`);
-            }
-
-            if (process.env.WEBHOOKS_MODLOG2TAGS) {
-                Config._webhooks.modLog2Tags = process.env.WEBHOOKS_MODLOG2TAGS.split(`,`);
-            } else {
-                failedToLoad.push(`webhooks.modLog2Tags`);
-            }
-
-            if (process.env.WEBHOOKS_PUBLICURL) {
-                Config._webhooks.publicUrl = process.env.WEBHOOKS_PUBLICURL;
-            } else {
-                failedToLoad.push(`webhooks.publicUrl`);
             }
             // #endregion
             // #region Bot
