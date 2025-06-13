@@ -210,7 +210,7 @@ describe.sequential(`Documentation`, async () => {
             [`/projects/1`, 200, `/projects/{projectIdParam}`],
             [`/user`, 200],
             [`/user/1`, 200, `/user/{id}`],
-            [`/user/1/mods`, 200, `/user/{id}/mods`],
+            [`/user/1/projects`, 200, `/user/{id}/projects`],
             [`/users`, 200],
             [`/auth`, 200],
             [`/games`, 200],
