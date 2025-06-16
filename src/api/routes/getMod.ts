@@ -283,7 +283,7 @@ export class GetModRoutes {
                         schema: {
                             type: 'array',
                             items: {
-                                $ref: '#/components/schemas/ProjectVersionPair'
+                                $ref: '#/components/schemas/ProjectAPIPublicResponse'
                             }
                         }
                     }

@@ -56,11 +56,6 @@ for (let version of fakeData.versions) {
     });
 }
 
-type ProjectVersionPair = {
-    project: ProjectAPIPublicResponse;
-    version: VersionAPIPublicResponse;
-};
-
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {
@@ -202,8 +197,9 @@ describe.sequential(`API`, async () => {
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
             for (let currentMod of response.body.mods) {
-                expect(currentMod).toHaveProperty(`project`);
-                expect(currentMod).toHaveProperty(`version`);
+                expect(currentMod).toHaveProperty(`versions`);
+                expect(currentMod.versions).toBeInstanceOf(Array);
+                expect(currentMod.versions.length).toBe(1);
             }
         });
 
@@ -214,13 +210,15 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods as ProjectVersionPair[];
+            let mods = response.body.mods as ProjectAPIPublicResponse[];
             for (let currentMod of mods) {
-                expect(currentMod).toHaveProperty(`project`);
-                expect(currentMod).toHaveProperty(`version`);
-                let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
-                expect(dependancies.length).toBe(currentMod.version.dependencies.length);
-                expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+                expect(currentMod).toHaveProperty(`versions`);
+                expect(currentMod.versions).toBeInstanceOf(Array);
+                expect(currentMod.versions.length).toBe(1);
+                let version = currentMod.versions[0];
+                let dependancies = mods.filter((mod) => version.dependencies.find((dep) => dep.parentId === mod.id && satisfies(mod.versions[0].modVersion, dep.sv)));
+                expect(dependancies.length).toBe(version.dependencies.length);
+                expect(version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
             }
         });
 
@@ -231,14 +229,16 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods as ProjectVersionPair[];
+            let mods = response.body.mods as ProjectAPIPublicResponse[];
             for (let currentMod of mods) {
-                expect(currentMod).toHaveProperty(`project`);
-                expect(currentMod).toHaveProperty(`version`);
-                let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
-                expect(dependancies.length).toBe(currentMod.version.dependencies.length);
-                expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-                expect(currentMod.version.platform).toBe(Platform.UniversalPC);
+                expect(currentMod).toHaveProperty(`versions`);
+                expect(currentMod.versions).toBeInstanceOf(Array);
+                expect(currentMod.versions.length).toBe(1);
+                let version = currentMod.versions[0];
+                let dependancies = mods.filter((mod) => version.dependencies.find((dep) => dep.parentId === mod.id &&satisfies(mod.versions[0].modVersion, dep.sv)));
+                expect(dependancies.length).toBe(version.dependencies.length);
+                expect(version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+                expect(version.platform).toBe(Platform.UniversalPC);
             }
         });
 
@@ -776,18 +776,20 @@ async function testGetMod(statuses:Status[], statusString:string) {
     expect(response.body).toHaveProperty(`mods`);
     expect(response.body.mods).toBeInstanceOf(Array);
     expect(response.body.mods.length).toBeGreaterThan(0);
-    let mods = response.body.mods as ProjectVersionPair[];
+    let mods = response.body.mods as ProjectAPIPublicResponse[];
     for (let currentMod of mods) {
-        expect(currentMod).toHaveProperty(`project`);
-        expect(currentMod).toHaveProperty(`version`);
-        let dependancies = mods.filter((mod) => mod.version.dependencies.find((dep) => dep.parentId === mod.project.id && satisfies(mod.version.modVersion, dep.sv)));
-        expect(dependancies.length).toBe(currentMod.version.dependencies.length);
-        expect(currentMod.version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
-        expect(currentMod.version.platform).toBe(Platform.UniversalPC);
-        expect(statuses.includes(currentMod.project.status)).toBeTruthy();
-        expect(statuses.includes(currentMod.version.status)).toBeTruthy();
-        if (seenStatuses.includes(currentMod.project.status) === false) {
-            seenStatuses.push(currentMod.version.status);
+        expect(currentMod).toHaveProperty(`versions`);
+        expect(currentMod.versions).toBeInstanceOf(Array);
+        expect(currentMod.versions.length).toBe(1);
+        let version = currentMod.versions[0];
+        let dependancies = mods.filter((mod) => version.dependencies.find((dep) => dep.parentId === mod.id && satisfies(mod.versions[0].modVersion, dep.sv)));
+        expect(dependancies.length).toBe(version.dependencies.length);
+        expect(version.supportedGameVersions.find((gv) => gv.version === `1.0.0`)).toBeDefined();
+        expect(version.platform).toBe(Platform.UniversalPC);
+        expect(statuses.includes(currentMod.status)).toBeTruthy();
+        expect(statuses.includes(version.status)).toBeTruthy();
+        if (seenStatuses.includes(version.status) === false) {
+            seenStatuses.push(version.status);
         }
     }
     for (let status of statuses) {

@@ -146,7 +146,13 @@ export class CreateModRoutes {
                 required: true
             }
             #swagger.responses[200] = {
-                $ref: '#/components/responses/ProjectVersionPairResponse'
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/ProjectEditResponse'
+                        }
+                    }
+                }
             }
             #swagger.responses[400]
             #swagger.responses[401]

@@ -297,7 +297,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ProjectVersionPair"
+                    "$ref": "#/components/schemas/ProjectAPIPublicResponse"
                   }
                 }
               }
@@ -688,7 +688,13 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/components/responses/ProjectVersionPairResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            },
             "description": "OK"
           },
           "400": {

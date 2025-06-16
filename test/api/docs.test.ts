@@ -60,11 +60,6 @@ for (let version of fakeData.versions) {
     });
 }
 
-type ProjectVersionPair = {
-    project: ProjectAPIPublicResponse;
-    version: VersionAPIPublicResponse;
-};
-
 vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
     const actual = await importOriginal();
     return {

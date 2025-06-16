@@ -65,7 +65,7 @@ export class UserRoutes {
             #swagger.description = 'Get user information.'
             #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
             #swagger.parameters['status'] = { description: 'Only show this status.', type: 'string' }
-            #swagger.responses[200] = { description: 'Returns mods.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ProjectVersionPair' } } } } }
+            #swagger.responses[200] = { description: 'Returns mods.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ProjectAPIPublicResponse' } } } } }
             #swagger.responses[404] = { description: 'User not found.' }
             #swagger.responses[400] = { description: 'Invalid parameters.' }
             */

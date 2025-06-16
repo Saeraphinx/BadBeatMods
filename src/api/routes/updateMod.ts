@@ -103,7 +103,7 @@ export class UpdateProjectRoutes {
                 gitUrl: reqBody.data.gitUrl,
                 authorIds: reqBody.data.authorIds,
                 category: reqBody.data.category,
-            }, session.user).then((project) => {
+            }, session.user).then(async (project) => {
                 if (project.isEditObj) {
                     if (project.newEdit) {
                         res.status(202).send({ message: `Edit ${project.edit.id} (for ${project.edit.objectId}) submitted by ${session.user.id} for approval.`, edit: project.edit });
@@ -113,7 +113,7 @@ export class UpdateProjectRoutes {
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return;
                 } else {
-                    res.status(200).send({ message: `Project updated.`, project: project.project.toAPIResponse(null) });
+                    res.status(200).send({ message: `Project updated.`, project: await project.project.toAPIResponse(null) });
                     DatabaseHelper.refreshCache(`projects`);
                 }
             }).catch((error) => {
