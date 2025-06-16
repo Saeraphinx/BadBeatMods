@@ -2,17 +2,14 @@ import { Logger } from "../Logger.ts";
 import { DatabaseManager, User } from "../Database.ts";
 import { EditQueue } from "./models/EditQueue.ts";
 import { GameVersion } from "./models/GameVersion.ts";
-import { Mod } from "./models/Mod.ts";
-import { ModVersion } from "./models/ModVersion.ts";
+import { Project } from "./models/Project.ts";
+import { Version } from "./models/Version.ts";
 import { MOTD } from "./models/MOTD.ts";
+import { Game } from "./models/Game.ts";
 
 // #region Enums & Types
-export enum SupportedGames {
-    BeatSaber = `BeatSaber`,
-    ChroMapper = `ChroMapper`,
-    TromboneChampUnflattened = `TromboneChampUnflattened`,
-    SpinRhythmXD = `SpinRhythmXD`,
-}
+export type SupportedGames = string;
+export type Category = string;
 
 export type UserAPIPublicResponse = {
     id: number;
@@ -30,16 +27,15 @@ export type GameVersionAPIPublicResponse = {
     gameName: SupportedGames;
     version: string;
     defaultVersion: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+    linkedVersionIds: number[];
 };
-export type ModAPIPublicResponse = {
+export type ProjectAPIPublicResponse = {
     id: number;
     name: string;
     summary: string;
     description: string;
     gameName: SupportedGames;
-    category: Categories;
+    category: Category;
     authors: UserAPIPublicResponse[];
     status: Status;
     iconFileName: string;
@@ -47,19 +43,20 @@ export type ModAPIPublicResponse = {
     lastApprovedById: number | null;
     lastUpdatedById: number;
     statusHistory: StatusHistory[];
+    versions: VersionAPIPublicResponse[];
     createdAt: Date;
     updatedAt: Date;
 };
-export type ModVersionAPIPublicResponse = {
+export type VersionAPIPublicResponse = {
     id: number;
-    modId: number;
+    projectId: number;
     modVersion: string; // semver.raw
     author: UserAPIPublicResponse;
     platform: Platform;
     zipHash: string;
     contentHashes: ContentHash[];
     status: Status;
-    dependencies: number[];
+    dependencies: Dependency[];
     supportedGameVersions: GameVersionAPIPublicResponse[];
     downloadCount: number;
     statusHistory: StatusHistory[];
@@ -73,7 +70,7 @@ export type ModVersionAPIPublicResponse = {
 export interface UserRolesObject {
     sitewide: UserRoles[];
     perGame: {
-        [gameName in SupportedGames]?: UserRoles[];
+        [key: string]: UserRoles[];
     }
 }
 
@@ -127,21 +124,9 @@ export enum Status {
     Verified = `verified`,
 }
 
-export enum Categories {
-    Core = `core`, // BSIPA, SongCore, etc
-    Essential = `essential`, // Camera2, BeatSaverDownloader, BeatSaverUpdater, etc
-    Library = `library`,
-    Cosmetic = `cosmetic`,
-    PracticeTraining = `practice`,
-    Gameplay = `gameplay`,
-    StreamTools = `streamtools`,
-    UIEnhancements = `ui`,
-    Lighting = `lighting`,
-    TweaksTools = `tweaks`,
-    Multiplayer = `multiplayer`,
-    TextChanges = `text`,
-    Editor = `editor`,
-    Other = `other`,
+export interface Dependency {
+    parentId: number; // mod/project id
+    sv: string; // "^1.0.0"
 }
 // #endregion
 
@@ -154,72 +139,83 @@ function validateEnumValue(value: string | number, enumType: object): boolean {
 }
 // #region DatabaseHelper
 export class DatabaseHelper {
+    private static hasInitialized: boolean = false;
     public static database: DatabaseManager;
     public static cache: {
         gameVersions: GameVersion[],
-        modVersions: ModVersion[],
-        mods: Mod[],
+        versions: Version[],
+        projects: Project[],
         users: User[],
         editApprovalQueue: EditQueue[],
         motd: MOTD[],
+        games: Game[],
     } = {
             gameVersions: [],
-            modVersions: [],
-            mods: [],
+            versions: [],
+            projects: [],
             users: [],
             editApprovalQueue: [],
             motd: [],
+            games: [],
         };
     public static mapCache: {
         gameVersions: Map<number, GameVersion>,
-        mods: Map<number, Mod>,
-        modVersions: Map<number, ModVersion>,
+        projects: Map<number, Project>,
+        versions: Map<number, Version>,
         users: Map<number, User>,
     } = {
             gameVersions: new Map(),
-            mods: new Map(),
-            modVersions: new Map(),
+            projects: new Map(),
+            versions: new Map(),
             users: new Map(),
         };
 
-    constructor(database: DatabaseManager, loadCache = true) {
+    constructor(database: DatabaseManager) {
         DatabaseHelper.database = database;
-        if (loadCache) {
-            DatabaseHelper.refreshAllCaches();
+    }
+
+    public init(shouldLoadCache: boolean = true) {
+        if (DatabaseHelper.hasInitialized) {
+            Logger.warn(`DatabaseHelper has already been initialized. Skipping...`);
+            return;
         }
 
+        if (shouldLoadCache) {
+            DatabaseHelper.refreshAllCaches();
+        }
         setInterval(DatabaseHelper.refreshAllCaches, 1000 * 60 * 5);
     }
 
     public static async refreshAllCaches() {
         Logger.debug(`Refreshing all caches`);
         DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
-        DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-        DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
+        DatabaseHelper.cache.versions = await DatabaseHelper.database.Versions.findAll();
+        DatabaseHelper.cache.projects = await DatabaseHelper.database.Projects.findAll();
         DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
+        DatabaseHelper.cache.games = await DatabaseHelper.database.Games.findAll();
         DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
-        DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
-        DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
+        DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((project) => [project.id, project]));
+        DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((version) => [version.id, version]));
         DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
         Logger.debug(`Finished refreshing all caches`);
     }
 
-    public static async refreshCache(tableName: `gameVersions` | `modVersions` | `mods` | `users` | `editApprovalQueue`) {
+    public static async refreshCache(tableName: `gameVersions` | `versions` | `projects` | `users` | `editApprovalQueue` | `games`) {
         Logger.debug(`Refreshing cache for ${tableName}`);
         switch (tableName) {
             case `gameVersions`:
                 DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
                 DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
                 break;
-            case `modVersions`:
-                DatabaseHelper.cache.modVersions = await DatabaseHelper.database.ModVersions.findAll();
-                DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
+            case `versions`:
+                DatabaseHelper.cache.versions = await DatabaseHelper.database.Versions.findAll();
+                DatabaseHelper.mapCache.versions = new Map(DatabaseHelper.cache.versions.map((version) => [version.id, version]));
                 break;
-            case `mods`:
-                DatabaseHelper.cache.mods = await DatabaseHelper.database.Mods.findAll();
-                DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
+            case `projects`:
+                DatabaseHelper.cache.projects = await DatabaseHelper.database.Projects.findAll();
+                DatabaseHelper.mapCache.projects = new Map(DatabaseHelper.cache.projects.map((project) => [project.id, project]));
                 break;
             case `users`:
                 DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
@@ -228,28 +224,31 @@ export class DatabaseHelper {
             case `editApprovalQueue`:
                 DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
                 break;
+            case `games`:
+                DatabaseHelper.cache.games = await DatabaseHelper.database.Games.findAll();
+                break;
         }
         Logger.debug(`Finished refreshing cache for ${tableName}`);
     }
 
-    public static getGameNameFromModId(id: number): SupportedGames | null {
-        let mod = DatabaseHelper.mapCache.mods.get(id);
-        if (!mod) {
+    public static getGameNameFromProjectId(id: number): SupportedGames | null {
+        let project = DatabaseHelper.mapCache.projects.get(id);
+        if (!project) {
             return null;
         }
-        return mod.gameName;
+        return project.gameName;
     }
 
-    public static getGameNameFromModVersionId(id: number): SupportedGames | null {
-        let modVersion = DatabaseHelper.mapCache.modVersions.get(id);
-        if (!modVersion) {
+    public static getGameNameFromVersionId(id: number): SupportedGames | null {
+        let version = DatabaseHelper.mapCache.versions.get(id);
+        if (!version) {
             return null;
         }
-        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
-        if (!mod) {
+        let project = DatabaseHelper.mapCache.projects.get(version.projectId);
+        if (!project) {
             return null;
         }
-        return mod.gameName;
+        return project.gameName;
     }
 
     public static getGameNameFromEditApprovalQueueId(id: number): SupportedGames | undefined {
@@ -257,10 +256,15 @@ export class DatabaseHelper {
         if (!edit) {
             return undefined;
         }
-        if (edit.objectTableName == `mods` && `gameName` in edit.object) {
-            return edit.object.gameName;
-        } else if (edit.objectTableName == `modVersions`) {
-            let gameName = DatabaseHelper.getGameNameFromModVersionId(edit.objectId);
+        if (edit.isProject()) {
+            if (`gameName` in edit.object && edit.object.gameName) {
+                return edit.object.gameName as SupportedGames;
+            } else {
+                let gameName = DatabaseHelper.getGameNameFromProjectId(edit.objectId);
+                return gameName ? gameName : undefined;
+            }
+        } else if (edit.isVersion()) {
+            let gameName = DatabaseHelper.getGameNameFromVersionId(edit.objectId);
             return gameName ? gameName : undefined;
         }
     }
@@ -273,28 +277,47 @@ export class DatabaseHelper {
         return validateEnumValue(value, Status);
     }
 
-    public static isValidCategory(value: string): value is Categories {
-        return validateEnumValue(value, Categories);
-    }
-
-    public static isValidGameName(name: any): name is SupportedGames {
-        if (!name) {
-            return false;
-        }
-
-        if (typeof name !== `string` && typeof name !== `number`) {
+    public static isSupportedGame(name: unknown): name is SupportedGames {
+        if (typeof name !== `string`) {
             return false;
         }
         
-        return validateEnumValue(name, SupportedGames);
+        if (this.cache.games.length === 0) {
+            Logger.warn(`No games found in cache. Please ensure the database is initialized and games are loaded.`);
+            return false;
+        }
+        
+        if (this.cache.games.find((app) => app.name === name)) {
+            return true;
+        } else {
+            return false;
+        }
     }
+
+    public static isValidCategory(value: unknown, gameName: SupportedGames): value is Category {
+        if (typeof value !== `string`) {
+            return false;
+        }
+
+        if (value === `Core` || value === `Essential` || value === `Other`) {
+            return true; // Core, Essential, and Other are always valid categories
+        }
+
+        // Check if the category exists in any game
+        let game = DatabaseHelper.cache.games.find((g) => g.name === gameName);
+        if (game && game.categories.includes(value)) {
+            return true;
+        }
+        return false;
+    }
+
 
     public static async isValidGameVersion(gameName: string, version: string): Promise<number | null> {
         if (!gameName || !version) {
             return null;
         }
 
-        if (!DatabaseHelper.isValidGameName(gameName)) {
+        if (!DatabaseHelper.isSupportedGame(gameName)) {
             return null;
         }
 

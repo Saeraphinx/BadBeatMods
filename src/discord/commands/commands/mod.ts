@@ -22,12 +22,12 @@ export default {
                 interaction.reply(`Invalid ID`);
                 return;
             }
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: id } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: id } });
             if (!mod) {
                 interaction.reply(`Mod not found`);
                 return;
             }
-            let versions = await DatabaseHelper.database.ModVersions.findAll({ where: { modId: mod.id } });
+            let versions = await DatabaseHelper.database.Versions.findAll({ where: { projectId: mod.id } });
             versions.sort((a, b) => rcompare(a.modVersion, b.modVersion));
             let embed = new EmbedBuilder()
                 .setTitle(mod.name)
@@ -54,7 +54,7 @@ export default {
         autocomplete: async function exec(luma: Luma, interaction: AutocompleteInteraction) {
             const search = interaction.options.getString(`search`);
             if (!search) return;
-            let mods = await DatabaseHelper.database.Mods.findAll({ where: { name: { [Op.like]: `%${search}%` } } });
+            let mods = await DatabaseHelper.database.Projects.findAll({ where: { name: { [Op.like]: `%${search}%` } } });
             
             if (!mods) {
                 interaction.respond([]);

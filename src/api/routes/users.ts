@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database.ts';
+import { DatabaseHelper, ProjectAPIPublicResponse, Status, User } from '../../shared/Database.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 
@@ -20,7 +20,7 @@ export class UserRoutes {
             }] */
             // #swagger.summary = 'Get logged in user information.'
             // #swagger.description = 'Get user information.'
-            // #swagger.responses[200] = { description: 'Returns user information.' }
+            // #swagger.responses[200] = { description: 'Returns user information.', content: { 'application/json': { schema: { $ref: '#/components/schemas/UserAPIPublicResponse' } } } }
             // #swagger.responses[401] = { description: 'Unauthorized.' }
             // #swagger.responses[500] = { description: 'Internal server error.' }
             let session = await validateSession(req, res, false);
@@ -35,7 +35,7 @@ export class UserRoutes {
             // #swagger.summary = 'Get user information.'
             // #swagger.description = 'Get user information.'
             // #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
-            // #swagger.responses[200] = { description: 'Returns user information.' }
+            // #swagger.responses[200] = { $ref: '#/components/responses/UserResponse' }
             // #swagger.responses[404] = { description: 'User not found.' }
             // #swagger.responses[400] = { description: 'Invalid parameters.' }
             let id = Validator.zDBID.safeParse(req.params.id);
@@ -51,31 +51,34 @@ export class UserRoutes {
             }
         });
 
-        this.router.get(`/user/:id/mods`, async (req, res) => {
-            // #swagger.tags = ['Users']
-            /* #swagger.security = [{
+        this.router.get([`/user/:id/mods`, `/user/:id/projects`], async (req, res) => {
+            /*
+            #swagger.start
+            #swagger.path = '/user/{id}/projects'
+            #swagger.method = 'get'
+            #swagger.tags = ['Mods']
+            #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
-            }] */
-            // #swagger.summary = 'Get user information.'
-            // #swagger.description = 'Get user information.'
-            // #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
-            // #swagger.parameters['status'] = { description: 'Status of the mod.', type: 'string' }
-            // #swagger.parameters['platform'] = { description: 'Platform of the mod.', type: 'string' }
-            // #swagger.responses[200] = { description: 'Returns mods.' }
-            // #swagger.responses[404] = { description: 'User not found.' }
-            // #swagger.responses[400] = { description: 'Invalid parameters.' }
+            }]
+            #swagger.summary = 'Get user information.'
+            #swagger.description = 'Get user information.'
+            #swagger.parameters['id'] = { description: 'User ID.', type: 'number' }
+            #swagger.parameters['status'] = { description: 'Only show this status.', type: 'string' }
+            #swagger.responses[200] = { description: 'Returns mods.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ProjectAPIPublicResponse' } } } } }
+            #swagger.responses[404] = { description: 'User not found.' }
+            #swagger.responses[400] = { description: 'Invalid parameters.' }
+            */
             let session: { user: User | null } = { user: null };
             let id = Validator.zDBID.safeParse(req.params.id);
             let status = Validator.zStatus.default(Status.Verified).safeParse(req.query.status);
-            let platform = Validator.zPlatform.default(Platform.UniversalPC).safeParse(req.query.platform);
-            if (!id.success || !status.success || !platform.success) {
+            if (!id.success || !status.success) {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
             let user = DatabaseHelper.cache.users.find((u) => u.id === id.data);
             if (user) {
-                let mods: {mod: ModAPIPublicResponse, latest: any }[] = [];
+                let mods: ProjectAPIPublicResponse[] = [];
                 if (status.data !== Status.Verified && status.data !== Status.Unverified) {
                     session = await validateSession(req, res, false, null, true);
                     if (!session.user) {
@@ -83,33 +86,28 @@ export class UserRoutes {
                     }
                 }
 
-                for (let mod of DatabaseHelper.cache.mods) {
-                    if (mod.status !== status.data) {
+                for (let project of DatabaseHelper.cache.projects) {
+                    if (project.status !== status.data) {
                         continue;
                     }
-                    if (!mod.authorIds.includes(id.data)) {
+                    if (!project.authorIds.includes(id.data)) {
                         continue;
                     }
 
                     if (status.data !== Status.Verified && status.data !== Status.Unverified) {
-                        if (!mod.isAllowedToView(session.user)) {
+                        if (!project.isAllowedToView(session.user)) {
                             continue;
                         }
                     }
 
-                    let latestGameVersion = await GameVersion.getDefaultVersionObject(mod.gameName);
-                    if (!latestGameVersion) {
-                        continue;
-                    }
-
-                    let latest = await mod.getLatestVersion(latestGameVersion.id, platform.data, [status.data]);
+                    let latest = await project.getLatestVersion(undefined, undefined, [status.data]);
                     if (latest) {
-                        mods.push({mod: mod.toAPIResponse(), latest: latest});
+                        mods.push(await project.toAPIResponse(latest));
                     } else {
-                        mods.push({mod: mod.toAPIResponse(), latest: null});
+                        mods.push(await project.toAPIResponse(null));
                     }
                 }
-                return res.status(200).send({ mods: mods });
+                return res.status(200).send(mods);
             } else {
                 return res.status(404).send({ message: `User not found.` });
             }
@@ -117,14 +115,14 @@ export class UserRoutes {
 
         this.router.get(`/users`, async (req, res) => {
             // #swagger.tags = ['Users']
-            /* #swagger.security = [{
+            /* #swagger.security = [{},{
                 "bearerAuth": [],
                 "cookieAuth": []
             }] */
             // #swagger.summary = 'Get all users.'
             // #swagger.description = 'Get all users.'
             // #swagger.parameters['username'] = { description: 'Username to search for.', type: 'string' }
-            // #swagger.responses[200] = { description: 'Returns all users.' }
+            // #swagger.responses[200] = { description: 'Returns all users.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/UserAPIPublicResponse' } } } } }
             // #swagger.responses[500] = { description: 'Internal server error.' }
             let session = await validateSession(req, res, false, null, false);
 
@@ -141,7 +139,7 @@ export class UserRoutes {
                 }
             }
 
-            return res.status(200).send({ users: users.map((user) => user.toAPIResponse()) });
+            return res.status(200).send(users.map((user) => user.toAPIResponse()));
         });
 
         /*
