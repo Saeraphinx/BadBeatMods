@@ -207,7 +207,7 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         if (!mod.isRestorable()) {
             return false;
         }
-        return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
+        return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.zipHash}.zip`);
     }
 
     public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<ModVersion | EditQueue | null> {
