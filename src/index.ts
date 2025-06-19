@@ -123,7 +123,7 @@ function init() {
 
     apiRouter.use(rateLimit({
         windowMs: 60 * 1000,
-        max: 100,
+        max: 200,
         statusCode: 429,
         message: {message: `Rate limit exceeded.`},
         skipSuccessfulRequests: false,
@@ -132,7 +132,7 @@ function init() {
 
     const cdnRateLimiter = rateLimit({
         windowMs: 60 * 1000,
-        max: 100,
+        max: 200,
         statusCode: 429,
         message: `Rate limit exceeded.`,
         skipSuccessfulRequests: false,
