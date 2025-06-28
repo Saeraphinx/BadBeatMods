@@ -104,6 +104,7 @@ export class DatabaseManager {
             let serverAdmin = await this.Users.findByPk(1).then((user) => {
                 if (!user) {
                     return this.Users.create({
+                        id: 1,
                         username: `ServerAdmin`,
                         discordId: `1`,
                         roles: {
