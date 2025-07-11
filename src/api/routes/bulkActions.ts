@@ -195,10 +195,10 @@ export class BulkActionsRoutes {
                 if (modIdsToIgnore.includes(modVersion.modId)) {
                     continue; // skip mod versions that are in the exclude list
                 }
-                let existing = modVersionFiltered.find((mv) => mv.modId === modVersion.modId);
+                let existing = modVersionFiltered.find((mv) => mv.modId === modVersion.modId && mv.modVersion.status === modVersion.status);
                 if (existing) {
                     if (modVersion.modVersion.compare(existing.modVersion.modVersion) == 1) {
-                        modVersionFiltered = modVersionFiltered.filter((mv) => mv.modId !== modVersion.modId);
+                        modVersionFiltered = modVersionFiltered.filter((mv) => mv.modId !== modVersion.modId && mv.modVersion.status === modVersion.status);
                         modVersionFiltered.push({modId: modVersion.modId, modVersion: modVersion});
                     }
                 } else {
