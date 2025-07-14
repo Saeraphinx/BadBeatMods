@@ -413,7 +413,7 @@ async function generateVersionEmbed(project: Project, version: Version, userMaki
 } = {}): Promise<APIEmbed | void> {
     const faviconUrl = Config.flags.enableFavicon ? `${Config.server.url}/favicon.ico` : `https://raw.githubusercontent.com/Saeraphinx/BadBeatMods/refs/heads/main/assets/favicon.png`;
     let author = await DatabaseHelper.database.Users.findOne({ where: { id: version.authorId } });
-    let gameVersions = await version.getSupportedGameVersions();
+    let gameVersions = await version.getSupportedGameVersions(`v3`);
     let dependancies: string[] = [];
     let resolvedDependancies = await version.getDependencyObjs(gameVersions[0].id, [Status.Verified, Status.Unverified]);
 

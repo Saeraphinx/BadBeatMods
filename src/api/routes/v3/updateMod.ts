@@ -8,7 +8,7 @@ import path from 'node:path';
 import { Config } from '../../../shared/Config.ts';
 import { Utils } from '../../../shared/Utils.ts';
 
-export class UpdateProjectRoutes {
+export class UpdateProjectRoutesV3 {
     private router: Router;
 
     constructor(router: Router) {

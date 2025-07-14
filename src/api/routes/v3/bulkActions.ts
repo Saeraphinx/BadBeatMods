@@ -5,7 +5,7 @@ import { Validator } from '../../../shared/Validator.ts';
 import { Op } from 'sequelize';
 import { Logger } from '../../../shared/Logger.ts';
 
-export class BulkActionsRoutes {
+export class BulkActionsRoutesV3 {
     private router: Router;
     constructor(router: Router) {
         this.router = router;

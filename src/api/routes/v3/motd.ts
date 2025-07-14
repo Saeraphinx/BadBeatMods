@@ -4,7 +4,7 @@ import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Validator } from '../../../shared/Validator.ts';
 import { Utils } from '../../../shared/Utils.ts';
 
-export class MOTDRoutes {
+export class MOTDRoutesV3 {
     private router: Router;
     constructor(router: Router) {
         this.router = router;

@@ -12,7 +12,7 @@ import { UploadedFile } from 'express-fileupload';
 import { sendProjectLog, sendVersionLog, WebhookLogType } from '../../../shared/ModWebhooks.ts';
 import { Utils } from '../../../shared/Utils.ts';
 
-export class CreateModRoutes {
+export class CreateModRoutesV3 {
     private router: Router;
 
     constructor(router: Router) {

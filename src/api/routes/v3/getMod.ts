@@ -6,7 +6,7 @@ import { Logger } from '../../../shared/Logger.ts';
 import { SemVer, satisfies } from 'semver';
 import { Utils } from '../../../shared/Utils.ts';
 
-export class GetModRoutes {
+export class GetModRoutesV3 {
     private router: Router;
 
     constructor(router: Router) {

@@ -14,7 +14,7 @@ export enum ApprovalAction {
     Restore = `restore`, // Restore the project/version if it was previously removed
 }
 
-export class ApprovalRoutes {
+export class ApprovalRoutesV3 {
     private router: Router;
 
     constructor(router: Router) {
@@ -61,7 +61,8 @@ export class ApprovalRoutes {
                 projects: ProjectAPIPublicResponseV3[] | undefined,
                 versions: {
                     project: ProjectAPIPublicResponseV3,
-                    version: ReturnType<typeof Version.prototype.toRawAPIResponse>}[] | undefined,
+                    version: ReturnType<typeof Version.prototype.toRawAPIResponse>
+                }[] | undefined,
                 edits: {
                     project: ProjectAPIPublicResponseV3,
                     original: Project | Version

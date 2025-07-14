@@ -41,7 +41,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return mod;
     }
 
-    public async isAllowedToView(user: User|null|undefined, useCache:Project|boolean = true) {
+    public async isAllowedToView(user: User | null | undefined, useCache: Project | boolean = true) {
         let parentMod: Project | null | undefined;
         if (typeof useCache === `object`) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
@@ -96,7 +96,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         }
     }
 
-    public async isAllowedToEdit(user: User|null, useCache:Project|boolean = true) {
+    public async isAllowedToEdit(user: User | null, useCache: Project | boolean = true) {
         let parentMod: Project | null | undefined;
         if (useCache instanceof Project) {
             parentMod = useCache; // if a mod is passed in, use that as the parent mod
@@ -119,13 +119,13 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return false;
     }
 
-    public async edit(object: VersionEdit, submitter: User): Promise<{isEditObj: true, newEdit: boolean, edit: EditQueue} | {isEditObj: false, version: Version}> {
+    public async edit(object: VersionEdit, submitter: User): Promise<{ isEditObj: true, newEdit: boolean, edit: EditQueue } | { isEditObj: false, version: Version }> {
         if (this.status !== Status.Verified) {
-            this.update({...object, lastUpdatedById: submitter.id});
+            this.update({ ...object, lastUpdatedById: submitter.id });
             sendVersionLog(this, submitter, WebhookLogType.Text_Updated);
-            return {isEditObj: false, version: this};
+            return { isEditObj: false, version: this };
         }
-    
+
         // check if there is already a pending edit
         let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, approved: { [Op.eq]: null } } });
         if (existingEdit) {
@@ -134,9 +134,9 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             existingEdit.submitterId = submitter.id;
             let newEdit = await existingEdit.save();
             sendEditLog(newEdit, submitter, WebhookLogType.Text_Updated, this);
-            return {isEditObj: true, newEdit: false, edit: newEdit};
+            return { isEditObj: true, newEdit: false, edit: newEdit };
         }
-    
+
         // create a new edit
         let edit = await DatabaseHelper.database.EditApprovalQueue.create({
             objectId: this.id,
@@ -146,10 +146,10 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         });
 
         sendEditLog(edit, submitter, WebhookLogType.EditSubmitted, this);
-        return {isEditObj: true, newEdit: true, edit: edit};
+        return { isEditObj: true, newEdit: true, edit: edit };
     }
 
-    public async setStatus(status:Status, user: User, reason:string = `No reason provided.`, shouldSendEmbed: boolean = true) {
+    public async setStatus(status: Status, user: User, reason: string = `No reason provided.`, shouldSendEmbed: boolean = true) {
         let prevStatus = this.status;
         this.status = status;
         this.lastUpdatedById = user.id;
@@ -210,7 +210,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return fs.existsSync(`${path.resolve(Config.storage.modsDir)}/${this.modVersion.raw}.zip`);
     }
 
-    public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog:boolean = true): Promise<Version | EditQueue | null> {
+    public async addGameVersionId(gameVersionId: number, submitter: User, shouldSendLog: boolean = true): Promise<Version | EditQueue | null> {
         if (this.supportedGameVersionIds.includes(gameVersionId)) {
             return Promise.resolve(null);
         }
@@ -244,21 +244,21 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
     }
 
     // this function called to see if a duplicate version already exists in the database. if it does, creation of a new version should be halted.
-    public static async checkForExistingVersion(modId: number, semver: SemVer, platform:Platform): Promise<Version | null> {
-        let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
+    public static async checkForExistingVersion(modId: number, semver: SemVer, platform: Platform): Promise<Version | null> {
+        let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{ status: Status.Verified }, { status: Status.Unverified }, { status: Status.Private }] } });
         return modVersion;
     }
 
-    public static async countExistingVersions(modId: number, semver: SemVer, platform:Platform): Promise<number> {
-        let count = await DatabaseHelper.database.Versions.count({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{status: Status.Verified}, {status: Status.Unverified}, {status: Status.Private }] } });
+    public static async countExistingVersions(modId: number, semver: SemVer, platform: Platform): Promise<number> {
+        let count = await DatabaseHelper.database.Versions.count({ where: { projectId: modId, modVersion: semver.raw, platform: platform, [Op.or]: [{ status: Status.Verified }, { status: Status.Unverified }, { status: Status.Private }] } });
         return count;
     }
 
     public async getSupportedGameVersions(apiVersion: `v2`): Promise<GameVersionAPIPublicResponseV2[]>;
     public async getSupportedGameVersions(apiVersion: `v3`): Promise<GameVersionAPIPublicResponseV3[]>;
     public async getSupportedGameVersions(apiVersion: `v2` | `v3`): Promise<GameVersionAPIPublicResponseV2[] | GameVersionAPIPublicResponseV3[]>;
-    public async getSupportedGameVersions(apiVersion: `v2` | `v3`): Promise<GameVersionAPIPublicResponseV3|GameVersionAPIPublicResponseV2[]> {
-        let gameVersions: (GameVersionAPIPublicResponseV2|GameVersionAPIPublicResponseV3)[] = [];
+    public async getSupportedGameVersions(apiVersion: `v2` | `v3`): Promise<GameVersionAPIPublicResponseV3 | GameVersionAPIPublicResponseV2[]> {
+        let gameVersions: (GameVersionAPIPublicResponseV2 | GameVersionAPIPublicResponseV3)[] = [];
         for (let versionId of this.supportedGameVersionIds) {
             let version = DatabaseHelper.mapCache.gameVersions.get(versionId);
             if (!version) {
@@ -303,16 +303,50 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return null; // TODO: implement this function
     }*/
 
-    public toRawAPIResponse() {
+    public toRawAPIResponse(apiVersion: `v2` | `v3` = `v3`) {
+        if (apiVersion === `v3`) {
+            return {
+                id: this.id,
+                projectId: this.projectId,
+                authorId: this.authorId,
+                modVersion: this.modVersion.raw,
+                platform: this.platform,
+                zipHash: this.zipHash,
+                status: this.status,
+                dependencies: this.dependencies,
+                contentHashes: this.contentHashes,
+                supportedGameVersionIds: this.supportedGameVersionIds,
+                downloadCount: this.downloadCount,
+                fileSize: this.fileSize,
+                statusHistory: this.statusHistory,
+                lastApprovedById: this.lastApprovedById,
+                lastUpdatedById: this.lastUpdatedById,
+                createdAt: this.createdAt,
+                updatedAt: this.updatedAt,
+            };
+        }
+
         return {
             id: this.id,
-            projectId: this.projectId,
+            modId: this.projectId,
             authorId: this.authorId,
             modVersion: this.modVersion.raw,
             platform: this.platform,
             zipHash: this.zipHash,
             status: this.status,
-            dependencies: this.dependencies,
+            dependencies: this.dependencies.map(dep => {
+                DatabaseHelper.cache.versions.filter(v => {
+                    if (v.projectId !== dep.parentId) {
+                        return false;
+                    }
+
+                    if (!v.supportedGameVersionIds.some(id => this.supportedGameVersionIds.includes(id))) {
+                        return false;
+                    }
+
+                    return v.modVersion.compare(dep.sv) >= 1;
+                })
+            }),
             contentHashes: this.contentHashes,
             supportedGameVersionIds: this.supportedGameVersionIds,
             downloadCount: this.downloadCount,
@@ -326,9 +360,9 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
     }
 
     // temporary private to force usage of new obj in projects
-    public async toAPIResponse(apiVersion: `v2`, gameVersionId?: number): Promise<VersionAPIPublicResponseV2|null>;
-    public async toAPIResponse(apiVersion: `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|null>;
-    public async toAPIResponse(apiVersion: `v2` | `v3` = `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|VersionAPIPublicResponseV2|null> {
+    public async toAPIResponse(apiVersion: `v2`, gameVersionId?: number): Promise<VersionAPIPublicResponseV2 | null>;
+    public async toAPIResponse(apiVersion: `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3 | null>;
+    public async toAPIResponse(apiVersion: `v2` | `v3` = `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3 | VersionAPIPublicResponseV2 | null> {
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
         if (!author) {
             let dbAuthor = await DatabaseHelper.database.Users.findByPk(this.authorId);

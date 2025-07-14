@@ -3,7 +3,8 @@ import supertest from 'supertest';
 import { startServer } from '../../src/index.ts';
 import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponseV3, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponseV3, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
-const api = supertest(`http://localhost:8486/api/v3`);
+const apiv3 = supertest(`http://localhost:8486/api/v3`);
+const api = supertest(`http://localhost:8486/api`);
 let server: Awaited<ReturnType<typeof startServer>>;
 let shouldAuthenticateWithRole: UserRoles | false | true = false;
 
@@ -67,7 +68,7 @@ vi.mock(import(`../../src/shared/ModWebhooks.ts`), async (importOriginal) => {
 });
 // #endregion
 
-describe.sequential(`API`, async () => {
+describe.sequential(`API v3`, async () => {
     let { sendProjectLog, sendEditLog, sendVersionLog } = await import(`../../src/shared/ModWebhooks.ts`);
     let defaultModData: Omit<ProjectInfer, `id` | `name` | `createdAt` | `updatedAt` | `deletedAt`>;
 
@@ -102,7 +103,7 @@ describe.sequential(`API`, async () => {
         }));
 
         vi.mock(`../../src/shared/Config.ts`, async (importOriginal) => {
-            const originalModule = await importOriginal() as typeof import('../../src/shared/Config');
+            const originalModule = await importOriginal() as typeof import('../../src/shared/Config.ts');
             process.env.NODE_ENV = `test`;
             return {
                 Config: {
@@ -190,7 +191,7 @@ describe.sequential(`API`, async () => {
 
     describe.sequential(`Get Mods`, () => {
         test(`/mods - no param`, async () => {
-            const response = await api.get(`/projects`);
+            const response = await apiv3.get(`/projects`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -204,7 +205,7 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/mods - gv only`, async () => {
-            const response = await api.get(`/projects?gameVersion=1.0.0`);
+            const response = await apiv3.get(`/projects?gameVersion=1.0.0`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -223,7 +224,7 @@ describe.sequential(`API`, async () => {
         });
 
         test(`/mods - gv and universal platform`, async () => {
-            const response = await api.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}`);
+            const response = await apiv3.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`mods`);
@@ -269,7 +270,7 @@ describe.sequential(`API`, async () => {
         test(`/hashlookup - contentHash`, async () => {
             let modVersion = DatabaseHelper.cache.versions[0];
             let contentHash = modVersion.contentHashes[0].hash;
-            const response = await api.get(`/hashlookup?hash=${contentHash}`);
+            const response = await apiv3.get(`/hashlookup?hash=${contentHash}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Array);
@@ -284,7 +285,7 @@ describe.sequential(`API`, async () => {
         test(`/hashlookup - ziphash`, async () => {
             let modVersion = DatabaseHelper.cache.versions[0];
             let zipHash = modVersion.zipHash;
-            const response = await api.get(`/hashlookup?hash=${zipHash}`);
+            const response = await apiv3.get(`/hashlookup?hash=${zipHash}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Array);
@@ -299,7 +300,7 @@ describe.sequential(`API`, async () => {
         test(`/multi/hashlookup - contentHash`, async () => {
             let contentHash1 = DatabaseHelper.cache.versions[0].contentHashes[0].hash;
             let contentHash2 = DatabaseHelper.cache.versions[1].contentHashes[0].hash;
-            const response = await api.get(`/multi/hashlookup?hash=${contentHash1}&hash=${contentHash2}`);
+            const response = await apiv3.get(`/multi/hashlookup?hash=${contentHash1}&hash=${contentHash2}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Object);
@@ -311,7 +312,7 @@ describe.sequential(`API`, async () => {
         test(`/multi/hashlookup - zipHash`, async () => {
             let zipHash1 = DatabaseHelper.cache.versions[0].zipHash;
             let zipHash2 = DatabaseHelper.cache.versions[1].zipHash;
-            const response = await api.get(`/multi/hashlookup?hash=${zipHash1}&hash=${zipHash2}`);
+            const response = await apiv3.get(`/multi/hashlookup?hash=${zipHash1}&hash=${zipHash2}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Object);
@@ -333,7 +334,7 @@ describe.sequential(`API`, async () => {
                 name: stuff.fakeName,
                 authorIds: [1],
             });
-            const response = await api.patch(`/projects/${newMod.id}`).send({
+            const response = await apiv3.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod private author`,
                 summary: `Test Summary 2`,
                 description: `Test Description 2`,
@@ -356,7 +357,7 @@ describe.sequential(`API`, async () => {
                 authorIds: [2],
             });
             expect(newMod).toBeDefined();
-            const response = await api.patch(`/projects/${newMod.id}`).send({
+            const response = await apiv3.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod 2`,
             });
             expect(response.status, response.body.message).toBe(401);
@@ -369,7 +370,7 @@ describe.sequential(`API`, async () => {
                 name: stuff.fakeName,
                 authorIds: [2],
             });
-            const response = await api.patch(`/projects/${newMod.id}`).send({
+            const response = await apiv3.patch(`/projects/${newMod.id}`).send({
                 name: `Test Mod private approver`,
             });
             expect(response.status, response.body.message).toBe(200);
@@ -426,7 +427,7 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - edits`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/edits?gameName=${gnToCheck}`);
+            const response = await apiv3.get(`/approval/edits?gameName=${gnToCheck}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`edits`);
@@ -445,7 +446,7 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - versions`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/versions?gameName=${gnToCheck}`);
+            const response = await apiv3.get(`/approval/versions?gameName=${gnToCheck}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`versions`);
@@ -465,7 +466,7 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - versions (w/ unverified)`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/versions?gameName=${gnToCheck}&includeUnverified=true`);
+            const response = await apiv3.get(`/approval/versions?gameName=${gnToCheck}&includeUnverified=true`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`versions`);
@@ -494,7 +495,7 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - projects`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/projects?gameName=${gnToCheck}`);
+            const response = await apiv3.get(`/approval/projects?gameName=${gnToCheck}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`projects`);
@@ -511,7 +512,7 @@ describe.sequential(`API`, async () => {
 
         test(`/approval/:queuetype - projects (w/ unverified)`, async () => {
             shouldAuthenticateWithRole = UserRoles.Approver;
-            const response = await api.get(`/approval/projects?gameName=${gnToCheck}&includeUnverified=true`);
+            const response = await apiv3.get(`/approval/projects?gameName=${gnToCheck}&includeUnverified=true`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`projects`);
@@ -589,7 +590,7 @@ describe.sequential(`API`, async () => {
     describe.sequential(`Games`, () => {
         let gameName = fakeData.games[0].name;
         test(`GET /games/:gameName`, async () => {
-            const response = await api.get(`/games/${gameName}`);
+            const response = await apiv3.get(`/games/${gameName}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toHaveProperty(`name`);
@@ -603,7 +604,7 @@ describe.sequential(`API`, async () => {
 
         test(`GET /games/:gameName/versions`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.post(`/games/${gameName}/versions`).send({
+            const response = await apiv3.post(`/games/${gameName}/versions`).send({
                 version: `123.123.123`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -620,7 +621,7 @@ describe.sequential(`API`, async () => {
 
         test(`POST /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.post(`/games/${gameName}/categories`).send({
+            const response = await apiv3.post(`/games/${gameName}/categories`).send({
                 category: `Test Category`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -632,7 +633,7 @@ describe.sequential(`API`, async () => {
 
         test(`PUT /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.put(`/games/${gameName}/categories`).send({
+            const response = await apiv3.put(`/games/${gameName}/categories`).send({
                 categories: [`Core`, `Test Category`, `Other`]
             });
             expect(response.status, response.body.message).toBe(200);
@@ -645,7 +646,7 @@ describe.sequential(`API`, async () => {
 
         test(`DELETE /games/:gameName/categories`, async () => {
             shouldAuthenticateWithRole = UserRoles.GameManager;
-            const response = await api.delete(`/games/${gameName}/categories`).send({
+            const response = await apiv3.delete(`/games/${gameName}/categories`).send({
                 category: `Test Category`
             });
             expect(response.status, response.body.message).toBe(200);
@@ -658,7 +659,7 @@ describe.sequential(`API`, async () => {
 
         test(`GET /games/:gameName/webhooks`, async () => {
             shouldAuthenticateWithRole = UserRoles.Admin;
-            const response = await api.get(`/games/${gameName}/webhooks`);
+            const response = await apiv3.get(`/games/${gameName}/webhooks`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Array);
@@ -673,7 +674,7 @@ describe.sequential(`API`, async () => {
 
         test(`POST /games/:gameName/webhooks`, async () => {
             shouldAuthenticateWithRole = UserRoles.Admin;
-            const response = await api.post(`/games/${gameName}/webhooks`).send({
+            const response = await apiv3.post(`/games/${gameName}/webhooks`).send({
                 url: `https://example.com/webhook`,
                 types: [WebhookLogType.Verified]
             });
@@ -694,7 +695,7 @@ describe.sequential(`API`, async () => {
             let game = await server.database.Games.findByPk(gameName);
             expect(game).toBeDefined();
             let webhook = game?.webhookConfig[0];
-            const response = await api.put(`/games/${gameName}/webhooks/${webhook?.id}`).send({
+            const response = await apiv3.put(`/games/${gameName}/webhooks/${webhook?.id}`).send({
                 types: [WebhookLogType.Text_Created]
             });
             expect(response.status, response.body.message).toBe(200);
@@ -712,7 +713,7 @@ describe.sequential(`API`, async () => {
             let game = await server.database.Games.findByPk(gameName);
             expect(game).toBeDefined();
             let webhook = game?.webhookConfig[0];
-            const response = await api.delete(`/games/${gameName}/webhooks/${webhook?.id}`);
+            const response = await apiv3.delete(`/games/${gameName}/webhooks/${webhook?.id}`);
             expect(response.status, response.body.message).toBe(200);
             expect(response.body).toBeDefined();
             expect(response.body).toBeInstanceOf(Array);
@@ -730,7 +731,7 @@ describe.sequential(`API`, async () => {
                 gameName: gameName,
                 version: `1324.0.1`,
             });
-            const response = await api.post(`/games/${gameName}/versions/link`).send({
+            const response = await apiv3.post(`/games/${gameName}/versions/link`).send({
                 versionAId: version1.id,
                 versionBId: version2.id,
             });
@@ -754,7 +755,7 @@ describe.sequential(`API`, async () => {
                 version: `5431.0.1`,
             });
             await version1.addLinkToGameVersion(version2);
-            const response = await api.post(`/games/${gameName}/versions/unlink`).send({
+            const response = await apiv3.post(`/games/${gameName}/versions/unlink`).send({
                 versionAId: version1.id,
                 versionBId: version2.id,
             });
@@ -771,7 +772,7 @@ describe.sequential(`API`, async () => {
 
 async function testGetMod(statuses:Status[], statusString:string) {
     let seenStatuses: Status[] = [];
-    const response = await api.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
+    const response = await apiv3.get(`/projects?gameVersion=1.0.0&platform=${Platform.UniversalPC}&status=${statusString}`);
     expect(response.status, response.body.message).toBe(200);
     expect(response.body).toHaveProperty(`mods`);
     expect(response.body.mods).toBeInstanceOf(Array);
@@ -806,7 +807,7 @@ function testStatusChange(testMod:Project|Version, fromStatus:Status, action:App
         testMod.status = fromStatus;
         await testMod.save();
         let type = testMod instanceof Project ? `project` : `version`;
-        const response = await api.post(`/approval/${type}/${testMod.id}/approve`).send({
+        const response = await apiv3.post(`/approval/${type}/${testMod.id}/approve`).send({
             action: action,
         });
         expect(response.status, response.body.message).toBe(200);

@@ -5,7 +5,7 @@ import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Logger } from '../../../shared/Logger.ts';
 import { satisfies, SemVer } from 'semver';
 
-export class GetModRoutes {
+export class GetModRoutesV2 {
     private router: Router;
 
     constructor(router: Router) {

@@ -3,7 +3,7 @@ import { DatabaseHelper, GameVersion, ProjectAPIPublicResponseV2, Platform, Stat
 import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Validator } from '../../../shared/Validator.ts';
 
-export class UserRoutes {
+export class UserRoutesV2 {
     private router: Router;
 
     constructor(router: Router) {

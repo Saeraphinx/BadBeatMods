@@ -14,7 +14,7 @@ import { sendProjectLog, sendVersionLog, WebhookLogType } from '../../../shared/
 import { Utils } from '../../../shared/Utils.ts';
 */
 
-export class CreateModRoutes {
+export class CreateModRoutesV2 {
     private router: Router;
 
     constructor(router: Router) {

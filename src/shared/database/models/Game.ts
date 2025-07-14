@@ -25,7 +25,7 @@ export class Game extends Model<InferAttributes<Game>, InferCreationAttributes<G
     declare deletedAt: CreationOptional<Date | null>;
 
     public toAPIResponse(shouldShowVerisons: boolean = true) {
-        let versions = shouldShowVerisons ? DatabaseHelper.cache.gameVersions.filter((v) => v.gameName === this.name).sort((a, b) => GameVersion.compareVersions(b, a)).map((v) => v.toAPIResponse()) : [];
+        let versions = shouldShowVerisons ? DatabaseHelper.cache.gameVersions.filter((v) => v.gameName === this.name).sort((a, b) => GameVersion.compareVersions(b, a)).map((v) => v.toAPIResponse(`v3`)) : [];
 
         return {
             name: this.name,

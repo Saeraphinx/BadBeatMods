@@ -13,7 +13,7 @@ export enum ApprovalAction {
     Restore = `restore`, // Restore the mod/modVersion if it was previously removed
 }
 
-export class ApprovalRoutes {
+export class ApprovalRoutesV2 {
     private router: Router;
 
     constructor(router: Router) {
@@ -113,7 +113,7 @@ export class ApprovalRoutes {
                             if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
-                            return { mod: await mod.toAPIResponse(`v2`), version: modVersion.toRawAPIResponse() };
+                            return { mod: await mod.toAPIResponse(`v2`), version: modVersion.toRawAPIResponse(`v2`) };
                         })
                     )).filter((obj) => obj !== null);
                     break;

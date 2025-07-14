@@ -3,7 +3,7 @@ import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../../shared
 import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Validator } from '../../../shared/Validator.ts';
 
-export class MOTDRoutes {
+export class MOTDRoutesV2 {
     private router: Router;
     constructor(router: Router) {
         this.router = router;

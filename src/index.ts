@@ -20,19 +20,19 @@ import { Logger } from './shared/Logger.ts';
 import { Config } from './shared/Config.ts';
 import { Luma } from './discord/classes/Luma.ts';
 
-import { CreateModRoutes } from './api/routes/v3/createMod.ts';
-import { GetModRoutes } from './api/routes/v3/getMod.ts';
-import { UpdateProjectRoutes } from './api/routes/v3/updateMod.ts';
+import { CreateModRoutesV3 } from './api/routes/v3/createMod.ts';
+import { GetModRoutesV3 } from './api/routes/v3/getMod.ts';
+import { UpdateProjectRoutesV3 } from './api/routes/v3/updateMod.ts';
 import { AuthRoutes } from './api/routes/allversions/auth.ts';
-import { VersionsRoutes } from './api/routes/v3/games.ts';
+import { VersionsRoutesV3 } from './api/routes/v3/games.ts';
 import { AdminRoutes } from './api/routes/allversions/admin.ts';
-import { ApprovalRoutes } from './api/routes/v3/approval.ts';
+import { ApprovalRoutesV3 } from './api/routes/v3/approval.ts';
 import { BeatModsRoutes } from './api/routes/v1/beatmods.ts';
 import { CDNRoutes } from './api/routes/allversions/cdn.ts';
-import { MOTDRoutes } from './api/routes/v3/motd.ts';
-import { UserRoutes } from './api/routes/v3/users.ts';
+import { MOTDRoutesV3 } from './api/routes/v3/motd.ts';
+import { UserRoutesV3 } from './api/routes/v3/users.ts';
 import { StatusRoutes } from './api/routes/allversions/apistatus.ts';
-import { BulkActionsRoutes } from './api/routes/v3/bulkActions.ts';
+import { BulkActionsRoutesV3 } from './api/routes/v3/bulkActions.ts';
 
 // eslint-disable-next-line quotes
 import fullApi from './api/swagger_full.json' with { type: "json" };
@@ -40,6 +40,14 @@ import fullApi from './api/swagger_full.json' with { type: "json" };
 import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
 import { OpenAPIV3_1 } from 'openapi-types';
+import { CreateModRoutesV2 } from './api/routes/v2/createMod.ts';
+import { GetModRoutesV2 } from './api/routes/v2/getMod.ts';
+import { UpdateModRoutesV2 } from './api/routes/v2/updateMod.ts';
+import { ApprovalRoutesV2 } from './api/routes/v2/approval.ts';
+import { MOTDRoutesV2 } from './api/routes/v2/motd.ts';
+import { UserRoutesV2 } from './api/routes/v2/users.ts';
+import { VersionsRoutesV2 } from './api/routes/v2/versions.ts';
+import { BulkActionsRoutesV2 } from './api/routes/v2/bulkActions.ts';
 function init() {
     console.log(`Starting setup...`);
     if (process.env.NODE_ENV === `test`) {
@@ -235,14 +243,23 @@ function init() {
         new BeatModsRoutes(app, v1Router);
     }
 
-    new CreateModRoutes(v3Router);
-    new GetModRoutes(v3Router);
-    new UpdateProjectRoutes(v3Router);
-    new ApprovalRoutes(v3Router);
-    new VersionsRoutes(v3Router);
-    new MOTDRoutes(v3Router);
-    new UserRoutes(v3Router);
-    new BulkActionsRoutes(v3Router);
+    new ApprovalRoutesV2(v2Router);
+    new BulkActionsRoutesV2(v2Router);
+    new CreateModRoutesV2(v2Router);
+    new GetModRoutesV2(v2Router);
+    new UpdateModRoutesV2(v2Router);
+    new MOTDRoutesV2(v2Router);
+    new UserRoutesV2(v2Router);
+    new VersionsRoutesV2(v2Router);
+
+    new CreateModRoutesV3(v3Router);
+    new GetModRoutesV3(v3Router);
+    new UpdateProjectRoutesV3(v3Router);
+    new ApprovalRoutesV3(v3Router);
+    new VersionsRoutesV3(v3Router);
+    new MOTDRoutesV3(v3Router);
+    new UserRoutesV3(v3Router);
+    new BulkActionsRoutesV3(v3Router);
 
     new AdminRoutes(apiRouter);
     new AuthRoutes([apiRouter, v2Router, v3Router]);

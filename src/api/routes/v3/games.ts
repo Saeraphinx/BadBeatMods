@@ -5,7 +5,7 @@ import { Logger } from '../../../shared/Logger.ts';
 import { Validator } from '../../../shared/Validator.ts';
 import { Utils } from '../../../shared/Utils.ts';
 
-export class VersionsRoutes {
+export class VersionsRoutesV3 {
     private router: Router;
 
     constructor(app: Router) {

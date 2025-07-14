@@ -5,7 +5,7 @@ import { Logger } from '../../../shared/Logger.ts';
 import { Validator } from '../../../shared/Validator.ts';
 import { coerce } from 'semver';
 
-export class VersionsRoutes {
+export class VersionsRoutesV2 {
     private router: Router;
 
     constructor(app: Router) {

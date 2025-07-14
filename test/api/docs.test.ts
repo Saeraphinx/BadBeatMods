@@ -1,11 +1,11 @@
 import { test, expect, describe, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import supertest from 'supertest';
 import { startServer } from '../../src/index.ts';
-import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionInfer } from '../../src/shared/Database.ts';
 import Ajv from "ajv";
 const ajv = new Ajv({strict: false})
 // #region setup
-const api = supertest(`http://localhost:8488/api`);
+const api = supertest(`http://localhost:8488/api/v3`);
 let server: Awaited<ReturnType<typeof startServer>>;
 let shouldAuthenticateWithRole: UserRoles | false | true = false;
 
@@ -13,7 +13,7 @@ let shouldAuthenticateWithRole: UserRoles | false | true = false;
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { SemVer } from 'semver';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
-import { ApprovalAction } from '../../src/api/routes/approval.ts';
+import { ApprovalAction } from '../../src/api/routes/v3/approval.ts';
 import { fakerPL } from '@faker-js/faker';
 
 let gameVersions: GameVersionInfer[] = [];
