@@ -2,7 +2,7 @@ import { SemVer } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, VersionAPIPublicResponse, Status, StatusHistory, UserRoles, Dependency } from "../DBHelper.ts";
+import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, VersionAPIPublicResponseV3, Status, StatusHistory, UserRoles, Dependency, VersionAPIPublicResponseV2 } from "../DBHelper.ts";
 import { sendEditLog, sendVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
 import { Project } from "./Project.ts";
@@ -323,7 +323,9 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
     }
 
     // temporary private to force usage of new obj in projects
-    public async toAPIResponse(): Promise<VersionAPIPublicResponse|null> {
+    public async toAPIResponse(apiVersion: `v2`, gameVersionId: number): Promise<VersionAPIPublicResponseV2|null>;
+    public async toAPIResponse(apiVersion: `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|null>;
+    public async toAPIResponse(apiVersion: `v2` | `v3` = `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|VersionAPIPublicResponseV2|null> {
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
         if (!author) {
             let dbAuthor = await DatabaseHelper.database.Users.findByPk(this.authorId);
@@ -335,7 +337,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             }
         }
 
-        return {
+        let returnObj: VersionAPIPublicResponseV3 = {
             id: this.id,
             projectId: this.projectId,
             author: author.toAPIResponse(),
@@ -354,5 +356,21 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };
+
+        if (apiVersion === `v3`) {
+            return returnObj;
+        } else if (apiVersion === `v2`) {
+            return {
+                ...returnObj,
+                projectId: undefined, // v2 does not return projectId
+                modId: this.projectId, // v2 uses modId instead of projectId
+                dependencies: this.dependencies.map(dep => {
+                    
+                });
+            }
+        } else {
+            Logger.error(`Invalid API version requested: ${apiVersion}`);
+            return null;
+        }
     }
 }

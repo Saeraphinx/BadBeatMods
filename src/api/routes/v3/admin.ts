@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, UserRoles } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Config } from '../../shared/Config.ts';
+import { DatabaseHelper, GameVersion, UserRoles } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Config } from '../../../shared/Config.ts';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Validator } from '../../shared/Validator.ts';
-import { Logger } from '../../shared/Logger.ts';
+import { Validator } from '../../../shared/Validator.ts';
+import { Logger } from '../../../shared/Logger.ts';
 import { coerce } from 'semver';
-import { sendVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { sendVersionLog, WebhookLogType } from '../../../shared/ModWebhooks.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class AdminRoutes {
     private router: Router;

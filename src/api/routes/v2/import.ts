@@ -2,10 +2,9 @@
 // @ts-nocheck i do not gaf about this file anymore since beatmods is dead
 /* eslint-disable no-console */ // see above
 
-/*
 import { Router } from 'express';
 import { validateSession } from '../../shared/AuthHelper.ts';
-import { Categories, ContentHash, DatabaseHelper, Project, Version, Platform, SupportedGames, UserRoles, Status } from '../../shared/Database.ts';
+import { Categories, ContentHash, DatabaseHelper, Mod, ModVersion, Platform, SupportedGames, UserRoles, Status } from '../../shared/Database.ts';
 import { Logger } from '../../shared/Logger.ts';
 import { BeatModsMod } from './beatmods.ts';
 import { coerce, satisfies } from 'semver';
@@ -21,7 +20,7 @@ export class ImportRoutes {
 
     constructor(router: Router) {
         this.router = router;
-        //this.loadRoutes();
+        this.loadRoutes();
     }
 
     private async loadRoutes() {
@@ -101,7 +100,7 @@ export class ImportRoutes {
                     continue;
                 }
 
-                let existingMod = await DatabaseHelper.database.Projects.findOne({ where: { name: mod.name } });
+                let existingMod = await DatabaseHelper.database.Mods.findOne({ where: { name: mod.name } });
                 let status = mod.status == `approved` || mod.status == `inactive` ? Status.Verified : Status.Unverified;
 
                 if (!existingMod) {
@@ -146,7 +145,7 @@ export class ImportRoutes {
                             break;
                     }
 
-                    existingMod = await DatabaseHelper.database.Projects.create({
+                    existingMod = await DatabaseHelper.database.Mods.create({
                         name: mod.name,
                         summary: mod.description.length > 100 ? mod.description.substring(0, 95) + `...` : mod.description,
                         description: `${mod.description}<br><br>This mod was imported from BeatMods, and was originally uploaded by ${mod.author.username} at ${mod.uploadDate}.`,
@@ -182,21 +181,21 @@ export class ImportRoutes {
                 count2 % 1000 == 0 ? console.log(`Resolving dependancy #${count2} of ${dependancyRecord.length}`) : null;
                 count2++;
                 // get the mod that is being depended on
-                let mod = await DatabaseHelper.database.Projects.findOne({ where: { name: record.dependancy.name } });
+                let mod = await DatabaseHelper.database.Mods.findOne({ where: { name: record.dependancy.name } });
                 if (!mod) {
                     Logger.warn(`Dependancy ${record.dependancy.name} not found for mod ${record.modVersionId}`, `Import`);
                     continue;
                 }
 
                 // get all the versions of the denpendancy mod
-                let dependancyModVersions = await DatabaseHelper.database.Versions.findAll({ where: { projectId: mod.id } });
+                let dependancyModVersions = await DatabaseHelper.database.ModVersions.findAll({ where: { modId: mod.id } });
                 if (!Array.isArray(dependancyModVersions)) {
                     Logger.warn(`Dependancy mod version ${record.dependancy.name} v${record.dependancy.version} not found - Mod obj missing.`, `Import`);
                     continue;
                 }
 
                 // get the mod that we need to add the dependancy to (the dependant)
-                let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: record.modVersionId } });
+                let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: record.modVersionId } });
                 if (!modVersion) {
                     Logger.warn(`Mod version ${record.modVersionId} not found`, `Import`);
                     continue;
@@ -210,7 +209,7 @@ export class ImportRoutes {
                     mV.supportedGameVersionIds.includes(modVersion.supportedGameVersionIds.sort()[0]);
                 });
                 if (!dependancyModVersion) {
-                    let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
+                    let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
                     Logger.warn(`No suitable version of dependancy ${record.dependancy.name} v${record.dependancy.version} found for ${mod.name} v${modVersion.modVersion} (ID${record.modVersionId})`, `Import`);
                     continue;
                 }
@@ -254,7 +253,7 @@ export class ImportRoutes {
                             });
                         }
 
-                        let modVersions = await DatabaseHelper.database.Versions.findAll(); // i think i have to do this to refresh any edits that get made.
+                        let modVersions = await DatabaseHelper.database.ModVersions.findAll(); // i think i have to do this to refresh any edits that get made.
                         for (let modVersion of modVersions) {
                             if (modVersion.supportedGameVersionIds.includes(gameVersion1.id) && !modVersion.supportedGameVersionIds.includes(gameVersion2.id)) {
                                 modVersion.supportedGameVersionIds = [...modVersion.supportedGameVersionIds, gameVersion2.id];
@@ -278,7 +277,7 @@ export class ImportRoutes {
         });
     }
 
-    private async downloadBeatModsDownloads(modId:Project, authorId:number, mod: BeatModsMod) {
+    private async downloadBeatModsDownloads(modId:Mod, authorId:number, mod: BeatModsMod) {
         let status = mod.status == `approved` || mod.status == `inactive` ? Status.Verified : Status.Unverified;
 
         let dependancyRecord: { dependancy: BeatModsMod | string, modVersionId: number}[] = [];
@@ -319,7 +318,7 @@ export class ImportRoutes {
             }
     
             // check if mod version already exists, and if so, if it has the same hash. if all is true, mark the modversion as compatible with the game version and skip
-            let existingVersion = await Version.checkForExistingVersion(modId.id, coerce(mod.version, { includePrerelease: true }), platform);
+            let existingVersion = await ModVersion.checkForExistingVersion(modId.id, coerce(mod.version, { includePrerelease: true }), platform);
             if (existingVersion) {
                 let doesHashMatch = download.hashMd5.every((hash) => existingVersion.contentHashes.some((contentHash) => contentHash.hash == hash.hash));
                 if (status == Status.Verified && doesHashMatch) {
@@ -371,15 +370,15 @@ export class ImportRoutes {
                 result = JSON.stringify(download.hashMd5);
             }
 
-            let existingHash = await DatabaseHelper.database.Versions.findOne({ where: { zipHash: result } });
+            let existingHash = await DatabaseHelper.database.ModVersions.findOne({ where: { zipHash: result } });
             if (existingHash) {
                 Logger.warn(`Hash ${result} already exists in the database, skipping.`, `Import`);
                 continue;
             }
     
             // create mod version
-            let newVersion = await DatabaseHelper.database.Versions.create({
-                projectId: modId.id,
+            let newVersion = await DatabaseHelper.database.ModVersions.create({
+                modId: modId.id,
                 modVersion: coerce(mod.version, {includePrerelease: true}),
                 supportedGameVersionIds: [gameVersion.id],
                 authorId: authorId,
@@ -412,4 +411,3 @@ export class ImportRoutes {
         return dependancyRecord;
     }
 }
-    */

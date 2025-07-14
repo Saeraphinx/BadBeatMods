@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import express from 'express';
 import path from 'path';
-import { Config } from '../../shared/Config.ts';
-import { DatabaseHelper } from '../../shared/Database.ts';
-import { Logger } from '../../shared/Logger.ts';
+import { Config } from '../../../shared/Config.ts';
+import { DatabaseHelper } from '../../../shared/Database.ts';
+import { Logger } from '../../../shared/Logger.ts';
 import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
 
 export class CDNRoutes {

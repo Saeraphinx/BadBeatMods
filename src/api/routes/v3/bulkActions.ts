@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { DatabaseHelper, EditQueue, Version, Status, UserRoles } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, EditQueue, Version, Status, UserRoles } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Validator } from '../../../shared/Validator.ts';
 import { Op } from 'sequelize';
-import { Logger } from '../../shared/Logger.ts';
+import { Logger } from '../../../shared/Logger.ts';
 
 export class BulkActionsRoutes {
     private router: Router;

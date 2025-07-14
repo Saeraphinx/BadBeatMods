@@ -22,14 +22,22 @@ export type UserAPIPublicResponse = {
     createdAt: Date;
     updatedAt: Date;
 }
-export type GameVersionAPIPublicResponse = {
+export type GameVersionAPIPublicResponseV2 = {
+    id: number;
+    gameName: SupportedGames;
+    version: string;
+    defaultVersion: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+};
+export type GameVersionAPIPublicResponseV3 = {
     id: number;
     gameName: SupportedGames;
     version: string;
     defaultVersion: boolean;
     linkedVersionIds: number[];
 };
-export type ProjectAPIPublicResponse = {
+export type ProjectAPIPublicResponseV2 = {
     id: number;
     name: string;
     summary: string;
@@ -43,11 +51,48 @@ export type ProjectAPIPublicResponse = {
     lastApprovedById: number | null;
     lastUpdatedById: number;
     statusHistory: StatusHistory[];
-    versions: VersionAPIPublicResponse[];
     createdAt: Date;
     updatedAt: Date;
 };
-export type VersionAPIPublicResponse = {
+export type ProjectAPIPublicResponseV3 = {
+    id: number;
+    name: string;
+    summary: string;
+    description: string;
+    gameName: SupportedGames;
+    category: Category;
+    authors: UserAPIPublicResponse[];
+    status: Status;
+    iconFileName: string;
+    gitUrl: string;
+    lastApprovedById: number | null;
+    lastUpdatedById: number;
+    statusHistory: StatusHistory[];
+    versions: VersionAPIPublicResponseV3[];
+    createdAt: Date;
+    updatedAt: Date;
+};
+export type VersionAPIPublicResponseV2 = {
+    id: number;
+    modId: number;
+    modVersion: string; // semver.raw
+    author: UserAPIPublicResponse;
+    platform: Platform;
+    zipHash: string;
+    contentHashes: ContentHash[];
+    status: Status;
+    dependencies: number[];
+    supportedGameVersions: GameVersionAPIPublicResponse[];
+    downloadCount: number;
+    statusHistory: StatusHistory[];
+    lastUpdatedById: number;
+    lastApprovedById: number | null;
+    fileSize: number;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export type VersionAPIPublicResponseV3 = {
     id: number;
     projectId: number;
     modVersion: string; // semver.raw

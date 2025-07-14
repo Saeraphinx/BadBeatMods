@@ -20,19 +20,19 @@ import { Logger } from './shared/Logger.ts';
 import { Config } from './shared/Config.ts';
 import { Luma } from './discord/classes/Luma.ts';
 
-import { CreateModRoutes } from './api/routes/createMod.ts';
-import { GetModRoutes } from './api/routes/getMod.ts';
-import { UpdateProjectRoutes } from './api/routes/updateMod.ts';
-import { AuthRoutes } from './api/routes/auth.ts';
-import { VersionsRoutes } from './api/routes/games.ts';
-import { AdminRoutes } from './api/routes/admin.ts';
-import { ApprovalRoutes } from './api/routes/approval.ts';
-import { BeatModsRoutes } from './api/routes/beatmods.ts';
-import { CDNRoutes } from './api/routes/cdn.ts';
-import { MOTDRoutes } from './api/routes/motd.ts';
-import { UserRoutes } from './api/routes/users.ts';
-import { StatusRoutes } from './api/routes/apistatus.ts';
-import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
+import { CreateModRoutes } from './api/routes/v3/createMod.ts';
+import { GetModRoutes } from './api/routes/v3/getMod.ts';
+import { UpdateProjectRoutes } from './api/routes/v3/updateMod.ts';
+import { AuthRoutes } from './api/routes/allversions/auth.ts';
+import { VersionsRoutes } from './api/routes/v3/games.ts';
+import { AdminRoutes } from './api/routes/v3/admin.ts';
+import { ApprovalRoutes } from './api/routes/v3/approval.ts';
+import { BeatModsRoutes } from './api/routes/v1/beatmods.ts';
+import { CDNRoutes } from './api/routes/allversions/cdn.ts';
+import { MOTDRoutes } from './api/routes/v3/motd.ts';
+import { UserRoutes } from './api/routes/v3/users.ts';
+import { StatusRoutes } from './api/routes/allversions/apistatus.ts';
+import { BulkActionsRoutes } from './api/routes/v3/bulkActions.ts';
 
 // eslint-disable-next-line quotes
 import fullApi from './api/swagger_full.json' with { type: "json" };
@@ -213,20 +213,45 @@ function init() {
     });
 
     //app.use(`/api`, Validator.runValidator);
+    let v1Router = express.Router({
+        caseSensitive: false,
+        mergeParams: false,
+        strict: false,
+    });
+
+    let v2Router = express.Router({
+        caseSensitive: false,
+        mergeParams: false,
+        strict: false,
+    });
+
+    let v3Router = express.Router({
+        caseSensitive: false,
+        mergeParams: false,
+        strict: false,
+    });
+
     if (Config.flags.enableBeatModsCompatibility) {
-        new BeatModsRoutes(app, apiRouter);
+        new BeatModsRoutes(app, v1Router);
     }
-    new CreateModRoutes(apiRouter);
-    new GetModRoutes(apiRouter);
-    new UpdateProjectRoutes(apiRouter);
-    new ApprovalRoutes(apiRouter);
-    new AuthRoutes(apiRouter);
+
+    new CreateModRoutes(v3Router);
+    new GetModRoutes(v3Router);
+    new UpdateProjectRoutes(v3Router);
+    new ApprovalRoutes(v3Router);
+    new VersionsRoutes(v3Router);
+    new MOTDRoutes(v3Router);
+    new UserRoutes(v3Router);
+    new BulkActionsRoutes(v3Router);
+
     new AdminRoutes(apiRouter);
-    new VersionsRoutes(apiRouter);
-    new MOTDRoutes(apiRouter);
-    new UserRoutes(apiRouter);
-    new StatusRoutes(apiRouter);
-    new BulkActionsRoutes(apiRouter);
+    new AuthRoutes([apiRouter, v2Router, v3Router]);
+    new StatusRoutes([apiRouter, v2Router, v3Router]);
+
+    apiRouter.use(`/v1`, v1Router);
+    apiRouter.use(`/v2`, v2Router);
+    apiRouter.use(`/v3`, v3Router);
+    apiRouter.use(`/`, v2Router);
 
     if (Config.flags.enableSwagger) {
         publicApi.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];

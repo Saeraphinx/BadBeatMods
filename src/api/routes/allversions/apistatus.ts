@@ -1,25 +1,23 @@
 import { Router } from 'express';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { User } from '../../shared/Database.ts';
-import { Config } from '../../shared/Config.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { User } from '../../../shared/Database.ts';
+import { Config } from '../../../shared/Config.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class StatusRoutes {
-    private router: Router;
-    constructor(router: Router) {
-        this.router = router;
-        this.loadRoutes();
+    constructor(routers: Router[]) {
+        routers.forEach(r => this.loadRoutes(r));
     }
 
-    private async loadRoutes() {
-        this.router.get(`/status`, async (req, res) => {
+    private async loadRoutes(router: Router) {
+        router.get(`/status`, async (req, res) => {
             // #swagger.ignore = true
             let session = await validateSession(req, res, false, null, false);
             let response = this.generateStatusResponse(session.user);
             return res.status(200).send(response);
         });
 
-        this.router.get(`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay`, async (req, res) => {
+        router.get(`/bbmStatusForBbmAlsoPinkEraAndLillieAreCuteBtwWilliamGay`, async (req, res) => {
             /*
             #swagger.tags = ['Status']
             #swagger.summary = 'Get API status.'

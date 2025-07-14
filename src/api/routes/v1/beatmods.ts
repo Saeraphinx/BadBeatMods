@@ -1,7 +1,7 @@
 import { Request, Express, Response, Router } from 'express';
-import { DatabaseHelper, GameVersion, Project, Version, Platform, Status } from '../../shared/Database.ts';
-import { Logger } from '../../shared/Logger.ts';
-import { Config } from '../../shared/Config.ts';
+import { DatabaseHelper, GameVersion, Project, Version, Platform, Status } from '../../../shared/Database.ts';
+import { Logger } from '../../../shared/Logger.ts';
+import { Config } from '../../../shared/Config.ts';
 import { coerce } from 'semver';
 
 export class BeatModsRoutes {

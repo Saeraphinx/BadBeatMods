@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponse, StatusHistory, UserRoles, VersionAPIPublicResponse } from "../DBHelper.ts";
+import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponseV3, StatusHistory, UserRoles, VersionAPIPublicResponseV3 } from "../DBHelper.ts";
 import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
@@ -247,8 +247,8 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         return count;
     }
 
-    public async toAPIResponse(versions: Version | Version[] | VersionAPIPublicResponse[] | null): Promise<ProjectAPIPublicResponse> {
-        let versionsToReturn: (VersionAPIPublicResponse | null)[] = [];
+    public async toAPIResponse(versions: Version | Version[] | VersionAPIPublicResponseV3[] | null): Promise<ProjectAPIPublicResponseV3> {
+        let versionsToReturn: (VersionAPIPublicResponseV3 | null)[] = [];
         if (Array.isArray(versions) === false && versions !== null) {
             versions = [versions];
         }
@@ -281,7 +281,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             statusHistory: this.statusHistory,
             lastApprovedById: this.lastApprovedById,
             lastUpdatedById: this.lastUpdatedById,
-            versions: versionsToReturn as VersionAPIPublicResponse[] || [],
+            versions: versionsToReturn as VersionAPIPublicResponseV3[] || [],
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };

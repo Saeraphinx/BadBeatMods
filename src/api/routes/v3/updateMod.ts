@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Logger } from '../../shared/Logger.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, Status } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Logger } from '../../../shared/Logger.ts';
+import { Validator } from '../../../shared/Validator.ts';
 import { SemVer } from 'semver';
 import path from 'node:path';
-import { Config } from '../../shared/Config.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { Config } from '../../../shared/Config.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class UpdateProjectRoutes {
     private router: Router;

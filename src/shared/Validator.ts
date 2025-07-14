@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DatabaseHelper, GameVersion, Version, Platform, Status, SupportedGames, User, Project, PostType, UserRoles, EditQueue } from "./Database.ts";
 import { valid, validRange } from "semver";
 import { Config } from "./Config.ts";
-import { ApprovalAction } from "../api/routes/approval.ts";
+import { ApprovalAction } from "../api/routes/v3/approval.ts";
 import { WebhookLogType } from "./ModWebhooks.ts";
 
 //generic types that I use a lot

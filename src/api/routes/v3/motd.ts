@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { DatabaseHelper, MOTD, UserRoles } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Validator } from '../../shared/Validator.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { DatabaseHelper, MOTD, UserRoles } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Validator } from '../../../shared/Validator.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class MOTDRoutes {
     private router: Router;

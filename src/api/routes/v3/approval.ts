@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { DatabaseHelper, UserRoles, Status, Version, Project, EditQueue, ProjectAPIPublicResponse } from '../../shared/Database.ts';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
-import { Logger } from '../../shared/Logger.ts';
+import { DatabaseHelper, UserRoles, Status, Version, Project, EditQueue, ProjectAPIPublicResponseV3 } from '../../../shared/Database.ts';
+import { validateAdditionalGamePermissions, validateSession } from '../../../shared/AuthHelper.ts';
+import { Logger } from '../../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
-import { Validator } from '../../shared/Validator.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { Validator } from '../../../shared/Validator.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the project/version/edit, set its status to verified
@@ -58,12 +58,12 @@ export class ApprovalRoutes {
             }
 
             let response: {
-                projects: ProjectAPIPublicResponse[] | undefined,
+                projects: ProjectAPIPublicResponseV3[] | undefined,
                 versions: {
-                    project: ProjectAPIPublicResponse,
+                    project: ProjectAPIPublicResponseV3,
                     version: ReturnType<typeof Version.prototype.toRawAPIResponse>}[] | undefined,
                 edits: {
-                    project: ProjectAPIPublicResponse,
+                    project: ProjectAPIPublicResponseV3,
                     original: Project | Version
                     edit: EditQueue,
                 }[] | undefined

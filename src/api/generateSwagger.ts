@@ -2,7 +2,7 @@
 import { Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
-import { ApprovalAction } from './routes/approval.ts';
+import { ApprovalAction } from './routes/v3/approval.ts';
 import { WebhookLogType } from '../shared/ModWebhooks.ts';
 import { versions } from 'process';
 type SchemaObject = OpenAPIV3_1.SchemaObject;

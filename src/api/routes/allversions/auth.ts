@@ -2,44 +2,18 @@ import { Router } from 'express';
 import passport from 'passport';
 import { Strategy as GitHubStrategy } from 'passport-github';
 import { Strategy as DiscordStrategy } from 'passport-discord';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { DatabaseHelper } from '../../shared/Database.ts';
-import { Logger } from '../../shared/Logger.ts';
-import { Config } from '../../shared/Config.ts';
-import { Validator } from '../../shared/Validator.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { DatabaseHelper } from '../../../shared/Database.ts';
+import { Logger } from '../../../shared/Logger.ts';
+import { Config } from '../../../shared/Config.ts';
+import { Validator } from '../../../shared/Validator.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class AuthRoutes {
-    private router: Router;
     private validStates: {stateId: string, ip: string, redirectUrl: URL, userId: number|null}[] = [];
 
-    constructor(router: Router) {
-        this.router = router;
-        this.loadRoutes();
-    }
-
-    private async loadRoutes() {
-        this.router.get(`/auth`, async (req, res) => {
-            /*
-            #swagger.tags = ['Auth']
-            #swagger.summary = 'Get logged in user information.'
-            #swagger.description = 'Get user information.'
-            #swagger.security = [{
-                "bearerAuth": [],
-                "cookieAuth": []
-            }]
-            #swagger.responses[200] = {
-                $ref: '#/components/responses/UserResponse'
-            }
-            #swagger.responses[401] = { description: 'Unauthorized.' }
-            */
-            let session = await validateSession(req, res, false);
-            if (!session.user) {
-                return;
-            }
-            return res.status(200).send({ user: session.user.toAPIResponse() });
-        });
-
+    constructor(routers: Router[]) {
+        //#region Passport Setup
         passport.serializeUser(function(user, done) {
             done(null, user);
         });
@@ -90,7 +64,48 @@ export class AuthRoutes {
         }
         ));
 
-        this.router.get(`/auth/github`, async (req, res, next) => {
+        passport.use(new DiscordStrategy({
+            clientID: Config.auth.discord.clientId,
+            clientSecret: Config.auth.discord.clientSecret,
+            callbackURL: `${Config.server.url}${Config.server.apiRoute}/auth/discord/callback`,
+            scope: [ `identify` ],
+        }, function(accessToken:any, refreshToken:any, profile:any, done:any) {
+            if (!profile) {
+                return done(null, false);
+            }
+            if (!profile.id) {
+                return done(null, false);
+            }
+            return done(null, profile);
+        }));
+        //#endregion
+
+        routers.forEach(r => this.loadRoutes(r));
+    }
+
+    private async loadRoutes(router: Router) {
+        router.get(`/auth`, async (req, res) => {
+            /*
+            #swagger.tags = ['Auth']
+            #swagger.summary = 'Get logged in user information.'
+            #swagger.description = 'Get user information.'
+            #swagger.security = [{
+                "bearerAuth": [],
+                "cookieAuth": []
+            }]
+            #swagger.responses[200] = {
+                $ref: '#/components/responses/UserResponse'
+            }
+            #swagger.responses[401] = { description: 'Unauthorized.' }
+            */
+            let session = await validateSession(req, res, false);
+            if (!session.user) {
+                return;
+            }
+            return res.status(200).send({ user: session.user.toAPIResponse() });
+        });
+
+        router.get(`/auth/github`, async (req, res, next) => {
             /*
             #swagger.tags = ['Auth']
             */
@@ -101,7 +116,7 @@ export class AuthRoutes {
             passport.authenticate(`github`, { state: state })(req, res, next);
         });
           
-        this.router.get(`/auth/github/callback`, passport.authenticate(`github`, { failureRedirect: `/` }), async (req, res) => {
+        router.get(`/auth/github/callback`, passport.authenticate(`github`, { failureRedirect: `/` }), async (req, res) => {
             // #swagger.tags = ['Auth']
             let state = req.query[`state`];
             if (!state) {
@@ -121,23 +136,7 @@ export class AuthRoutes {
             return res.status(200).send(`<head><meta http-equiv="refresh" content="0; url=${stateObj.redirectUrl.href}" /></head><body style="background-color: black;"><a style="color:white;" href="${stateObj.redirectUrl.href}">Click here if you are not redirected...</a></body>`);
         });
 
-
-        passport.use(new DiscordStrategy({
-            clientID: Config.auth.discord.clientId,
-            clientSecret: Config.auth.discord.clientSecret,
-            callbackURL: `${Config.server.url}${Config.server.apiRoute}/auth/discord/callback`,
-            scope: [ `identify` ],
-        }, function(accessToken:any, refreshToken:any, profile:any, done:any) {
-            if (!profile) {
-                return done(null, false);
-            }
-            if (!profile.id) {
-                return done(null, false);
-            }
-            return done(null, profile);
-        }));
-
-        this.router.get(`/auth/discord`, async (req, res, next) => {
+        router.get(`/auth/discord`, async (req, res, next) => {
             // #swagger.tags = ['Auth']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -154,7 +153,7 @@ export class AuthRoutes {
             passport.authenticate(`discord`, { state: state, session: false })(req, res, next);
         });
 
-        this.router.get(`/auth/discord/callback`, passport.authenticate(`discord`, { failureRedirect: `/`, session: false }), async (req, res) => {
+        router.get(`/auth/discord/callback`, passport.authenticate(`discord`, { failureRedirect: `/`, session: false }), async (req, res) => {
             // #swagger.tags = ['Auth']
             /* #swagger.security = [{
                 "bearerAuth": [],
@@ -187,7 +186,7 @@ export class AuthRoutes {
         });
 
         
-        this.router.get(`/auth/logout`, async (req, res) => {
+        router.get(`/auth/logout`, async (req, res) => {
             // #swagger.tags = ['Auth']
             // #swagger.summary = 'Logout.'
             // #swagger.description = 'Logout.'
