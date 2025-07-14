@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ProjectAPIPublicResponseV3, GameVersion, VersionAPIPublicResponseV3 } from '../../../shared/Database.ts';
+import { DatabaseHelper, Status, ProjectAPIPublicResponseV3 } from '../../../shared/Database.ts';
 import { Validator } from '../../../shared/Validator.ts';
 import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Logger } from '../../../shared/Logger.ts';
@@ -102,7 +102,7 @@ export class GetModRoutes {
                     let latest = versions[0];
 
                     if (latest) {
-                        mods.push(await project.toAPIResponse(latest));
+                        mods.push(await project.toAPIResponse(`v3`, latest));
                     }
                 }
             } else {
@@ -110,7 +110,7 @@ export class GetModRoutes {
                 preLength = modsFromDB.length;
 
                 for (let retMod of modsFromDB) {
-                    mods.push(await retMod.project.toAPIResponse(retMod.version));
+                    mods.push(await retMod.project.toAPIResponse(`v3`, retMod.version));
                 }
                 
                 mods = mods.filter((mod) => {
@@ -198,7 +198,7 @@ export class GetModRoutes {
                     returnVal.push(version.toRawAPIResponse());
                 } else {
                     // resort to default behavior, which does return no matter what iirc.
-                    let resolvedVersion = await version.toAPIResponse();
+                    let resolvedVersion = await version.toAPIResponse(`v3`);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
@@ -215,7 +215,7 @@ export class GetModRoutes {
                 }
             });
 
-            return res.status(200).send(raw ? project : project.toAPIResponse(returnVal));
+            return res.status(200).send(raw ? project : project.toAPIResponse(`v3`, returnVal));
         });
 
         this.router.get(`/versions/:versionIdParam`, async (req, res) => {
@@ -258,7 +258,7 @@ export class GetModRoutes {
             if (raw === `true`) {
                 return res.status(200).send(version.toRawAPIResponse());
             } else {
-                return res.status(200).send(await project?.toAPIResponse(version));
+                return res.status(200).send(await project?.toAPIResponse(`v3`, version));
             }
         });
 
@@ -321,7 +321,7 @@ export class GetModRoutes {
                 if (raw === `true`) {
                     retVal.push(version.toRawAPIResponse());
                 } else {
-                    retVal.push(await project.toAPIResponse(version));
+                    retVal.push(await project.toAPIResponse(`v3`, version));
                 }
             }
 
@@ -373,7 +373,7 @@ export class GetModRoutes {
                     if (raw) {
                         retVal.push(Promise.resolve(version.toRawAPIResponse()));
                     } else {
-                        retVal.push(version.toAPIResponse());
+                        retVal.push(version.toAPIResponse(`v3`));
                     }
                 }
                 for (const fileHash of version.contentHashes) {
@@ -381,7 +381,7 @@ export class GetModRoutes {
                         if (raw) {
                             retVal.push(Promise.resolve(version.toRawAPIResponse()));
                         } else {
-                            retVal.push(version.toAPIResponse());
+                            retVal.push(version.toAPIResponse(`v3`));
                         }
                     }
                 }

@@ -25,7 +25,7 @@ import { GetModRoutes } from './api/routes/v3/getMod.ts';
 import { UpdateProjectRoutes } from './api/routes/v3/updateMod.ts';
 import { AuthRoutes } from './api/routes/allversions/auth.ts';
 import { VersionsRoutes } from './api/routes/v3/games.ts';
-import { AdminRoutes } from './api/routes/v3/admin.ts';
+import { AdminRoutes } from './api/routes/allversions/admin.ts';
 import { ApprovalRoutes } from './api/routes/v3/approval.ts';
 import { BeatModsRoutes } from './api/routes/v1/beatmods.ts';
 import { CDNRoutes } from './api/routes/allversions/cdn.ts';
@@ -247,6 +247,16 @@ function init() {
     new AdminRoutes(apiRouter);
     new AuthRoutes([apiRouter, v2Router, v3Router]);
     new StatusRoutes([apiRouter, v2Router, v3Router]);
+
+    v1Router.use((req, res, next) => {
+        res.setHeader(`Deprecated`, `true`);
+        next();
+    });
+
+    v2Router.use((req, res, next) => {
+        res.setHeader(`Deprecated`, `true`);
+        next();
+    });
 
     apiRouter.use(`/v1`, v1Router);
     apiRouter.use(`/v2`, v2Router);

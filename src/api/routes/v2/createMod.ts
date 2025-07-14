@@ -1,16 +1,18 @@
 import { Router } from 'express';
+/*
 import path from 'node:path';
-import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../shared/Database.ts';
+import { DatabaseHelper, ContentHash, Status, UserRoles } from '../../../shared/Database.ts';
 import JSZip from 'jszip';
 import crypto from 'crypto';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
-import { Config } from '../../shared/Config.ts';
-import { Logger } from '../../shared/Logger.ts';
+import { validateAdditionalGamePermissions, validateSession } from '../../../shared/AuthHelper.ts';
+import { Config } from '../../../shared/Config.ts';
+import { Logger } from '../../../shared/Logger.ts';
 import { SemVer } from 'semver';
-import { Validator } from '../../shared/Validator.ts';
+import { Validator } from '../../../shared/Validator.ts';
 import { UploadedFile } from 'express-fileupload';
-import { sendModLog, sendModVersionLog, WebhookLogType } from '../../shared/ModWebhooks.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { sendProjectLog, sendVersionLog, WebhookLogType } from '../../../shared/ModWebhooks.ts';
+import { Utils } from '../../../shared/Utils.ts';
+*/
 
 export class CreateModRoutes {
     private router: Router;
@@ -40,12 +42,14 @@ export class CreateModRoutes {
                 description: 'Mod icon.',
                 required: false
             } */
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/projects/create instead.` });
+            /*
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
 
-            let reqBody = Validator.zCreateMod.safeParse(req.body);
+            let reqBody = Validator.zCreateProject.safeParse(req.body);
             let icon = req.files?.icon;
             let iconIsValid = false;
 
@@ -109,6 +113,7 @@ export class CreateModRoutes {
                 Logger.error(`Error creating mod: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
+            */
         });
 
         this.router.post(`/mods/:modIdParam/upload`, async (req, res) => {
@@ -132,6 +137,8 @@ export class CreateModRoutes {
                 required: true
             } */
 
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/projects/:modIdParam/upload instead.` });
+            /*
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
@@ -236,6 +243,7 @@ export class CreateModRoutes {
                 Logger.error(`Error creating mod: ${error} - ${message}`);
                 return res.status(500).send({ message: message });
             });
+            */
         });
     }
 }

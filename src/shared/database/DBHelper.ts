@@ -82,7 +82,7 @@ export type VersionAPIPublicResponseV2 = {
     contentHashes: ContentHash[];
     status: Status;
     dependencies: number[];
-    supportedGameVersions: GameVersionAPIPublicResponse[];
+    supportedGameVersions: GameVersionAPIPublicResponseV2[];
     downloadCount: number;
     statusHistory: StatusHistory[];
     lastUpdatedById: number;
@@ -102,7 +102,7 @@ export type VersionAPIPublicResponseV3 = {
     contentHashes: ContentHash[];
     status: Status;
     dependencies: Dependency[];
-    supportedGameVersions: GameVersionAPIPublicResponse[];
+    supportedGameVersions: GameVersionAPIPublicResponseV3[];
     downloadCount: number;
     statusHistory: StatusHistory[];
     lastUpdatedById: number;

@@ -1,9 +1,9 @@
 import { test, expect, describe, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import supertest from 'supertest';
 import { startServer } from '../../src/index.ts';
-import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponse, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponse, VersionInfer } from '../../src/shared/Database.ts';
+import { DatabaseHelper, EditQueue, GameVersionInfer, GameWebhookConfig, Platform, Project, ProjectAPIPublicResponseV3, ProjectInfer, Status, SupportedGames, User, UserInfer, UserRoles, Version, VersionAPIPublicResponseV3, VersionInfer } from '../../src/shared/Database.ts';
 // #region setup
-const api = supertest(`http://localhost:8486/api`);
+const api = supertest(`http://localhost:8486/api/v3`);
 let server: Awaited<ReturnType<typeof startServer>>;
 let shouldAuthenticateWithRole: UserRoles | false | true = false;
 
@@ -11,7 +11,7 @@ let shouldAuthenticateWithRole: UserRoles | false | true = false;
 import * as fakeData from '../fakeData.json' with { type: 'json' };
 import { satisfies, SemVer } from 'semver';
 import { WebhookLogType } from '../../src/shared/ModWebhooks.ts';
-import { ApprovalAction } from '../../src/api/routes/approval.ts';
+import { ApprovalAction } from '../../src/api/routes/v3/approval.ts';
 
 let gameVersions: GameVersionInfer[] = [];
 for (let gv of fakeData.gameVersions) {
@@ -210,7 +210,7 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods as ProjectAPIPublicResponse[];
+            let mods = response.body.mods as ProjectAPIPublicResponseV3[];
             for (let currentMod of mods) {
                 expect(currentMod).toHaveProperty(`versions`);
                 expect(currentMod.versions).toBeInstanceOf(Array);
@@ -229,7 +229,7 @@ describe.sequential(`API`, async () => {
             expect(response.body).toHaveProperty(`mods`);
             expect(response.body.mods).toBeInstanceOf(Array);
             expect(response.body.mods.length).toBeGreaterThan(0);
-            let mods = response.body.mods as ProjectAPIPublicResponse[];
+            let mods = response.body.mods as ProjectAPIPublicResponseV3[];
             for (let currentMod of mods) {
                 expect(currentMod).toHaveProperty(`versions`);
                 expect(currentMod.versions).toBeInstanceOf(Array);
@@ -615,7 +615,7 @@ describe.sequential(`API`, async () => {
                 }
             });
             expect(gameVersion).toBeDefined();
-            expect(response.body).toEqual(gameVersion?.toAPIResponse());
+            expect(response.body).toEqual(gameVersion?.toAPIResponse(`v3`));
         });
 
         test(`POST /games/:gameName/categories`, async () => {
@@ -776,7 +776,7 @@ async function testGetMod(statuses:Status[], statusString:string) {
     expect(response.body).toHaveProperty(`mods`);
     expect(response.body.mods).toBeInstanceOf(Array);
     expect(response.body.mods.length).toBeGreaterThan(0);
-    let mods = response.body.mods as ProjectAPIPublicResponse[];
+    let mods = response.body.mods as ProjectAPIPublicResponseV3[];
     for (let currentMod of mods) {
         expect(currentMod).toHaveProperty(`versions`);
         expect(currentMod.versions).toBeInstanceOf(Array);

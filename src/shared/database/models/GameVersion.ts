@@ -2,7 +2,7 @@ import { Model, InferAttributes, InferCreationAttributes, CreationOptional } fro
 import { SupportedGames } from "../../Database.ts";
 import { Project } from "./Project.ts";
 import { Version } from "./Version.ts";
-import { DatabaseHelper, GameVersionAPIPublicResponse, Platform, Status } from "../DBHelper.ts";
+import { DatabaseHelper, GameVersionAPIPublicResponseV2, GameVersionAPIPublicResponseV3, Platform, Status } from "../DBHelper.ts";
 import { coerce } from "semver";
 import { Logger } from "../../../shared/Logger.ts";
 
@@ -17,14 +17,28 @@ export class GameVersion extends Model<InferAttributes<GameVersion>, InferCreati
     declare readonly updatedAt: CreationOptional<Date>;
     declare readonly deletedAt: CreationOptional<Date> | null;
 
-    public toAPIResponse(): GameVersionAPIPublicResponse {
-        return {
-            id: this.id,
-            gameName: this.gameName,
-            version: this.version,
-            defaultVersion: this.defaultVersion,
-            linkedVersionIds: this.linkedVersionIds,
-        };
+    public toAPIResponse(apiVersion: `v2`): GameVersionAPIPublicResponseV2;
+    public toAPIResponse(apiVersion: `v3`): GameVersionAPIPublicResponseV3;
+    public toAPIResponse(apiVersion: `v2` | `v3`): GameVersionAPIPublicResponseV2 | GameVersionAPIPublicResponseV3;
+    public toAPIResponse(apiVersion: `v2` | `v3`): GameVersionAPIPublicResponseV2 | GameVersionAPIPublicResponseV3 {
+        if (apiVersion === `v2`) {
+            return {
+                id: this.id,
+                gameName: this.gameName,
+                version: this.version,
+                defaultVersion: this.defaultVersion,
+                createdAt: this.createdAt,
+                updatedAt: this.updatedAt,
+            };
+        } else {
+            return {
+                id: this.id,
+                gameName: this.gameName,
+                version: this.version,
+                defaultVersion: this.defaultVersion,
+                linkedVersionIds: this.linkedVersionIds || [],
+            };
+        }
     }
 
     public static async getDefaultVersion(gameName: SupportedGames): Promise<string | undefined> {

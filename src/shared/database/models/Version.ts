@@ -2,7 +2,7 @@ import { SemVer } from "semver";
 import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op, NonAttribute } from "sequelize";
 import { Logger } from "../../Logger.ts";
 import * as fs from "fs";
-import { Platform, ContentHash, DatabaseHelper, GameVersionAPIPublicResponse, VersionAPIPublicResponseV3, Status, StatusHistory, UserRoles, Dependency, VersionAPIPublicResponseV2 } from "../DBHelper.ts";
+import { Platform, ContentHash, DatabaseHelper, VersionAPIPublicResponseV3, Status, StatusHistory, UserRoles, Dependency, VersionAPIPublicResponseV2, GameVersionAPIPublicResponseV3, GameVersionAPIPublicResponseV2 } from "../DBHelper.ts";
 import { sendEditLog, sendVersionLog, WebhookLogType } from "../../ModWebhooks.ts";
 import { User } from "./User.ts";
 import { Project } from "./Project.ts";
@@ -254,10 +254,13 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         return count;
     }
 
-    public async getSupportedGameVersions(): Promise<GameVersionAPIPublicResponse[]> {
-        let gameVersions: GameVersionAPIPublicResponse[] = [];
+    public async getSupportedGameVersions(apiVersion: `v2`): Promise<GameVersionAPIPublicResponseV2[]>;
+    public async getSupportedGameVersions(apiVersion: `v3`): Promise<GameVersionAPIPublicResponseV3[]>;
+    public async getSupportedGameVersions(apiVersion: `v2` | `v3`): Promise<GameVersionAPIPublicResponseV2[] | GameVersionAPIPublicResponseV3[]>;
+    public async getSupportedGameVersions(apiVersion: `v2` | `v3`): Promise<GameVersionAPIPublicResponseV3|GameVersionAPIPublicResponseV2[]> {
+        let gameVersions: (GameVersionAPIPublicResponseV2|GameVersionAPIPublicResponseV3)[] = [];
         for (let versionId of this.supportedGameVersionIds) {
-            let version = DatabaseHelper.cache.gameVersions.find((version) => version.id == versionId);
+            let version = DatabaseHelper.mapCache.gameVersions.get(versionId);
             if (!version) {
                 let dbVer = await DatabaseHelper.database.GameVersions.findByPk(versionId);
                 if (dbVer) {
@@ -266,7 +269,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             }
 
             if (version) {
-                gameVersions.push(version.toAPIResponse());
+                gameVersions.push(version.toAPIResponse(apiVersion));
             }
 
         }
@@ -323,7 +326,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
     }
 
     // temporary private to force usage of new obj in projects
-    public async toAPIResponse(apiVersion: `v2`, gameVersionId: number): Promise<VersionAPIPublicResponseV2|null>;
+    public async toAPIResponse(apiVersion: `v2`, gameVersionId?: number): Promise<VersionAPIPublicResponseV2|null>;
     public async toAPIResponse(apiVersion: `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|null>;
     public async toAPIResponse(apiVersion: `v2` | `v3` = `v3`, gameVersionId?: number): Promise<VersionAPIPublicResponseV3|VersionAPIPublicResponseV2|null> {
         let author = DatabaseHelper.cache.users.find((user) => user.id == this.authorId);
@@ -348,7 +351,7 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
             dependencies: this.dependencies,
             contentHashes: this.contentHashes,
             downloadCount: this.downloadCount,
-            supportedGameVersions: await this.getSupportedGameVersions(),
+            supportedGameVersions: await this.getSupportedGameVersions(`v3`),
             fileSize: this.fileSize,
             statusHistory: this.statusHistory,
             lastApprovedById: this.lastApprovedById,
@@ -360,14 +363,38 @@ export class Version extends Model<InferAttributes<Version>, InferCreationAttrib
         if (apiVersion === `v3`) {
             return returnObj;
         } else if (apiVersion === `v2`) {
-            return {
-                ...returnObj,
-                projectId: undefined, // v2 does not return projectId
-                modId: this.projectId, // v2 uses modId instead of projectId
-                dependencies: this.dependencies.map(dep => {
-                    
-                });
+            let v2Obj: VersionAPIPublicResponseV2 = {
+                id: returnObj.id,
+                modId: returnObj.projectId,
+                author: returnObj.author,
+                modVersion: returnObj.modVersion,
+                platform: returnObj.platform,
+                zipHash: returnObj.zipHash,
+                status: returnObj.status,
+                contentHashes: returnObj.contentHashes,
+                downloadCount: returnObj.downloadCount,
+                dependencies: await Promise.all(this.dependencies.map(async dep => {
+                    let parentMod = DatabaseHelper.mapCache.projects.get(dep.parentId);
+                    let latestVer = await parentMod?.getLatestVersion(gameVersionId, this.platform, this.status === Status.Verified ? [Status.Verified] : [Status.Verified, Status.Unverified, Status.Pending]);
+                    if (latestVer && latestVer.modVersion.compare(dep.sv) >= 1) {
+                        return latestVer.id as number;
+                    } else {
+                        return -1;
+                    }
+                })),
+                fileSize: returnObj.fileSize,
+                statusHistory: returnObj.statusHistory,
+                lastApprovedById: returnObj.lastApprovedById,
+                lastUpdatedById: returnObj.lastUpdatedById,
+                createdAt: returnObj.createdAt,
+                updatedAt: returnObj.updatedAt,
+                supportedGameVersions: await this.getSupportedGameVersions(`v2`),
+            };
+            if (v2Obj.dependencies.some(dep => dep === -1)) {
+                Logger.debugWarn(`One or more dependencies for mod version ${this.id} could not be resolved for game version ${gameVersionId}.`);
+                return null;
             }
+            return v2Obj;
         } else {
             Logger.error(`Invalid API version requested: ${apiVersion}`);
             return null;

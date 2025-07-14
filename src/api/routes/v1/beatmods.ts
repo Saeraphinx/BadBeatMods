@@ -280,7 +280,7 @@ export class BeatModsRoutes {
 
         let gameVersionInternal;
         if (!gameVersion) {
-            let gVs = await modVersion.getSupportedGameVersions();
+            let gVs = await modVersion.getSupportedGameVersions(`v2`);
             if (gVs.length === 0) {
                 return null;
             }

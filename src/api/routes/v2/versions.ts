@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Logger } from '../../shared/Logger.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, GameVersion, SupportedGames, UserRoles } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Logger } from '../../../shared/Logger.ts';
+import { Validator } from '../../../shared/Validator.ts';
 import { coerce } from 'semver';
 
 export class VersionsRoutes {
@@ -95,7 +95,7 @@ export class VersionsRoutes {
 
         this.router.get(`/versions/default`, async (req, res) => {
             // #swagger.tags = ['Versions']
-            let gameName = Validator.zGameName.default(SupportedGames.BeatSaber).safeParse(req.query.gameName);
+            let gameName = Validator.zGameName.default(`BeatSaber`).safeParse(req.query.gameName);
             if (!gameName.success) {
                 return res.status(400).send({ message: `Invalid gameName` });
             }

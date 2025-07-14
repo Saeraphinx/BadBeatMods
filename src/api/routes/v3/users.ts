@@ -51,7 +51,7 @@ export class UserRoutes {
             }
         });
 
-        this.router.get([`/user/:id/mods`, `/user/:id/projects`], async (req, res) => {
+        this.router.get(`/user/:id/projects`, async (req, res) => {
             /*
             #swagger.start
             #swagger.path = '/user/{id}/projects'
@@ -102,9 +102,9 @@ export class UserRoutes {
 
                     let latest = await project.getLatestVersion(undefined, undefined, [status.data]);
                     if (latest) {
-                        mods.push(await project.toAPIResponse(latest));
+                        mods.push(await project.toAPIResponse(`v3`, latest));
                     } else {
-                        mods.push(await project.toAPIResponse(null));
+                        mods.push(await project.toAPIResponse(`v3`, null));
                     }
                 }
                 return res.status(200).send(mods);

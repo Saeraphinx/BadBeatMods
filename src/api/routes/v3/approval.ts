@@ -78,7 +78,7 @@ export class ApprovalRoutes {
                     //get projects and versions that are unverified (gameName filter on mods only)
                     response.projects = await Promise.all(
                         (await DatabaseHelper.database.Projects.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } }))
-                            .map(async (project) => await project.toAPIResponse(null))
+                            .map(async (project) => await project.toAPIResponse(`v3`, null))
                     );
                     break;
                 case `versions`:
@@ -88,7 +88,7 @@ export class ApprovalRoutes {
                             if (!project || project.gameName !== gameName.data) {
                                 return null;
                             }
-                            return { project: await project.toAPIResponse(null), version: version.toRawAPIResponse() };
+                            return { project: await project.toAPIResponse(`v3`, null), version: version.toRawAPIResponse() };
                         })
                     )).filter((obj) => obj !== null);
                     break;
@@ -107,7 +107,7 @@ export class ApprovalRoutes {
                                 return null;
                             }
 
-                            return { project: await project.toAPIResponse(null), original: project, edit: edit };
+                            return { project: await project.toAPIResponse(`v3`, null), original: project, edit: edit };
                         } else {
                             let version = DatabaseHelper.mapCache.versions.get(edit.objectId);
                             if (!version) {
@@ -118,7 +118,7 @@ export class ApprovalRoutes {
                             if (!project || project.gameName !== gameName.data) {
                                 return null;
                             }
-                            return { project: await project.toAPIResponse(null), original: version, edit: edit };
+                            return { project: await project.toAPIResponse(`v3`, null), original: version, edit: edit };
                         }
                     }))).filter((obj) => obj !== null);
                     break;

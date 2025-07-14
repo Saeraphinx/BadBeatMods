@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Logger } from '../../shared/Logger.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, Status } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Logger } from '../../../shared/Logger.ts';
+import { Validator } from '../../../shared/Validator.ts';
 import { SemVer } from 'semver';
 import path from 'node:path';
-import { Config } from '../../shared/Config.ts';
-import { Utils } from '../../shared/Utils.ts';
+import { Config } from '../../../shared/Config.ts';
+import { Utils } from '../../../shared/Utils.ts';
 
 export class UpdateModRoutes {
     private router: Router;
@@ -35,6 +35,8 @@ export class UpdateModRoutes {
                 }
             }
             */
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/projects/:projectIdParam instead.` });
+            /*
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
             let reqBody = Validator.zUpdateMod.safeParse(req.body);
             if (!modId.success) {
@@ -95,6 +97,7 @@ export class UpdateModRoutes {
                 let errorMessage = Utils.parseErrorMessage(error);
                 res.status(500).send({ message: `Error updating mod: ${errorMessage}` });
             });
+            */
         });
 
         this.router.post(`/mods/:modIdParam/icon`, async (req, res) => {
@@ -112,6 +115,8 @@ export class UpdateModRoutes {
             // #swagger.summary = 'Update a mod icon.'
             // #swagger.description = 'Update a mod icon.'
             // #swagger.parameters['modIdParam'] = { description: 'Mod ID.', type: 'number' }
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/projects/:projectIdParam/icon instead.` });
+            /*
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
             if (!modId.success) {
                 return res.status(400).send({ message: `Invalid modId.` });
@@ -168,6 +173,7 @@ export class UpdateModRoutes {
                     res.status(200).send({ message: `Icon updated.`, mod });
                 });
             });
+            */
         });
         // #endregion Update Mod
 
@@ -188,6 +194,8 @@ export class UpdateModRoutes {
                 }
             }
             */
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/projects/:projectIdParam instead.` });
+            /*
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
             let reqBody = Validator.zUpdateModVersion.safeParse(req.body);
 
@@ -255,6 +263,7 @@ export class UpdateModRoutes {
                 let errorMessage = Utils.parseErrorMessage(error);
                 res.status(500).send({ message: `Error updating mod version: ${errorMessage}` });
             });
+            */
         });
         // #endregion Update Mod Version
         // #region Submit to Approval
@@ -270,7 +279,7 @@ export class UpdateModRoutes {
             }
 
             let modId = Validator.zDBID.safeParse(req.params.modIdParam);
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -285,7 +294,7 @@ export class UpdateModRoutes {
 
             mod.setStatus(Status.Pending, session.user, `Mod submitted for verification by ${session.user.username}`).then((mod) => {
                 res.status(200).send({ message: `Mod submitted.`, mod });
-                DatabaseHelper.refreshCache(`mods`);
+                DatabaseHelper.refreshCache(`projects`);
             }).catch((error) => {
                 let message = `Error submitting mod.`;
                 if (Array.isArray(error?.errors) && error?.errors?.length > 0) {
@@ -307,12 +316,12 @@ export class UpdateModRoutes {
             }
 
             let modVersionId = Validator.zDBID.safeParse(req.params.modVersionIdParam);
-            let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
+            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -327,7 +336,7 @@ export class UpdateModRoutes {
 
             modVersion.setStatus(Status.Pending, session.user, `Version submitted for approval by ${session.user.username}`).then((modVersion) => {
                 res.status(200).send({ message: `Mod version submitted.`, modVersion });
-                DatabaseHelper.refreshCache(`modVersions`);
+                DatabaseHelper.refreshCache(`versions`);
             }).catch((error) => {
                 res.status(500).send({ message: `Error submitting mod version: ${error}` });
             });
@@ -342,28 +351,31 @@ export class UpdateModRoutes {
                 "cookieAuth": []
             }] */
             // #swagger.description = `Get all edits.`
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/edits instead.` });
+            /*
             let session = await validateSession(req, res, true);
             if (!session.user) {
                 return;
             }
 
-            let usersMods = await DatabaseHelper.cache.mods.filter((mod) => {
+            let usersMods = await DatabaseHelper.cache.projects.filter((mod) => {
                 return mod.authorIds.includes(session.user.id);
             });
 
             let edits = DatabaseHelper.cache.editApprovalQueue.filter((edit) => {
-                if (edit.isMod()) {
+                if (edit.isProject()) {
                     return edit.submitterId == session.user.id || usersMods.some((mod) => edit.objectId == mod.id);
                 } else {
-                    let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+                    let modVersion = DatabaseHelper.mapCache.versions.get(edit.objectId);
                     if (!modVersion) {
                         return false;
                     }
-                    return edit.submitterId == session.user.id || usersMods.some((mod) => mod.id == modVersion.modId);
+                    return edit.submitterId == session.user.id || usersMods.some((mod) => mod.id == modVersion.projectId);
                 }
             });
 
             res.status(200).send({ message: `Found ${edits.length} edits.`, edits: edits });
+            */
         });
 
         this.router.get(`/edits/:editIdParam`, async (req, res) => {
@@ -374,6 +386,8 @@ export class UpdateModRoutes {
             }] */
             // #swagger.description = `Get an edit.`
             // #swagger.parameters['editIdParam'] = { description: 'Edit ID', type: 'integer' }
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/edits/:editIdParam instead.` });
+            /*
             let editId = Validator.zDBID.safeParse(req.params.editIdParam);
             if (!editId.success) {
                 return res.status(400).send({ message: `Invalid editId.` });
@@ -389,7 +403,7 @@ export class UpdateModRoutes {
                 return res.status(404).send({ message: `Edit not found.` });
             }
 
-            let parentObj = edit.isMod() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+            let parentObj = edit.is() ? DatabaseHelper.mapCache.mods.get(edit.objectId) : DatabaseHelper.mapCache.modVersions.get(edit.objectId);
             if (!parentObj) {
                 return res.status(404).send({ message: `Parent object not found.` });
             }
@@ -401,6 +415,7 @@ export class UpdateModRoutes {
             }
 
             return res.status(200).send({ message: `Edit found.`, edit });
+            */
         });
 
         this.router.delete(`/edits/:editIdParam`, async (req, res) => {
@@ -411,6 +426,8 @@ export class UpdateModRoutes {
             }] */
             // #swagger.description = `Delete an edit.`
             // #swagger.parameters['editIdParam'] = { description: 'Edit ID', type: 'integer' }
+            return res.status(410).send({ message: `This endpoint is deprecated. Please use /v3/edits/:editIdParam instead.` });
+            /*
             let editId = Validator.zDBID.safeParse(req.params.editIdParam);
             if (!editId.success) {
                 return res.status(400).send({ message: `Invalid editId.` });
@@ -444,6 +461,7 @@ export class UpdateModRoutes {
                 let errorMessage = Utils.parseErrorMessage(error);
                 res.status(500).send({ message: `Error deleting edit: ${errorMessage}` });
             });
+            */
         });
     }
 }

@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, UserRoles } from '../../../shared/Database.ts';
+import { DatabaseHelper, UserRoles } from '../../../shared/Database.ts';
 import { validateSession } from '../../../shared/AuthHelper.ts';
 import { Logger } from '../../../shared/Logger.ts';
 import { Validator } from '../../../shared/Validator.ts';
-import { coerce } from 'semver';
 import { Utils } from '../../../shared/Utils.ts';
 
 export class VersionsRoutes {
@@ -134,7 +133,7 @@ export class VersionsRoutes {
             }).then((version) => {
                 Logger.log(`Version ${version.gameName} ${version.version} added by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`gameVersions`);
-                return res.status(200).send(version.toAPIResponse());
+                return res.status(200).send(version.toAPIResponse(`v3`));
             }).catch((error) => {
                 Logger.error(`Error creating version: ${Utils.parseErrorMessage(error)}`);
                 return res.status(500).send({ message: `Error creating version: ${Utils.parseErrorMessage(error)}` });
@@ -220,8 +219,8 @@ export class VersionsRoutes {
                 Logger.log(`Linked versions ${versionA.id} and ${versionB.id} for game ${gameName.data} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`gameVersions`);
                 return res.status(200).send({
-                    versionA: versionA.toAPIResponse(),
-                    versionB: versionB.toAPIResponse()
+                    versionA: versionA.toAPIResponse(`v3`),
+                    versionB: versionB.toAPIResponse(`v3`)
                 });
             }).catch((error) => {
                 Logger.error(`Error linking versions: ${Utils.parseErrorMessage(error)}`);
@@ -305,8 +304,8 @@ export class VersionsRoutes {
                 Logger.log(`Unlinked versions ${versionA.id} and ${versionB.id} for game ${gameName.data} by ${session.user.username}.`);
                 DatabaseHelper.refreshCache(`gameVersions`);
                 return res.status(200).send({
-                    versionA: versionA.toAPIResponse(),
-                    versionB: versionB.toAPIResponse()
+                    versionA: versionA.toAPIResponse(`v3`),
+                    versionB: versionB.toAPIResponse(`v3`)
                 });
             }).catch((error) => {
                 Logger.error(`Error unlinking versions: ${Utils.parseErrorMessage(error)}`);

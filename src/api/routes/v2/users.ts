@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, GameVersion, ModAPIPublicResponse, Platform, Status, User } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, GameVersion, ProjectAPIPublicResponseV2, Platform, Status, User } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Validator } from '../../../shared/Validator.ts';
 
 export class UserRoutes {
     private router: Router;
@@ -75,7 +75,7 @@ export class UserRoutes {
 
             let user = DatabaseHelper.cache.users.find((u) => u.id === id.data);
             if (user) {
-                let mods: {mod: ModAPIPublicResponse, latest: any }[] = [];
+                let mods: {mod: ProjectAPIPublicResponseV2, latest: any }[] = [];
                 if (status.data !== Status.Verified && status.data !== Status.Unverified) {
                     session = await validateSession(req, res, false, null, true);
                     if (!session.user) {
@@ -83,7 +83,7 @@ export class UserRoutes {
                     }
                 }
 
-                for (let mod of DatabaseHelper.cache.mods) {
+                for (let mod of DatabaseHelper.cache.projects) {
                     if (mod.status !== status.data) {
                         continue;
                     }
@@ -104,9 +104,9 @@ export class UserRoutes {
 
                     let latest = await mod.getLatestVersion(latestGameVersion.id, platform.data, [status.data]);
                     if (latest) {
-                        mods.push({mod: mod.toAPIResponse(), latest: latest});
+                        mods.push({mod: await mod.toAPIResponse(`v2`), latest: latest});
                     } else {
-                        mods.push({mod: mod.toAPIResponse(), latest: null});
+                        mods.push({mod: await mod.toAPIResponse(`v2`), latest: null});
                     }
                 }
                 return res.status(200).send({ mods: mods });

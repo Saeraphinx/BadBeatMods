@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../shared/Database.ts';
-import { validateSession } from '../../shared/AuthHelper.ts';
-import { Validator } from '../../shared/Validator.ts';
+import { DatabaseHelper, MOTD, SupportedGames, UserRoles } from '../../../shared/Database.ts';
+import { validateSession } from '../../../shared/AuthHelper.ts';
+import { Validator } from '../../../shared/Validator.ts';
 
 export class MOTDRoutes {
     private router: Router;
@@ -44,7 +44,7 @@ export class MOTDRoutes {
             }
 
             let motd = DatabaseHelper.database.MOTDs.create({
-                gameName: reqBody.data.gameName || SupportedGames.BeatSaber,
+                gameName: reqBody.data.gameName,
                 gameVersionIds: reqBody.data.gameVersionIds || null,
                 message: reqBody.data.message,
                 platforms: reqBody.data.platforms || null,

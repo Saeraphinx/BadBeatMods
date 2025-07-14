@@ -2,7 +2,7 @@ import { InferAttributes, Model, InferCreationAttributes, CreationOptional, Op }
 import { Logger } from "../../Logger.ts";
 import { EditQueue, SupportedGames } from "../../Database.ts";
 import { sendEditLog, sendProjectLog, WebhookLogType } from "../../ModWebhooks.ts";
-import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponseV3, StatusHistory, UserRoles, VersionAPIPublicResponseV3 } from "../DBHelper.ts";
+import { Category, Platform, DatabaseHelper, Status, ProjectAPIPublicResponseV3, StatusHistory, UserRoles, VersionAPIPublicResponseV3, ProjectAPIPublicResponseV2 } from "../DBHelper.ts";
 import { Version } from "./Version.ts";
 import { User } from "./User.ts";
 import path from "path";
@@ -247,15 +247,17 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         return count;
     }
 
-    public async toAPIResponse(versions: Version | Version[] | VersionAPIPublicResponseV3[] | null): Promise<ProjectAPIPublicResponseV3> {
+    public async toAPIResponse(apiVersion: `v2`, versions?: null): Promise<ProjectAPIPublicResponseV2>;
+    public async toAPIResponse(apiVersion: `v3`, versions: Version | Version[] | VersionAPIPublicResponseV3[] | null): Promise<ProjectAPIPublicResponseV3>;
+    public async toAPIResponse(apiVersion: `v2` | `v3`, versions?: Version | Version[] | VersionAPIPublicResponseV3[] | null): Promise<ProjectAPIPublicResponseV2|ProjectAPIPublicResponseV3> {
         let versionsToReturn: (VersionAPIPublicResponseV3 | null)[] = [];
-        if (Array.isArray(versions) === false && versions !== null) {
+        if (versions && Array.isArray(versions) === false) {
             versions = [versions];
         }
 
         for (let obj of (versions || [])) {
             if (obj instanceof Version) {
-                versionsToReturn.push(await obj.toAPIResponse());
+                versionsToReturn.push(await obj.toAPIResponse(`v3`));
             } else {
                 versionsToReturn.push(obj);
             }
@@ -267,7 +269,7 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
         }
 
 
-        return {
+        let v3Obj: ProjectAPIPublicResponseV3 = {
             id: this.id,
             name: this.name,
             summary: this.summary,
@@ -285,5 +287,29 @@ export class Project extends Model<InferAttributes<Project>, InferCreationAttrib
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };
+
+        if (apiVersion === `v2`) {
+            // Create V2 response by excluding the versions property which is not in V2
+            let v2Obj: ProjectAPIPublicResponseV2 = {
+                id: v3Obj.id,
+                name: v3Obj.name,
+                summary: v3Obj.summary,
+                description: v3Obj.description,
+                gameName: v3Obj.gameName,
+                category: v3Obj.category,
+                authors: v3Obj.authors,
+                status: v3Obj.status,
+                iconFileName: v3Obj.iconFileName,
+                gitUrl: v3Obj.gitUrl,
+                lastApprovedById: v3Obj.lastApprovedById,
+                lastUpdatedById: v3Obj.lastUpdatedById,
+                statusHistory: v3Obj.statusHistory,
+                createdAt: v3Obj.createdAt,
+                updatedAt: v3Obj.updatedAt,
+            };
+            return v2Obj;
+        } else {
+            return v3Obj;
+        }
     }
 }

@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { DatabaseHelper, UserRoles, Status, ModVersion, Mod, EditQueue, ModAPIPublicResponse } from '../../shared/Database.ts';
-import { validateAdditionalGamePermissions, validateSession } from '../../shared/AuthHelper.ts';
-import { Logger } from '../../shared/Logger.ts';
+import { DatabaseHelper, UserRoles, Status, Version, Project, EditQueue, ProjectAPIPublicResponseV2 } from '../../../shared/Database.ts';
+import { validateAdditionalGamePermissions, validateSession } from '../../../shared/AuthHelper.ts';
+import { Logger } from '../../../shared/Logger.ts';
 import { SemVer } from 'semver';
 import { Op } from 'sequelize';
-import { Validator } from '../../shared/Validator.ts';
+import { Validator } from '../../../shared/Validator.ts';
 
 export enum ApprovalAction {
     Accept = `accept`, // Verify/accept the mod/modVersion/edit, set its status to verified
@@ -39,12 +39,12 @@ export class ApprovalRoutes {
                 schema: {
                     mods: [
                         {
-                            '$ref': '#/components/schemas/ModAPIPublicResponse'
+                            '$ref': '#/components/schemas/ProjectAPIPublicResponseV2'
                         }
                     ],
                     modVersions: [{
                         mod: {
-                            '$ref': '#/components/schemas/ModAPIPublicResponse'
+                            '$ref': '#/components/schemas/ProjectAPIPublicResponseV2'
                         },
                         modVersion: {
                             '$ref': '#/components/schemas/ModVersionDBObject'
@@ -52,7 +52,7 @@ export class ApprovalRoutes {
                     }],
                     edits: [{
                         mod: {
-                            '$ref': '#/components/schemas/ModAPIPublicResponse'
+                            '$ref': '#/components/schemas/ProjectAPIPublicResponseV2'
                         },
                         original: {
                             '$ref': '#/components/schemas/ModVersionDBObject'
@@ -82,13 +82,13 @@ export class ApprovalRoutes {
             }
 
             let response: {
-                mods: ModAPIPublicResponse[] | undefined,
+                mods: ProjectAPIPublicResponseV2[] | undefined,
                 modVersions: {
-                    mod: ModAPIPublicResponse,
-                    version: ReturnType<typeof ModVersion.prototype.toRawAPIResponse>}[] | undefined,
+                    mod: ProjectAPIPublicResponseV2,
+                    version: ReturnType<typeof Version.prototype.toRawAPIResponse>}[] | undefined,
                 edits: {
-                    mod: ModAPIPublicResponse,
-                    original: Mod | ModVersion
+                    mod: ProjectAPIPublicResponseV2,
+                    original: Project | Version
                     edit: EditQueue,
                 }[] | undefined
             } = {
@@ -100,16 +100,22 @@ export class ApprovalRoutes {
             switch (queueType.data) {
                 case `mods`:
                     //get mods and modVersions that are unverified (gameName filter on mods only)
-                    response.mods = (await DatabaseHelper.database.Mods.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } })).map((mod) => mod.toAPIResponse());
+                    response.mods = await Promise.all(
+                        (await DatabaseHelper.database.Projects.findAll({ where: { [Op.or]: statusQuery, gameName: gameName.data } }))
+                            .map((mod) => mod.toAPIResponse(`v2`))
+                    );
                     break;
                 case `modVersions`:
-                    response.modVersions = (await DatabaseHelper.database.ModVersions.findAll({ where: { [Op.or]: statusQuery } })).map((modVersion) => {
-                        let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
-                        if (!mod || mod.gameName !== gameName.data) {
-                            return null;
-                        }
-                        return { mod: mod.toAPIResponse(), version: modVersion.toRawAPIResponse() };
-                    }).filter((obj) => obj !== null);
+                    const modVersionsRaw = await DatabaseHelper.database.Versions.findAll({ where: { [Op.or]: statusQuery } });
+                    response.modVersions = (await Promise.all(
+                        modVersionsRaw.map(async (modVersion) => {
+                            let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
+                            if (!mod || mod.gameName !== gameName.data) {
+                                return null;
+                            }
+                            return { mod: await mod.toAPIResponse(`v2`), version: modVersion.toRawAPIResponse() };
+                        })
+                    )).filter((obj) => obj !== null);
                     break;
                 case `edits`:
                     let editQueue = await DatabaseHelper.database.EditApprovalQueue.findAll({where: { approved: null }});
@@ -118,28 +124,28 @@ export class ApprovalRoutes {
                     }
 
                     // filter out edits that don't support the game specified
-                    response.edits = editQueue.map((edit) => {
+                    response.edits = (await Promise.all(editQueue.map(async (edit) => {
                         let isMod = edit.objectTableName === `mods`;
                         if (isMod) {
-                            let mod = DatabaseHelper.mapCache.mods.get(edit.objectId);
+                            let mod = DatabaseHelper.mapCache.projects.get(edit.objectId);
                             if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
 
-                            return { mod: mod.toAPIResponse(), original: mod, edit: edit };
+                            return { mod: await mod.toAPIResponse(`v2`), original: mod, edit: edit };
                         } else {
-                            let modVersion = DatabaseHelper.mapCache.modVersions.get(edit.objectId);
+                            let modVersion = DatabaseHelper.mapCache.versions.get(edit.objectId);
                             if (!modVersion) {
                                 return null;
                             }
-                            let mod = DatabaseHelper.mapCache.mods.get(modVersion.modId);
+                            let mod = DatabaseHelper.mapCache.projects.get(modVersion.projectId);
                             
                             if (!mod || mod.gameName !== gameName.data) {
                                 return null;
                             }
-                            return { mod: mod.toAPIResponse(), original: modVersion, edit: edit };
+                            return { mod: await mod.toAPIResponse(`v2`), original: modVersion, edit: edit };
                         }
-                    }).filter((obj) => obj !== null);
+                    }))).filter((obj) => obj !== null);
                     break;
                         
             }
@@ -193,7 +199,7 @@ export class ApprovalRoutes {
                 return res.status(400).send({ message: `Invalid parameters.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId.data } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId.data } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -207,7 +213,7 @@ export class ApprovalRoutes {
                 return res.status(400).send({ message: `Mod is removed. Please restore it first.` });
             }
 
-            let promise: Promise<Mod>;
+            let promise: Promise<Project>;
             let status: Status;
             switch (action.data) {
                 case ApprovalAction.Accept:
@@ -235,7 +241,7 @@ export class ApprovalRoutes {
 
             promise.then(() => {
                 Logger.log(`Mod ${modId.data} set to status ${status} by ${session.user!.username}.`);
-                DatabaseHelper.refreshCache(`mods`);
+                DatabaseHelper.refreshCache(`projects`);
                 // logs sent out in the setStatus method
                 return res.status(200).send({ message: `Mod ${status}.` });
             }).catch((error) => {
@@ -280,18 +286,18 @@ export class ApprovalRoutes {
             if (!modVersionId.success || !action.success || !reason.success) {
                 return res.status(400).send({ message: `Invalid ModVersion ID or Status.` });
             }
-            let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromModVersionId(modVersionId.data));
+            let session = await validateSession(req, res, UserRoles.Approver, DatabaseHelper.getGameNameFromVersionId(modVersionId.data));
             if (!session.user) {
                 return;
             }
 
             // get db objects
-            let modVersion = await DatabaseHelper.database.ModVersions.findOne({ where: { id: modVersionId.data } });
+            let modVersion = await DatabaseHelper.database.Versions.findOne({ where: { id: modVersionId.data } });
             if (!modVersion) {
                 return res.status(404).send({ message: `Mod version not found.` });
             }
 
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modVersion.modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modVersion.projectId } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -300,7 +306,7 @@ export class ApprovalRoutes {
                 return res.status(400).send({ message: `Version is removed.` });
             }
 
-            let promise: Promise<ModVersion>;
+            let promise: Promise<Version>;
             let status: Status;
             switch (action.data) {
                 case ApprovalAction.Accept:
@@ -333,7 +339,7 @@ export class ApprovalRoutes {
 
             promise.then(() => {
                 Logger.log(`ModVersion ${modVersion.id} set to status ${status} by ${session.user.username}.`);
-                DatabaseHelper.refreshCache(`modVersions`);
+                DatabaseHelper.refreshCache(`versions`);
                 // logs sent out by the modVersion.setStatus method
                 return res.status(200).send({ message: `ModVersion ${status}.` });
             }).catch((error) => {
@@ -392,11 +398,11 @@ export class ApprovalRoutes {
             }
 
             let isMod = `name` in edit.object;
-            let modId = isMod ? edit.objectId : await DatabaseHelper.database.ModVersions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
+            let modId = isMod ? edit.objectId : await DatabaseHelper.database.Versions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
                 if (!modVersion) {
                     return null;
                 } else {
-                    return modVersion.modId;
+                    return modVersion.projectId;
                 }
             });
 
@@ -404,7 +410,7 @@ export class ApprovalRoutes {
                 return res.status(404).send({ message: `Mod not found.` });
             }
             
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId } });
             if (!mod) {
                 return res.status(404).send({ message: `Mod not found.` });
             }
@@ -413,7 +419,7 @@ export class ApprovalRoutes {
             if (action.data === ApprovalAction.Accept) {
                 edit.approve(session.user).then((record) => {
                     Logger.log(`Edit ${editId.data} accepted by ${session.user.username}.`);
-                    isMod ? DatabaseHelper.refreshCache(`mods`) : DatabaseHelper.refreshCache(`modVersions`);
+                    isMod ? DatabaseHelper.refreshCache(`projects`) : DatabaseHelper.refreshCache(`versions`);
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return res.status(200).send({ message: `Edit accepted.`, record: record });
                 }).catch((error) => {
@@ -423,7 +429,7 @@ export class ApprovalRoutes {
             } else {
                 edit.deny(session.user).then(() => {
                     Logger.log(`Edit ${editId.data} rejected by ${session.user.username}.`);
-                    isMod ? DatabaseHelper.refreshCache(`mods`) : DatabaseHelper.refreshCache(`modVersions`);
+                    isMod ? DatabaseHelper.refreshCache(`projects`) : DatabaseHelper.refreshCache(`versions`);
                     DatabaseHelper.refreshCache(`editApprovalQueue`);
                     return res.status(200).send({ message: `Edit rejected.` });
                 }).catch((error) => {
@@ -471,6 +477,8 @@ export class ApprovalRoutes {
             // #swagger.responses[401] = { description: 'Unauthorized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             // #swagger.responses[404] = { description: 'Edit not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
             // #swagger.responses[500] = { description: 'Error updating edit.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ServerMessage' } } } }
+            return res.status(410).send({ message: `This endpoint is not available in v2 Please move to v3.` });
+            /*
             let editId = Validator.zDBID.safeParse(req.params.editIdParam);
             if (!editId.success) {
                 return res.status(400).send({ message: `Invalid edit id.` });
@@ -487,11 +495,11 @@ export class ApprovalRoutes {
                 return res.status(404).send({ message: `Edit not found.` });
             }
 
-            let modId = edit.isMod() ? edit.objectId : await DatabaseHelper.database.ModVersions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
+            let modId = edit.isProject() ? edit.objectId : await DatabaseHelper.database.Versions.findOne({ where: { id: edit.objectId } }).then((modVersion) => {
                 if (!modVersion) {
                     return null;
                 } else {
-                    return modVersion.modId;
+                    return modVersion.projectId;
                 }
             });
 
@@ -499,7 +507,7 @@ export class ApprovalRoutes {
                 return res.status(404).send({ message: `Mod ID not found.` });
             }
             
-            let mod = await DatabaseHelper.database.Mods.findOne({ where: { id: modId } });
+            let mod = await DatabaseHelper.database.Projects.findOne({ where: { id: modId } });
 
             if (!mod) {
                 return res.status(500).send({ message: `Mod not found.` });
@@ -580,6 +588,7 @@ export class ApprovalRoutes {
             }
 
             res.status(200).send({ message: `Edit updated.`, edit: edit });
+            */
         });
         // #endregion
     }
