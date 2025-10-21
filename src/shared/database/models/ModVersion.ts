@@ -223,21 +223,36 @@ export class ModVersion extends Model<InferAttributes<ModVersion>, InferCreation
         } else {
             let existingEdit = await DatabaseHelper.database.EditApprovalQueue.findOne({ where: { objectId: this.id, objectTableName: `modVersions`, submitterId: submitter.id, approved: null } });
 
+            let res;
             if (existingEdit) {
-                throw new Error(`Edit already exists for this mod version.`);
+                let supportedGameVersionIds;
+                if (`supportedGameVersionIds` in existingEdit.object) {
+                    if (existingEdit.object.supportedGameVersionIds?.includes(gameVersionId)) {
+                        return existingEdit;
+                    }
+                    supportedGameVersionIds = [...existingEdit.object.supportedGameVersionIds!, gameVersionId];
+                } else {
+                    supportedGameVersionIds = [...this.supportedGameVersionIds, gameVersionId];
+                }
+                
+                existingEdit.object = {
+                    ...existingEdit.object,
+                    supportedGameVersionIds: supportedGameVersionIds,
+                };
+                res = await existingEdit.save();
+            } else {
+                res = await DatabaseHelper.database.EditApprovalQueue.create({
+                    submitterId: submitter.id,
+                    objectId: this.id,
+                    objectTableName: `modVersions`,
+                    object: {
+                        dependencies: this.dependencies,
+                        modVersion: this.modVersion,
+                        platform: this.platform,
+                        supportedGameVersionIds: [...this.supportedGameVersionIds, gameVersionId],
+                    },
+                });
             }
-
-            let res = await DatabaseHelper.database.EditApprovalQueue.create({
-                submitterId: submitter.id,
-                objectId: this.id,
-                objectTableName: `modVersions`,
-                object: {
-                    dependencies: this.dependencies,
-                    modVersion: this.modVersion,
-                    platform: this.platform,
-                    supportedGameVersionIds: [...this.supportedGameVersionIds, gameVersionId],
-                },
-            });
             shouldSendLog ? sendEditLog(res, submitter, WebhookLogType.EditSubmitted, this) : null;
             return res;
         }

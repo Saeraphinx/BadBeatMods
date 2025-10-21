@@ -182,12 +182,27 @@ export class BulkActionsRoutes {
 
             let modIdsToIgnore: number[] = []; // mod versions that are in the exclude list
             let modVersions = await DatabaseHelper.database.ModVersions.findAll();
+            let pendingEdits = await DatabaseHelper.database.EditApprovalQueue.findAll({
+                where: {
+                    approved: null,
+                    objectTableName: `modVersions`,
+                }
+            });
             modVersions = modVersions.filter((mv) => {
                 if (modVersionIds.data.includes(mv.id)) {
                     modIdsToIgnore.push(mv.modId); // do not process these mod ids further on down the line
                     return false;
                 }
-                return mv.supportedGameVersionIds.includes(gameVersion1.id) && (mv.status == Status.Verified || mv.status == Status.Unverified || mv.status == Status.Pending);
+
+                let pendingEdit = pendingEdits.find(e => e.objectId === mv.id);
+                let shouldBypassCheck = false;
+                if (pendingEdit && pendingEdit.isModVersion()) {
+                    if (`supportedGameVersionIds` in pendingEdit.object && pendingEdit.object.supportedGameVersionIds?.includes(gameVersion1.id)) {
+                        shouldBypassCheck = true;
+                    }
+                }
+
+                return (mv.supportedGameVersionIds.includes(gameVersion1.id) || shouldBypassCheck) && (mv.status == Status.Verified || mv.status == Status.Unverified || mv.status == Status.Pending);
             });
 
             let modVersionFiltered:{modId:number, modVersion:ModVersion}[] = [];

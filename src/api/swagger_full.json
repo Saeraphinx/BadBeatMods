@@ -90,7 +90,7 @@
         "deprecated": true
       }
     },
-    "/v1/mod": {
+    "/api/v1/mod": {
       "get": {
         "tags": [
           "BeatMods"
