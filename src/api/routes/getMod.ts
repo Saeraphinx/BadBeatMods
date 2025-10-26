@@ -165,7 +165,7 @@ export class GetModRoutes {
                     returnVal.push(version.toRawAPIResponse());
                 } else {
                     // resort to default behavior, which does return no matter what iirc.
-                    let resolvedVersion = await version.toAPIResponse(undefined, [Status.Verified, Status.Unverified, Status.Private, Status.Removed]);
+                    let resolvedVersion = await version.toAPIResponse(undefined, [Status.Verified, Status.Unverified, Status.Private]);
                     if (resolvedVersion) {
                         returnVal.push(resolvedVersion);
                     } else {
