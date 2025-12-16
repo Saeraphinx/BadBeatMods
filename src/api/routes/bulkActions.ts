@@ -4,6 +4,7 @@ import { validateSession } from '../../shared/AuthHelper.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { Op } from 'sequelize';
 import { Logger } from '../../shared/Logger.ts';
+import { compare } from 'semver';
 
 export class BulkActionsRoutes {
     private router: Router;
@@ -145,10 +146,10 @@ export class BulkActionsRoutes {
                 }
             }
             */
-            let modVersionIds = Validator.zDBIDArray.safeParse(req.body.modVersionIdsToExclude);
+            let excludedModVersionIds = Validator.zDBIDArray.safeParse(req.body.modVersionIdsToExclude);
             let gameVersionId1 = Validator.zDBID.safeParse(req.body.gameVersionIdFrom);
             let gameVersionId2 = Validator.zDBID.safeParse(req.body.gameVersionIdTo);
-            if (!modVersionIds.success || !gameVersionId1.success || !gameVersionId2.success) {
+            if (!excludedModVersionIds.success || !gameVersionId1.success || !gameVersionId2.success) {
                 res.status(400).send({ message: `Invalid parameters.`});
                 return;
             }
@@ -175,53 +176,41 @@ export class BulkActionsRoutes {
                 return;
             }
 
-            if (await Validator.validateIDArray(modVersionIds.data, `modVersions`, true, true) == false) {
+            if (await Validator.validateIDArray(excludedModVersionIds.data, `modVersions`, true, true) == false) {
                 res.status(404).send({ message: `One or more mod versions not found`});
                 return;
             }
 
-            let modIdsToIgnore: number[] = []; // mod versions that are in the exclude list
             let modVersions = await DatabaseHelper.database.ModVersions.findAll();
-            let pendingEdits = await DatabaseHelper.database.EditApprovalQueue.findAll({
-                where: {
-                    approved: null,
-                    objectTableName: `modVersions`,
-                }
-            });
-            modVersions = modVersions.filter((mv) => {
-                if (modVersionIds.data.includes(mv.id)) {
-                    modIdsToIgnore.push(mv.modId); // do not process these mod ids further on down the line
-                    return false;
-                }
 
-                let pendingEdit = pendingEdits.find(e => e.objectId === mv.id);
-                let shouldBypassCheck = false;
-                if (pendingEdit && pendingEdit.isModVersion()) {
-                    if (`supportedGameVersionIds` in pendingEdit.object && pendingEdit.object.supportedGameVersionIds?.includes(gameVersion1.id)) {
-                        shouldBypassCheck = true;
-                    }
-                }
-
-                return (mv.supportedGameVersionIds.includes(gameVersion1.id) || shouldBypassCheck) && (mv.status == Status.Verified || mv.status == Status.Unverified || mv.status == Status.Pending);
-            });
-
-            let modVersionFiltered:{modId:number, modVersion:ModVersion}[] = [];
+            // find latest mod version that does not have gameVersion2 but has gameVersion1 & is not removed
+            let modVersionsToProcess: ModVersion[] = [];
             for (let modVersion of modVersions) {
-                if (modIdsToIgnore.includes(modVersion.modId)) {
-                    continue; // skip mod versions that are in the exclude list
+                if (excludedModVersionIds.data.includes(modVersion.id)) {
+                    continue;
                 }
-                let existing = modVersionFiltered.find((mv) => mv.modId === modVersion.modId && mv.modVersion.status === modVersion.status);
-                if (existing) {
-                    if (modVersion.modVersion.compare(existing.modVersion.modVersion) == 1) {
-                        modVersionFiltered = modVersionFiltered.filter((mv) => mv.modId !== modVersion.modId && mv.modVersion.status === modVersion.status);
-                        modVersionFiltered.push({modId: modVersion.modId, modVersion: modVersion});
-                    }
-                } else {
-                    modVersionFiltered.push({modId: modVersion.modId, modVersion: modVersion});
-                }
-            }
 
-            modVersionFiltered.sort((a, b) => a.modId - b.modId);
+                if (modVersion.supportedGameVersionIds.includes(gameVersionId2.data)) {
+                    continue;
+                }
+
+                if (!modVersion.supportedGameVersionIds.includes(gameVersionId1.data)) {
+                    continue;
+                }
+
+                // allow approved, unverified, and pending mod versions only
+                if (modVersion.status !== Status.Verified && modVersion.status !== Status.Unverified && modVersion.status !== Status.Pending) {
+                    continue;
+                }
+
+                // check to see if there is already an instacne of this mod in the process lsit, and remove it if this one is newer
+                let existingModVersionToProcess = modVersionsToProcess.find((mv) => mv.modId === modVersion.modId);
+                if (!existingModVersionToProcess || compare(modVersion.modVersion, existingModVersionToProcess.modVersion) === 1) {
+                    modVersionsToProcess = modVersionsToProcess.filter((mv) => mv.id !== modVersion.id);
+                }
+
+                modVersionsToProcess.push(modVersion);
+            }
 
             let results = {
                 editIds: [] as number[],
@@ -229,10 +218,9 @@ export class BulkActionsRoutes {
                 editPreformedIds: [] as number[],
             };
 
-            for (let modVersion of modVersionFiltered) {
-                let outObj = await modVersion.modVersion.addGameVersionId(gameVersion2.id, session.user).catch((err) => {
-                    Logger.error(`Error adding game version ${gameVersion2.id} to mod version ${modVersion.modVersion.id}: ${err}`);
-                    //results.errorIds.push(modVersion.modVersion.id);
+            for (let toProcess of modVersionsToProcess) {
+                let outObj = await toProcess.addGameVersionId(gameVersionId2.data, session.user).catch((err) => {
+                    Logger.error(`Error adding game version ${gameVersionId2.data} to mod version ${toProcess.id}: ${err}`);
                     return null;
                 });
                 if (outObj) {
@@ -242,9 +230,10 @@ export class BulkActionsRoutes {
                         results.editPreformedIds.push(outObj.id);
                     }
                 } else {
-                    results.errorIds.push(modVersion.modVersion.id);
+                    results.errorIds.push(toProcess.id);
                 }
             }
+            
 
             DatabaseHelper.refreshCache(`editApprovalQueue`);
             res.status(200).send(results);
