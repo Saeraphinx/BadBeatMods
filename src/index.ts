@@ -40,6 +40,7 @@ import fullApi from './api/swagger_full.json' with { type: "json" };
 // eslint-disable-next-line quotes
 import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
+import { ModTranslateRoutes } from './api/routes/modTranslate.ts';
 function init() {
     console.log(`Starting setup...`);
     if (process.env.NODE_ENV === `test`) {
@@ -227,6 +228,7 @@ function init() {
     new UserRoutes(apiRouter);
     new StatusRoutes(apiRouter);
     new BulkActionsRoutes(apiRouter);
+    new ModTranslateRoutes(apiRouter);
 
     if (Config.flags.enableSwagger) {
         publicApi.servers = [{url: `${Config.server.url}${Config.server.apiRoute}`}];

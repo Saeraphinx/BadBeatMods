@@ -2796,6 +2796,405 @@
           }
         }
       }
+    },
+    "/translates/all": {
+      "get": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/translates/mod/{modId}": {
+      "get": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/translates/lang/{langCode}": {
+      "get": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/translates/modlang/{modId}/{langCode}": {
+      "get": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          },
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/translates/suggest/{modId}/{translateType}/{langCode}": {
+      "post": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          },
+          {
+            "name": "translateType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The translate type."
+          },
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "208": {
+            "description": "Already Reported"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "requestBody": {
+          "description": "suggest content",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": "string",
+                  "forceUpdate": {
+                    "type": "boolean",
+                    "description": "False by default",
+                    "example": false
+                  },
+                  "coAuthor": {
+                    "type": "boolean",
+                    "description": "False by default. If true, append your account to the translate author list instead of reset the list.",
+                    "example": false
+                  }
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": "string",
+                  "forceUpdate": {
+                    "type": "boolean",
+                    "description": "False by default",
+                    "example": false
+                  },
+                  "coAuthor": {
+                    "type": "boolean",
+                    "description": "False by default. If true, append your account to the translate author list instead of reset the list.",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/translates/accept/{modId}/{translateType}/{langCode}": {
+      "post": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          },
+          {
+            "name": "translateType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The translate type."
+          },
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/translates/edit/author/{modId}/{translateType}/{langCode}": {
+      "patch": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          },
+          {
+            "name": "translateType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The translate type."
+          },
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "requestBody": {
+          "description": "author list to override",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "array"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/translates/delete/{modId}/{translateType}/{langCode}": {
+      "delete": {
+        "tags": [
+          "ModTranslate"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The mod ID."
+          },
+          {
+            "name": "translateType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The translate type."
+          },
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The lang code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "requestBody": {
+          "description": "suggest content",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deleteTranslate": {
+                    "type": "boolean",
+                    "description": "False by default.",
+                    "example": false
+                  },
+                  "deleteSuggest": {
+                    "type": "boolean",
+                    "description": "False by default.",
+                    "example": false
+                  }
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deleteTranslate": {
+                    "type": "boolean",
+                    "description": "False by default.",
+                    "example": false
+                  },
+                  "deleteSuggest": {
+                    "type": "boolean",
+                    "description": "False by default.",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2906,6 +3305,483 @@
             "type": "string",
             "description": "The date the object was last updated.",
             "example": "2023-10-01T00:00:00.000Z"
+          },
+          "translates": {
+            "type": "object",
+            "properties": {
+              "en-US": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "en-EN": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fr-FR": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "es-ES": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "it-IT": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "de-DE": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ru-RU": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "zh-CN": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "zh-TW": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ja-JP": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ko-KR": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pt-BR": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "uk-UA": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tl-PH": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod name"
+                      },
+                      "summary": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod summary"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "translated mod description"
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "example": {
+              "zh-CN": {
+                "name": "这是一个名字",
+                "summary": "这是一份摘要",
+                "description": "这是模组详细描述"
+              },
+              "ja-JP": {
+                "summary": "これは要約です"
+              }
+            }
           }
         }
       },
@@ -3045,7 +3921,8 @@
                     "gamemanager",
                     "approver",
                     "largefiles",
-                    "banned"
+                    "banned",
+                    "translator"
                   ]
                 },
                 "default": [],
@@ -3568,7 +4445,8 @@
                     "gamemanager",
                     "approver",
                     "largefiles",
-                    "banned"
+                    "banned",
+                    "translator"
                   ]
                 },
                 "default": [],
@@ -3824,6 +4702,509 @@
         "additionalProperties": true,
         "example": {
           "message": "string"
+        }
+      },
+      "ModTranslatesObject": {
+        "type": "object",
+        "properties": {
+          "en-US": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "en-EN": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fr-FR": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "es-ES": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "it-IT": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "de-DE": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ru-RU": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zh-CN": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zh-TW": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ja-JP": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ko-KR": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pt-BR": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uk-UA": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tl-PH": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod name"
+                  },
+                  "summary": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod summary"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "translated mod description"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "example": {
+          "zh-CN": {
+            "name": "这是一个名字",
+            "summary": "这是一份摘要",
+            "description": "这是模组详细描述"
+          },
+          "ja-JP": {
+            "summary": "これは要約です"
+          }
+        }
+      },
+      "ModTranslateObject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "translated mod name"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "translated mod summary"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "translated mod description"
+          }
         }
       }
     }

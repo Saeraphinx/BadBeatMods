@@ -5,6 +5,7 @@ import { GameVersion } from "./models/GameVersion.ts";
 import { Mod } from "./models/Mod.ts";
 import { ModVersion } from "./models/ModVersion.ts";
 import { MOTD } from "./models/MOTD.ts";
+import { ModTranslate } from "./models/ModTranslate.ts";
 
 // #region Enums & Types
 export enum SupportedGames {
@@ -33,6 +34,11 @@ export type GameVersionAPIPublicResponse = {
     createdAt?: Date;
     updatedAt?: Date;
 };
+export type ModTranslateObject = {
+    name?: string;
+    summary?: string;
+    description?: string;
+};
 export type ModAPIPublicResponse = {
     id: number;
     name: string;
@@ -49,6 +55,7 @@ export type ModAPIPublicResponse = {
     statusHistory: StatusHistory[];
     createdAt: Date;
     updatedAt: Date;
+    translates: Record</* Language */ string, ModTranslateObject>;
 };
 export type ModVersionAPIPublicResponse = {
     id: number;
@@ -69,7 +76,18 @@ export type ModVersionAPIPublicResponse = {
     createdAt: Date;
     updatedAt: Date;
 }
-
+export type ModTranslateAPIPublicResponse = {
+    modId: number;
+    langCode: Language;
+    translateType: ModTranslateType;
+    translate: string | null;
+    translateRef: string | null;
+    suggest: string | null;
+    suggestRef: string | null;
+    translatorModifiedUserId: number | null;
+    translatorUserIds: number[];
+    suggesterUserIds: number[];
+}
 export interface UserRolesObject {
     sitewide: UserRoles[];
     perGame: {
@@ -86,6 +104,7 @@ export enum UserRoles {
     Approver = `approver`,
     LargeFiles = `largefiles`,
     Banned = `banned`,
+    Translator = `translator`,
 }
 
 export enum PostType {
@@ -143,6 +162,27 @@ export enum Categories {
     Editor = `editor`,
     Other = `other`,
 }
+export enum Language {
+    en_US = `en-US`,
+    en_EN = `en-EN`,
+    fr_FR = `fr-FR`,
+    es_ES = `es-ES`,
+    it_IT = `it-IT`,
+    de_DE = `de-DE`,
+    ru_RU = `ru-RU`,
+    zh_CN = `zh-CN`,
+    zh_TW = `zh-TW`,
+    ja_JP = `ja-JP`,
+    ko_KR = `ko-KR`,
+    pt_BR = `pt-BR`,
+    uk_UA = `uk-UA`,
+    tl_PH = `tl-PH`,
+}
+export enum ModTranslateType {
+    Name = `name`,
+    Summary = `summary`,
+    Description = `description`,
+}
 // #endregion
 
 // yoink thankies bstoday & bns
@@ -162,6 +202,7 @@ export class DatabaseHelper {
         users: User[],
         editApprovalQueue: EditQueue[],
         motd: MOTD[],
+        modTranslates: ModTranslate[],
     } = {
             gameVersions: [],
             modVersions: [],
@@ -169,17 +210,20 @@ export class DatabaseHelper {
             users: [],
             editApprovalQueue: [],
             motd: [],
+            modTranslates: [],
         };
     public static mapCache: {
         gameVersions: Map<number, GameVersion>,
         mods: Map<number, Mod>,
         modVersions: Map<number, ModVersion>,
         users: Map<number, User>,
+        modTranslates: Map<number, ModTranslate[]>,
     } = {
             gameVersions: new Map(),
             mods: new Map(),
             modVersions: new Map(),
             users: new Map(),
+            modTranslates: new Map(),
         };
 
     constructor(database: DatabaseManager, loadCache = true) {
@@ -191,6 +235,18 @@ export class DatabaseHelper {
         setInterval(DatabaseHelper.refreshAllCaches, 1000 * 60 * 5);
     }
 
+    private static buildModTranslateMap(translates:ModTranslate[]):Map<number, ModTranslate[]> {
+        const ret = new Map<number, ModTranslate[]>();
+        for (const trans of translates) {
+            if (!ret.has(trans.modId)) {
+                ret.set(trans.modId, [trans]);
+            } else {
+                ret.get(trans.modId)!.push(trans);
+            }
+        }
+        return ret;
+    }
+
     public static async refreshAllCaches() {
         Logger.debug(`Refreshing all caches`);
         DatabaseHelper.cache.gameVersions = await DatabaseHelper.database.GameVersions.findAll();
@@ -199,14 +255,16 @@ export class DatabaseHelper {
         DatabaseHelper.cache.users = await DatabaseHelper.database.Users.findAll();
         DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
         DatabaseHelper.cache.motd = await DatabaseHelper.database.MOTDs.findAll();
+        DatabaseHelper.cache.modTranslates = await DatabaseHelper.database.ModTranslates.findAll();
         DatabaseHelper.mapCache.gameVersions = new Map(DatabaseHelper.cache.gameVersions.map((gameVersion) => [gameVersion.id, gameVersion]));
         DatabaseHelper.mapCache.mods = new Map(DatabaseHelper.cache.mods.map((mod) => [mod.id, mod]));
         DatabaseHelper.mapCache.modVersions = new Map(DatabaseHelper.cache.modVersions.map((modVersion) => [modVersion.id, modVersion]));
         DatabaseHelper.mapCache.users = new Map(DatabaseHelper.cache.users.map((user) => [user.id, user]));
+        DatabaseHelper.mapCache.modTranslates = DatabaseHelper.buildModTranslateMap(DatabaseHelper.cache.modTranslates);
         Logger.debug(`Finished refreshing all caches`);
     }
 
-    public static async refreshCache(tableName: `gameVersions` | `modVersions` | `mods` | `users` | `editApprovalQueue`) {
+    public static async refreshCache(tableName: `gameVersions` | `modVersions` | `mods` | `users` | `editApprovalQueue` | `modTranslates`) {
         Logger.debug(`Refreshing cache for ${tableName}`);
         switch (tableName) {
             case `gameVersions`:
@@ -227,6 +285,10 @@ export class DatabaseHelper {
                 break;
             case `editApprovalQueue`:
                 DatabaseHelper.cache.editApprovalQueue = await DatabaseHelper.database.EditApprovalQueue.findAll();
+                break;
+            case `modTranslates`:
+                DatabaseHelper.cache.modTranslates = await DatabaseHelper.database.ModTranslates.findAll();
+                DatabaseHelper.mapCache.modTranslates = DatabaseHelper.buildModTranslateMap(DatabaseHelper.cache.modTranslates);
                 break;
         }
         Logger.debug(`Finished refreshing cache for ${tableName}`);

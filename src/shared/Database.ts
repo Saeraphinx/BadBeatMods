@@ -13,6 +13,7 @@ import { ModVersion } from "./database/models/ModVersion.ts";
 import { MOTD } from "./database/models/MOTD.ts";
 import { User } from "./database/models/User.ts";
 import { updateRoles } from "./database/ValueUpdater.ts";
+import { ModTranslate } from "./database/models/ModTranslate.ts";
 
 // in use by this file
 export * from "./database/models/EditQueue.ts";
@@ -37,6 +38,7 @@ export class DatabaseManager {
     public GameVersions: ModelStatic<GameVersion>;
     public EditApprovalQueue: ModelStatic<EditQueue>;
     public MOTDs: ModelStatic<MOTD>;
+    public ModTranslates: ModelStatic<ModTranslate>;
     public serverAdmin: User;
     public umzug: Umzug<QueryInterface>;
 
@@ -664,7 +666,68 @@ export class DatabaseManager {
             paranoid: true,
 
         });
-
+        // #region ModTranslate
+        this.ModTranslates = ModTranslate.init({
+            modId: {
+                type: DataTypes.INTEGER,
+                primaryKey: true,
+            },
+            langCode: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            translateType: {
+                type: DataTypes.STRING,
+                primaryKey: true,
+            },
+            translate: {
+                type: DataTypes.STRING,
+            },
+            translateRef: {
+                type: DataTypes.STRING,
+            },
+            suggest: {
+                type: DataTypes.STRING,
+            },
+            suggestRef: {
+                type: DataTypes.STRING,
+            },
+            translatorModifiedUserId: {
+                type: DataTypes.NUMBER,
+            },
+            translatorUserIds: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`translatorUserIds`));
+                },
+                set(value: number[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`translatorUserIds`, JSON.stringify(value));
+                },
+            },
+            suggesterUserIds: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+                defaultValue: `[]`,
+                get() {
+                    // @ts-expect-error s(2345)
+                    return JSON.parse(this.getDataValue(`suggesterUserIds`));
+                },
+                set(value: number[]) {
+                    // @ts-expect-error s(2345)
+                    this.setDataValue(`suggesterUserIds`, JSON.stringify(value));
+                },
+            },
+        }, {
+            sequelize: this.sequelize,
+            modelName: `modTranslates`,
+            tableName: `modTranslates`,
+            paranoid: true
+        });
+        // #endregion
         // #region Hooks
         this.Users.afterSync(async () => {
             let users = await this.Users.findAll();

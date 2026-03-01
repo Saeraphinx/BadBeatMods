@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, ModVersionAPIPublicResponse } from '../../shared/Database.ts';
+import { DatabaseHelper, Status, ModAPIPublicResponse, GameVersion, ModVersionAPIPublicResponse, Mod } from '../../shared/Database.ts';
 import { Validator } from '../../shared/Validator.ts';
 import { validateSession } from '../../shared/AuthHelper.ts';
 import { Logger } from '../../shared/Logger.ts';
@@ -79,7 +79,12 @@ export class GetModRoutes {
                     if (latest) {
                         let latestVer = await latest.toAPIResponse(latest.supportedGameVersionIds[0], statuses);
                         if (latestVer) {
-                            mods.push({ mod: mod.toAPIResponse(), latest: latestVer });
+                            const apiResponse = mod.toAPIResponse();
+                            DatabaseHelper.mapCache.modTranslates.get(mod.id)?.forEach(v => {
+                                v.purge(mod);
+                                v.applyTo(apiResponse);
+                            });
+                            mods.push({ mod: apiResponse, latest: latestVer });
                         }
                     }
                 }
@@ -90,6 +95,10 @@ export class GetModRoutes {
                 for (let retMod of modsFromDB) {
                     let mod = retMod.mod.toAPIResponse();
                     let latest = await retMod.latest.toAPIResponse(gameVersion.id, statuses);
+                    DatabaseHelper.mapCache.modTranslates.get(mod.id)?.forEach(v => {
+                        v.purge(retMod.mod);
+                        v.applyTo(mod);
+                    });
                     mods.push({ mod, latest });
                 }
 
@@ -182,7 +191,16 @@ export class GetModRoutes {
                 }
             });
 
-            return res.status(200).send({ mod: { info: raw ? mod : mod.toAPIResponse(), versions: returnVal } });
+            let info: Mod | ModAPIPublicResponse = mod;
+            if (!raw) {
+                info = info.toAPIResponse();
+                DatabaseHelper.mapCache.modTranslates.get(mod.id)?.forEach(v => {
+                    v.purge(mod);
+                    v.applyTo(info as ModAPIPublicResponse);
+                });
+            }
+
+            return res.status(200).send({ mod: { info: info, versions: returnVal } });
         });
 
         this.router.get(`/modversions/:modVersionIdParam`, async (req, res) => {

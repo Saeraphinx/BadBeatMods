@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { Categories, Platform, Status, UserRoles } from '../shared/Database.ts';
+import { Categories, Language, Platform, Status, UserRoles } from '../shared/Database.ts';
 import swaggerAutogen from 'swagger-autogen';
 import { OpenAPIV3_1 } from 'openapi-types';
 
@@ -90,6 +90,23 @@ const ModDBObject: OpenAPIV3_1.SchemaObject = {
         },
         ...DBObject.properties
     }
+};
+const ModTranslateObject: OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: {
+        name: {
+            type: [`string`, `null`],
+            description: `translated mod name`,
+        },
+        summary: {
+            type: [`string`, `null`],
+            description: `translated mod summary`,
+        },
+        description: {
+            type: [`string`, `null`],
+            description: `translated mod description`,
+        },
+    },
 };
 const ModVersionDBObject: OpenAPIV3_1.SchemaObject = {
     type: `object`,
@@ -282,6 +299,27 @@ const EditApprovalQueueDBObject: OpenAPIV3_1.SchemaObject = {
         ...DBObject.properties
     }
 };
+const ModTranslatesObject:OpenAPIV3_1.SchemaObject = {
+    type: `object`,
+    properties: { /* assigned from Languages later */ },
+    example: {
+        "zh-CN": {
+            name: `这是一个名字`,
+            summary: `这是一份摘要`,
+            description: `这是模组详细描述`,
+        },
+        "ja-JP": {
+            summary: `これは要約です`,
+        }
+    }
+};
+Object.values(Language).forEach(v => {
+    ModTranslatesObject.properties![v.toString()] = {
+        anyOf: [ModTranslateObject, {
+            type: `null`
+        }]
+    };
+});
 // #endregion
 // #region API Public Responses
 const UserAPIPublicResponse: OpenAPIV3_1.SchemaObject = UserDBObject;
@@ -306,6 +344,7 @@ const ModAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
         lastUpdatedById: ModDBObject.properties!.lastUpdatedById,
         createdAt: ModDBObject.properties!.createdAt,
         updatedAt: ModDBObject.properties!.updatedAt,
+        translates: ModTranslatesObject
     }
 };
 const ModVersionAPIPublicResponse: OpenAPIV3_1.SchemaObject = {
@@ -470,7 +509,9 @@ const doc = {
             UserDBObject,
             GameVersionDBObject,
             EditApprovalQueueDBObject,
-            ServerMessage
+            ServerMessage,
+            ModTranslatesObject,
+            ModTranslateObject,
         }
     }
 };
@@ -490,6 +531,7 @@ const routes = [
     `./routes/users.ts`,
     `./routes/apistatus.ts`,
     `./routes/bulkActions.ts`,
+    `./routes/modTranslate.ts`,
 ];
 
 swaggerAutogen(options)(outputFile, routes, doc);

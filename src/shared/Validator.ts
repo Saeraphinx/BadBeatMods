@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue } from "./Database.ts";
+import { Categories, DatabaseHelper, GameVersion, ModVersion, Platform, Status, SupportedGames, User, Mod, PostType, UserRoles, EditQueue, Language, ModTranslateType } from "./Database.ts";
 import { valid } from "semver";
 import { Config } from "./Config.ts";
 
@@ -32,6 +32,8 @@ const ZodCategory = z.nativeEnum(Categories);
 const ZodGameName = z.nativeEnum(SupportedGames);
 const ZodPostType = z.nativeEnum(PostType);
 const ZodUserRoles = z.nativeEnum(UserRoles);
+const ZodLanguage = z.nativeEnum(Language);
+const ZodTranslateType = z.nativeEnum(ModTranslateType);
 
 // from ./Database.ts
 const ZodMod = z.object({
@@ -56,6 +58,17 @@ const ZodModVersion = z.object({
     status: ZodStatus,
 });
 
+const ZodTranslateSuggest = z.object({
+    content: z.string(),
+    forceUpdate: z.boolean().optional(),
+    coAuthor: z.boolean().optional(),
+});
+
+const ZodTranslateDelete = z.object({
+    deleteTranslate: z.boolean().optional(),
+    deleteSuggest: z.boolean().optional(),
+});
+
 // for things marked as optional, zod will set them to undefined if they are not present, otherwise it will validate it.
 export class Validator {
     public static readonly z = z;
@@ -69,6 +82,10 @@ export class Validator {
     public static readonly zGameName = ZodGameName;
     public static readonly zPostType = ZodPostType;
     public static readonly zUserRoles = ZodUserRoles;
+    public static readonly zLanguage = ZodLanguage;
+    public static readonly zTranslateType = ZodTranslateType;
+    public static readonly zTranslateSuggest = ZodTranslateSuggest;
+    public static readonly zTranslateDelete = ZodTranslateDelete;
     public static readonly zHashStringOrArray = z.union([z.string().min(8), z.array(z.string().min(8))]);
     public static readonly zUrl = z.string().url().refine((url) => {
         try {

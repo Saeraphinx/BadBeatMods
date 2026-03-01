@@ -254,6 +254,7 @@ export class Mod extends Model<InferAttributes<Mod>, InferCreationAttributes<Mod
             lastUpdatedById: this.lastUpdatedById,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
+            translates: {},
         };
     }
 }
