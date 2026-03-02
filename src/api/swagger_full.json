@@ -40,6 +40,10 @@
       "description": "Admin related endpoints"
     },
     {
+      "name": "ModTranslate",
+      "description": "Mod translate related endpoints"
+    },
+    {
       "name": "Bulk Actions",
       "description": "Actions that allow you to skip calling the same endpoint over and over again"
     },
@@ -3155,7 +3159,7 @@
           }
         },
         "requestBody": {
-          "description": "suggest content",
+          "description": "Delete a mod translate or a suggest",
           "required": true,
           "content": {
             "application/json": {

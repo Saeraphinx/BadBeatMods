@@ -175,7 +175,7 @@ export class ModTranslateRoutes {
 
             let userId = session.user?.id;
             if (!userId) {
-                return res.status(400).send({ error: `Login required`});
+                return res.status(400).send({ error: `User permission required`});
             }
 
             let modId = Validator.zDBID.safeParse(req.params.modId);
@@ -237,7 +237,7 @@ export class ModTranslateRoutes {
 
             let userId = session.user?.id;
             if (!userId) {
-                return res.status(400).send({ error: `Login required`});
+                return res.status(400).send({ error: `User permission required`});
             }
 
             if (!authors.success) {
@@ -301,7 +301,7 @@ export class ModTranslateRoutes {
             // #swagger.parameters['translateType'] = { in: 'path', description: 'The translate type.', type: 'string', required: true }
             // #swagger.parameters['langCode'] = { in: 'path', description: 'The lang code.', type: 'string', required: true }
             /* #swagger.requestBody = {
-                    description: 'suggest content',
+                    description: 'Delete a mod translate or a suggest',
                     required: true,
                     schema: {
                         type: 'object',
@@ -326,7 +326,7 @@ export class ModTranslateRoutes {
 
             let userId = session.user?.id;
             if (!userId) {
-                return res.status(400).send({ error: `Login required`});
+                return res.status(400).send({ error: `User permission required`});
             }
 
             if (!body.success) {
