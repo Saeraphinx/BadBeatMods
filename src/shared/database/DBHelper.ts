@@ -84,7 +84,7 @@ export type ModTranslateAPIPublicResponse = {
     translateRef: string | null;
     suggest: string | null;
     suggestRef: string | null;
-    translatorModifiedUserId: number | null;
+    translateLastModifiedUserId: number | null;
     translatorUserIds: number[];
     suggesterUserIds: number[];
 }

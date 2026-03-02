@@ -692,7 +692,7 @@ export class DatabaseManager {
             suggestRef: {
                 type: DataTypes.STRING,
             },
-            translatorModifiedUserId: {
+            translateLastModifiedUserId: {
                 type: DataTypes.NUMBER,
             },
             translatorUserIds: {

@@ -18,7 +18,7 @@ export class ModTranslate extends Model<InferAttributes<ModTranslate>, InferCrea
     declare suggest: string | null;
     declare suggestRef: string | null;
 
-    declare translatorModifiedUserId: number | null;
+    declare translateLastModifiedUserId: number | null;
     declare translatorUserIds: number[];
     declare suggesterUserIds: number[];
 
@@ -89,7 +89,7 @@ export class ModTranslate extends Model<InferAttributes<ModTranslate>, InferCrea
             suggestRef: this.suggestRef,
             translatorUserIds: this.translatorUserIds,
             suggesterUserIds: this.suggesterUserIds,
-            translatorModifiedUserId: this.translatorModifiedUserId,
+            translateLastModifiedUserId: this.translateLastModifiedUserId,
         };
     }
 }

@@ -206,7 +206,7 @@ export class ModTranslateRoutes {
             dbItem.translate = dbItem.suggest;
             dbItem.translateRef = dbItem.suggestRef;
             dbItem.translatorUserIds = dbItem.suggesterUserIds;
-            dbItem.translatorModifiedUserId = userId;
+            dbItem.translateLastModifiedUserId = userId;
             try {
                 await dbItem.save();
             } catch (e) {
@@ -367,7 +367,7 @@ export class ModTranslateRoutes {
                 dbItem.translate = null;
                 dbItem.translateRef = null;
                 dbItem.translatorUserIds = [];
-                dbItem.translatorModifiedUserId = userId;
+                dbItem.translateLastModifiedUserId = userId;
             }
             if (body.data.deleteSuggest) {
                 dbItem.suggest = null;
