@@ -292,7 +292,7 @@ export class ModTranslateRoutes {
 
             DatabaseHelper.refreshCache(`modTranslates`);
             
-            return res.status(200).send({ message: `translate updated`, value: dbItem.translate});
+            return res.status(200).send({ message: `translate author updated`, value: dbItem.translatorUserIds});
         });
 
         this.router.delete(`/translates/delete/:modId/:translateType/:langCode`, async (req, res) => {
@@ -385,7 +385,7 @@ export class ModTranslateRoutes {
                 DatabaseHelper.refreshCache(`modTranslates`);
             }
 
-            return res.status(200).send({ message: `translate updated`, value: dbItem.translate});
+            return res.status(200).send({ message: `translate updated`, latestTranslate: dbItem.translate, latestSuggest: dbItem.suggest});
         });
     }
 }
