@@ -34,13 +34,13 @@ import { MOTDRoutes } from './api/routes/motd.ts';
 import { UserRoutes } from './api/routes/users.ts';
 import { StatusRoutes } from './api/routes/apistatus.ts';
 import { BulkActionsRoutes } from './api/routes/bulkActions.ts';
+import { ModTranslateRoutes } from './api/routes/modTranslate.ts';
 
 // eslint-disable-next-line quotes
 import fullApi from './api/swagger_full.json' with { type: "json" };
 // eslint-disable-next-line quotes
 import publicApi from './api/swagger_public.json' with { type: "json" };
 import { Server } from 'node:http';
-import { ModTranslateRoutes } from './api/routes/modTranslate.ts';
 function init() {
     console.log(`Starting setup...`);
     if (process.env.NODE_ENV === `test`) {
