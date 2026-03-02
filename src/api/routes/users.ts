@@ -103,10 +103,15 @@ export class UserRoutes {
                     }
 
                     let latest = await mod.getLatestVersion(latestGameVersion.id, platform.data, [status.data]);
+                    let modResponse = mod.toAPIResponse();
+                    DatabaseHelper.mapCache.modTranslates.get(mod.id)?.forEach(v => {
+                        v.purge(mod);
+                        v.applyTo(modResponse);
+                    });
                     if (latest) {
-                        mods.push({mod: mod.toAPIResponse(), latest: latest});
+                        mods.push({mod: modResponse, latest: latest});
                     } else {
-                        mods.push({mod: mod.toAPIResponse(), latest: null});
+                        mods.push({mod: modResponse, latest: null});
                     }
                 }
                 return res.status(200).send({ mods: mods });
