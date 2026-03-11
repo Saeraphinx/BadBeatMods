@@ -21,6 +21,7 @@ export class Logger {
                     },
                 },
             }));*/
+            // eslint-disable-next-line no-console
             console.log(`[BBM Logger] Webhook logging is not supported in this version. Please use console or file logging instead.`);
         }
 

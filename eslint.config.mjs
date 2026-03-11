@@ -99,6 +99,7 @@ export default defineConfig([globalIgnores(["**/node_modules/", "**/build/", "**
             asyncArrow: "always",
         }],
 
+        "no-useless-assignment": "warn",
         "space-in-parens": "error",
         "space-infix-ops": "error",
         "space-unary-ops": "error",
@@ -106,5 +107,6 @@ export default defineConfig([globalIgnores(["**/node_modules/", "**/build/", "**
         yoda: "error",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unused-vars": "warn",
+        "@typescript-eslint/no-unused-expressions": "warn",
     },
 }]);
