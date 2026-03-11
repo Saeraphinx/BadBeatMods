@@ -1,4 +1,5 @@
-import { APIEmbed, APIMessage, Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
+import { Colors, EmbedBuilder, JSONEncodable, MessagePayload, WebhookClient, WebhookMessageCreateOptions } from "discord.js";
+import { APIEmbed, APIMessage } from "discord-api-types/v10";
 import { DatabaseHelper, EditQueue, Mod, ModApproval, ModInfer, ModVersion, ModVersionApproval, ModVersionInfer, Status, User } from "./Database.ts";
 import { Config } from "./Config.ts";
 import { Logger } from "./Logger.ts";
@@ -92,7 +93,7 @@ export async function sendModLog(mod: Mod, userMakingChanges: User, logType: Web
             }, logType);
             break;
         case WebhookLogType.Text_StatusChanged:
-            color = Colors.Blue;
+            color = Colors.Blue ;
             return sendToWebhooks({
                 username: `BadBeatMods`,
                 avatarURL: faviconUrl,

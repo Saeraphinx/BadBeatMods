@@ -10,7 +10,7 @@ import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
-import { ActivityType } from 'discord.js';
+
 import passport from 'passport';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { Octokit } from '@octokit/rest';
@@ -18,7 +18,7 @@ import { Octokit } from '@octokit/rest';
 import { DatabaseHelper, DatabaseManager } from './shared/Database.ts';
 import { Logger } from './shared/Logger.ts';
 import { Config } from './shared/Config.ts';
-import { Luma } from './discord/classes/Luma.ts';
+//import { Luma } from './discord/classes/Luma.ts';
 
 import { CreateModRoutes } from './api/routes/createMod.ts';
 import { GetModRoutes } from './api/routes/getMod.ts';
@@ -53,7 +53,7 @@ function init() {
     const port = Config.server.port;
     let database = new DatabaseManager();
     let server: Server | undefined = undefined;
-    let bot: Luma | undefined = undefined;
+    //let bot: Luma | undefined = undefined;
 
     // handle parsing request bodies
     app.use(express.json({ limit: 100000 }));
@@ -381,20 +381,20 @@ export async function startServer() {
         Logger.log(`Server started.`);
     });
     
-    let luma = undefined;
-    if (Config.bot.enabled) {
-        luma = new Luma({
-            intents: [],
-            presence: {activities: [{name: `with your mods`, type: ActivityType.Playing}], status: `online`}});
-        luma.login(Config.bot.token);
-    }
+    // let luma = undefined;
+    // if (Config.bot.enabled) {
+    //     luma = new Luma({
+    //         intents: [],
+    //         presence: {activities: [{name: `with your mods`, type: `PLAYING`}], status: `online`}});
+    //     luma.login(Config.bot.token);
+    // }
 
     let stopServer = async (doExit = true, code = 0) => {
         let promises = [];
         promises.push(database.sequelize.close());
         server?.closeAllConnections();
         server?.close();
-        promises.push(luma?.destroy());
+        //promises.push(luma?.destroy());
 
         await Promise.all(promises).then(() => {
             doExit ? process.exit(code) : undefined;

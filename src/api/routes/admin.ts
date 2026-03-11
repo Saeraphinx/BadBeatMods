@@ -90,7 +90,7 @@ export class AdminRoutes {
             }
 
             let params = Validator.z.object({
-                versionId: Validator.z.number({ coerce: true }).int(),
+                versionId: Validator.z.coerce.number().int(),
                 gameName: Validator.zGameName,
                 includeUnverified: Validator.z.preprocess(arg => arg === `true`, Validator.z.boolean().default(false)),
             }).required().strict().safeParse(req.query);
