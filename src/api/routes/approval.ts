@@ -68,7 +68,7 @@ export class ApprovalRoutes {
             #swagger.responses[401] = { description: 'Unauthorized.' }
             */
             let gameName = Validator.zGameName.safeParse(req.query.gameName);
-            let includeUnverified = Validator.z.boolean({coerce: true}).safeParse(req.query.includeUnverified === `true`);
+            let includeUnverified = Validator.z.coerce.boolean().safeParse(req.query.includeUnverified === `true`);
             if (!gameName.success) {
                 return res.status(400).send({ message: `Missing game name.` });
             }

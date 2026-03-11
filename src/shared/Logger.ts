@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // disabled for the whole file because the functions almost all have unused parameters
 import { Config } from "../shared/Config.ts";
 import * as Winston from "winston";
-import { DiscordTransport } from "winston-transport-discord";
 
 export class Logger {
     public static winston: Winston.Logger;
@@ -13,7 +12,7 @@ export class Logger {
     public static init() {
         let transports: Winston.transport[] = [];
         if (Config.webhooks.enableWebhooks && Config.webhooks.loggingUrl.length > 8) {
-            transports.push(new DiscordTransport({
+            /*transports.push(new DiscordTransport({
                 level: `info`,
                 silent: process.env.NODE_ENV == `test`,
                 discord: {
@@ -21,7 +20,9 @@ export class Logger {
                         url: Config.webhooks.loggingUrl,
                     },
                 },
-            }));
+            }));*/
+            // eslint-disable-next-line no-console
+            console.log(`[BBM Logger] Webhook logging is not supported in this version. Please use console or file logging instead.`);
         }
 
         let consoleLevel = `consoleInfo`;

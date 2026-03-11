@@ -4,7 +4,7 @@ import { valid } from "semver";
 import { Config } from "./Config.ts";
 
 //generic types that I use a lot
-const ZodDBID = z.number({coerce: true}).int().positive();
+const ZodDBID = z.coerce.number().int().positive();
 const ZodDBIDArray = z.preprocess((t, ctx) => {
     if (Array.isArray(t)) {
         return t;
@@ -25,15 +25,15 @@ const ZodDBIDArray = z.preprocess((t, ctx) => {
         }
     }
 }, z.array(ZodDBID));
-const ZodBool = z.boolean({coerce: true});
-const ZodStatus = z.nativeEnum(Status);
-const ZodPlatform = z.nativeEnum(Platform);
-const ZodCategory = z.nativeEnum(Categories);
-const ZodGameName = z.nativeEnum(SupportedGames);
-const ZodPostType = z.nativeEnum(PostType);
-const ZodUserRoles = z.nativeEnum(UserRoles);
-const ZodLanguage = z.nativeEnum(Language);
-const ZodTranslateType = z.nativeEnum(ModTranslateType);
+const ZodBool = z.coerce.boolean();
+const ZodStatus = z.enum(Status);
+const ZodPlatform = z.enum(Platform);
+const ZodCategory = z.enum(Categories);
+const ZodGameName = z.enum(SupportedGames);
+const ZodPostType = z.enum(PostType);
+const ZodUserRoles = z.enum(UserRoles);
+const ZodLanguage = z.enum(Language);
+const ZodTranslateType = z.enum(ModTranslateType);
 
 // from ./Database.ts
 const ZodMod = z.object({
@@ -154,7 +154,7 @@ export class Validator {
         gameName: ZodGameName.default(SupportedGames.BeatSaber),
         gameVersion: z.string().optional(),
         platform: ZodPlatform.optional(),
-        getExpired: z.boolean({coerce: true}).default(false),
+        getExpired: z.coerce.boolean().default(false),
     });
 
     public static readonly zCreateGameVersion = z.object({
