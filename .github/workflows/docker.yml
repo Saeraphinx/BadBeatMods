@@ -2,6 +2,7 @@ name: Build for Docker
 on:  
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
